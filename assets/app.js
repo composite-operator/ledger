@@ -29,6 +29,10 @@
     setupDirection: "all",
     setupSearch: "",
     setupSort: "newest",
+    commentsBySetup: new Map(),
+    commentErrors: new Map(),
+    commentsLoading: new Set(),
+    expandedComments: new Set(),
     chart: null,
     commandItems: [],
     commandToken: 0,
@@ -67,7 +71,9 @@
     $$(".app-view").forEach((view) => view.classList.toggle("is-active", view.dataset.view === viewName));
     $$(".nav-item").forEach((button) => button.classList.toggle("is-active", button.dataset.viewTarget === viewName));
     if (viewName === "setups") renderNetworkChart();
-    history.replaceState(null, "", viewName === "overview" ? location.pathname : `#${viewName}`);
+    const nextUrl = new URL(location.href);
+    nextUrl.hash = viewName === "overview" ? "" : viewName;
+    history.replaceState(null, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -123,12 +129,14 @@
         await hydrateSignedInProfile();
         updateAccountUI();
         updateFormAuthState();
+        renderSetups();
       });
 
       state.live = true;
       await loadLiveData();
       setNetworkState("Ledger connected", false);
       renderAll();
+      await activateSharedSetup();
     } catch (error) {
       console.error(error);
       setNetworkState("Preview fallback", true);
@@ -224,7 +232,8 @@
       t3: nullableNumber(row.t3),
       current_price: nullableNumber(row.current_price),
       score: nullableNumber(row.score),
-      r_result: nullableNumber(row.r_result)
+      r_result: nullableNumber(row.r_result),
+      comment_count: Number(row.comment_count || 0)
     };
   }
 
@@ -517,6 +526,8 @@
       rows.sort((a, b) => triggerDistance(a) - triggerDistance(b));
     } else if (state.setupSort === "score") {
       rows.sort((a, b) => (b.score ?? -Infinity) - (a.score ?? -Infinity));
+    } else if (state.setupSort === "discussed") {
+      rows.sort((a, b) => b.comment_count - a.comment_count || new Date(b.submitted_at) - new Date(a.submitted_at));
     } else {
       rows.sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at));
     }
@@ -540,6 +551,11 @@
       };
       openProfile(leader);
     }));
+    $$("[data-toggle-comments]", grid).forEach((button) => button.addEventListener("click", () => toggleSetupComments(button.dataset.toggleComments)));
+    $$("[data-comment-auth]", grid).forEach((button) => button.addEventListener("click", () => $("#auth-dialog").showModal()));
+    $$("[data-comment-form]", grid).forEach((form) => form.addEventListener("submit", submitComment));
+    $$("[data-delete-comment]", grid).forEach((button) => button.addEventListener("click", () => softDeleteComment(button.dataset.setupId, button.dataset.deleteComment)));
+    $$("[data-share-setup]", grid).forEach((button) => button.addEventListener("click", () => shareSetup(button.dataset.shareSetup)));
     renderSetupCounts();
     renderNetworkIntel();
   }
@@ -547,7 +563,9 @@
   function setupCard(setup) {
     const normalized = normalizeState(setup.status);
     const plannedR = computePlannedR(setup.direction, setup.entry, setup.stop, setup.t1);
-    return `<article class="setup-card is-${setup.direction.toLowerCase()}">
+    const setupId = String(setup.id);
+    const commentsOpen = state.expandedComments.has(setupId);
+    return `<article class="setup-card is-${setup.direction.toLowerCase()}${commentsOpen ? " has-open-comments" : ""}" id="setup-${escapeAttr(setupId)}">
       <div class="setup-card-top">
         <div class="ticker-lockup"><div class="ticker-icon">${escapeHtml(setup.ticker.slice(0, 4))}</div><div class="ticker-copy"><b>${escapeHtml(setup.ticker)}</b><span>${escapeHtml(setup.direction)} · ${escapeHtml(labelize(setup.horizon || "SWING"))}</span></div></div>
         <span class="status-chip ${normalized}">${escapeHtml(normalized.toUpperCase())}</span>
@@ -559,8 +577,170 @@
         <div><span>PLANNED R</span><b class="metric-positive">${formatNumber(plannedR, 2, "—")}R</b></div>
       </div>
       <p class="setup-thesis">${escapeHtml(setup.thesis || "No public thesis was added to this setup.")}</p>
-      <div class="setup-card-foot"><span>@${escapeHtml(setup.handle)} · ${formatRelative(setup.submitted_at)}</span><button type="button" data-open-setup-profile="${escapeAttr(setup.user_id)}" data-handle="${escapeAttr(setup.handle)}">VIEW OPERATOR ↗</button></div>
+      <div class="setup-card-foot">
+        <span>@${escapeHtml(setup.handle)} · ${formatRelative(setup.submitted_at)}</span>
+        <div><button type="button" data-share-setup="${escapeAttr(setupId)}">SHARE ↗</button><button type="button" data-open-setup-profile="${escapeAttr(setup.user_id)}" data-handle="${escapeAttr(setup.handle)}">VIEW OPERATOR ↗</button></div>
+      </div>
+      ${setupComments(setup)}
     </article>`;
+  }
+
+  function setupComments(setup) {
+    const setupId = String(setup.id);
+    const expanded = state.expandedComments.has(setupId);
+    const comments = state.commentsBySetup.get(setupId);
+    const loading = state.commentsLoading.has(setupId);
+    const error = state.commentErrors.get(setupId);
+    const count = comments ? comments.filter((comment) => !comment.is_deleted).length : setup.comment_count;
+    let conversation = "";
+
+    if (loading) {
+      conversation = '<div class="comment-system-state"><i></i><span>Loading conversation…</span></div>';
+    } else if (error) {
+      conversation = `<div class="comment-system-state is-error"><span>${escapeHtml(error)}</span></div>`;
+    } else if (!comments?.length) {
+      conversation = '<div class="comment-system-state"><span>No comments yet. Start the signal check.</span></div>';
+    } else {
+      conversation = `<div class="comment-list">${comments.map(commentItem).join("")}</div>`;
+    }
+
+    const composer = state.session?.user ? `<form class="comment-composer" data-comment-form="${escapeAttr(setupId)}">
+      <span class="comment-avatar">${initials(state.profile?.handle || state.session.user.email)}</span>
+      <label><span class="sr-only">Comment on ${escapeHtml(setup.ticker)}</span><textarea name="comment" maxlength="600" required placeholder="Add signal, context, or a question…"></textarea></label>
+      <button type="submit">POST COMMENT <span>→</span></button>
+    </form>` : `<button class="comment-sign-in" type="button" data-comment-auth>Sign in to join the discussion <span>→</span></button>`;
+
+    return `<section class="setup-discussion${expanded ? " is-open" : ""}">
+      <button class="discussion-toggle" type="button" data-toggle-comments="${escapeAttr(setupId)}" aria-expanded="${expanded}" aria-controls="comments-${escapeAttr(setupId)}">
+        <span><i class="comment-pulse"></i> DISCUSSION</span><b>${formatInteger(count)} COMMENT${count === 1 ? "" : "S"}</b><em>${expanded ? "COLLAPSE −" : "EXPAND +"}</em>
+      </button>
+      <div class="discussion-body" id="comments-${escapeAttr(setupId)}"${expanded ? "" : " hidden"}>
+        <div class="discussion-heading"><div><span>PUBLIC THREAD</span><b>${escapeHtml(setup.ticker)} / @${escapeHtml(setup.handle)}</b></div><small>OP replies carry the gold star.</small></div>
+        ${conversation}
+        ${composer}
+      </div>
+    </section>`;
+  }
+
+  function commentItem(comment) {
+    const ownComment = state.session?.user?.id === comment.user_id;
+    return `<article class="comment-item${comment.is_op ? " is-op" : ""}${comment.is_deleted ? " is-deleted" : ""}">
+      <span class="comment-avatar">${initials(comment.handle)}</span>
+      <div class="comment-content">
+        <header><b>@${escapeHtml(comment.handle)}</b>${comment.is_op ? '<strong>★ OP</strong>' : ""}<time>${formatRelative(comment.created_at)}</time></header>
+        <p>${escapeHtml(comment.body)}</p>
+      </div>
+      ${ownComment && !comment.is_deleted ? `<button class="comment-delete" type="button" data-delete-comment="${escapeAttr(comment.id)}" data-setup-id="${escapeAttr(comment.setup_id)}" aria-label="Remove your comment">REMOVE</button>` : ""}
+    </article>`;
+  }
+
+  async function toggleSetupComments(setupId) {
+    const key = String(setupId);
+    if (state.expandedComments.has(key)) {
+      state.expandedComments.delete(key);
+      renderSetups();
+      return;
+    }
+    state.expandedComments.add(key);
+    renderSetups();
+    if (!state.commentsBySetup.has(key)) await loadSetupComments(key);
+  }
+
+  async function loadSetupComments(setupId) {
+    const key = String(setupId);
+    if (!state.supabase || state.commentsLoading.has(key)) return;
+    state.commentsLoading.add(key);
+    state.commentErrors.delete(key);
+    renderSetups();
+    const { data, error } = await state.supabase
+      .from("setup_comments_public")
+      .select("*")
+      .eq("setup_id", key)
+      .order("created_at", { ascending: true })
+      .limit(100);
+    state.commentsLoading.delete(key);
+    if (error) {
+      const migrationPending = error.code === "42P01" || error.code === "42501" || /setup_comments/i.test(error.message || "");
+      state.commentErrors.set(key, migrationPending ? "The comments database migration is not active yet." : error.message);
+    } else {
+      state.commentsBySetup.set(key, data || []);
+    }
+    renderSetups();
+  }
+
+  async function submitComment(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const setupId = String(form.dataset.commentForm);
+    const textarea = $("textarea", form);
+    const body = textarea.value.trim();
+    if (!state.session?.user || !state.supabase) {
+      $("#auth-dialog").showModal();
+      return;
+    }
+    if (!body || body.length > 600) return;
+
+    const button = $("button[type='submit']", form);
+    button.disabled = true;
+    button.textContent = "POSTING…";
+    const { error } = await state.supabase.from("setup_comments").insert({
+      setup_id: setupId,
+      user_id: state.session.user.id,
+      body
+    });
+    if (error) {
+      button.disabled = false;
+      button.innerHTML = "POST COMMENT <span>→</span>";
+      showToast("Comment not posted", error.message, true);
+      return;
+    }
+
+    const setup = state.setups.find((item) => String(item.id) === setupId);
+    if (setup) setup.comment_count += 1;
+    state.commentsBySetup.delete(setupId);
+    textarea.value = "";
+    await loadSetupComments(setupId);
+    showToast("Comment posted", "Your comment is now part of the public thread.");
+  }
+
+  async function softDeleteComment(setupId, commentId) {
+    if (!state.session?.user || !state.supabase) return;
+    const { error } = await state.supabase
+      .from("setup_comments")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", commentId)
+      .eq("user_id", state.session.user.id);
+    if (error) {
+      showToast("Comment not removed", error.message, true);
+      return;
+    }
+    const key = String(setupId);
+    const setup = state.setups.find((item) => String(item.id) === key);
+    if (setup) setup.comment_count = Math.max(0, setup.comment_count - 1);
+    state.commentsBySetup.delete(key);
+    await loadSetupComments(key);
+    showToast("Comment removed", "The public thread now shows a removal marker.");
+  }
+
+  async function shareSetup(setupId) {
+    const url = new URL(config.siteUrl || location.href);
+    url.searchParams.set("setup", setupId);
+    url.hash = "setups";
+    try {
+      await navigator.clipboard.writeText(url.toString());
+      showToast("Post link copied", "The link opens this setup with its discussion expanded.");
+    } catch (_error) {
+      showToast("Copy blocked", url.toString(), true);
+    }
+  }
+
+  async function activateSharedSetup() {
+    const setupId = new URLSearchParams(location.search).get("setup");
+    if (!setupId || !state.setups.some((setup) => String(setup.id) === setupId)) return;
+    state.expandedComments.add(setupId);
+    switchView("setups");
+    await loadSetupComments(setupId);
+    requestAnimationFrame(() => document.getElementById(`setup-${setupId}`)?.scrollIntoView({ behavior: "smooth", block: "start" }));
   }
 
   function renderSetupCounts() {

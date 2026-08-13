@@ -21,6 +21,8 @@ The repository starts in an explicit preview mode. Preview mode shows only a ver
 - Public per-operator profile drawers
 - Queue, Hot, Near, Active, and Resolved setup states
 - Structured setup form with live risk/reward checks
+- Collapsible public discussions with authenticated comments and starred OP replies
+- Shareable setup links and a most-discussed feed sort
 - Immutable entry, stop, target, and thesis fields after publication
 - Supabase migration with row-level security
 - GitHub Pages deployment workflow
@@ -32,12 +34,13 @@ The repository starts in an explicit preview mode. Preview mode shows only a ver
 1. Create a Supabase project.
 2. Open **SQL Editor**.
 3. Run [`supabase/migrations/202608130001_initial_ledger.sql`](supabase/migrations/202608130001_initial_ledger.sql).
-4. In **Authentication → URL Configuration**, set:
+4. Run [`supabase/migrations/202608130002_setup_comments.sql`](supabase/migrations/202608130002_setup_comments.sql).
+5. In **Authentication → URL Configuration**, set:
    - Site URL: `https://ximxesabortion.github.io/ledger/`
    - Redirect URL: `https://ximxesabortion.github.io/ledger/`
 
-5. In **Authentication → Sign In / Providers → Email**, keep Email enabled.
-6. For the $0 MVP, turn **Confirm email** off. This avoids relying on a paid production mail service. Add verified-email delivery later if the product needs email ownership proof or password-reset email.
+6. In **Authentication → Sign In / Providers → Email**, keep Email enabled.
+7. For the $0 MVP, turn **Confirm email** off. This avoids relying on a paid production mail service. Add verified-email delivery later if the product needs email ownership proof or password-reset email.
 
 Google and X are optional future identity links. They are not required for Ledger accounts.
 
