@@ -57,6 +57,27 @@ button, a { -webkit-tap-highlight-color: transparent; }
 button { color: inherit; }
 a { color: inherit; text-decoration: none; }
 
+/* Keep every native dropdown legible on Windows and Chromium-based browsers. */
+select {
+  color-scheme: dark;
+  background-color: #10131a;
+  color: var(--text);
+}
+select option,
+select optgroup {
+  color-scheme: dark;
+  background-color: #10131a !important;
+  color: #f4f6f8 !important;
+}
+select option:checked {
+  background-color: #293416 !important;
+  color: #eaffaa !important;
+}
+select option:disabled {
+  background-color: #10131a !important;
+  color: #a1a8b8 !important;
+}
+
 ::selection { background: var(--acid); color: #080b03; }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: #080a0f; }
