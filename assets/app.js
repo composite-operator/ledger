@@ -5,24 +5,11 @@
   const liveConfigPresent = Boolean(config.supabaseUrl && config.supabasePublishableKey && config.demoMode !== true);
 
   const previewLeaders = [
-    { id: "preview-01", handle: "northstar", display_name: "Northstar", total_setups: 48, triggered_setups: 42, stopped_setups: 11, t1_hits: 29, t2_hits: 17, t3_hits: 9, win_rate: 0.6905, avg_r: 1.84, total_score: 68, goat_score: 1.495, last_30d_score: 18, bio: "Macro swing structures with defined invalidation." },
-    { id: "preview-02", handle: "deltafoundry", display_name: "Delta Foundry", total_setups: 39, triggered_setups: 36, stopped_setups: 12, t1_hits: 24, t2_hits: 15, t3_hits: 7, win_rate: 0.6667, avg_r: 1.62, total_score: 55, goat_score: 1.334, last_30d_score: 21, bio: "Index and liquid large-cap momentum." },
-    { id: "preview-03", handle: "tape_reader", display_name: "Tape Reader", total_setups: 61, triggered_setups: 55, stopped_setups: 22, t1_hits: 33, t2_hits: 19, t3_hits: 8, win_rate: 0.6, avg_r: 1.31, total_score: 49, goat_score: 1.097, last_30d_score: 12, bio: "Intraday structure, relative volume, and tape." },
-    { id: "preview-04", handle: "rvol", display_name: "RVOL", total_setups: 27, triggered_setups: 23, stopped_setups: 9, t1_hits: 14, t2_hits: 8, t3_hits: 4, win_rate: 0.6087, avg_r: 1.18, total_score: 31, goat_score: 1.009, last_30d_score: 9, bio: "Event-driven continuation and reversal setups." },
-    { id: "preview-05", handle: "rangecraft", display_name: "Rangecraft", total_setups: 22, triggered_setups: 18, stopped_setups: 8, t1_hits: 10, t2_hits: 7, t3_hits: 3, win_rate: 0.5556, avg_r: 1.05, total_score: 23, goat_score: 0.884, last_30d_score: 6, bio: "Range expansion and mean reversion." },
-    { id: "preview-06", handle: "daft", display_name: "daft", total_setups: 2, triggered_setups: 2, stopped_setups: 2, t1_hits: 0, t2_hits: 0, t3_hits: 0, win_rate: 0, avg_r: -1, total_score: -2, goat_score: null, last_30d_score: 0, bio: "Current Ledger operator." }
+    { id: "sheet-000000001", handle: "daft", display_name: "daft", total_setups: 2, triggered_setups: 2, stopped_setups: 2, t1_hits: 0, t2_hits: 0, t3_hits: 0, win_rate: 0, avg_r: -1, total_score: -2, goat_score: null, last_30d_score: 0, bio: "Verified Ledger operator from the current source sheet." }
   ];
 
-  const previewSetups = [
-    { id: "setup-01", user_id: "preview-01", handle: "northstar", ticker: "SPY", direction: "LONG", horizon: "SWING", trigger_type: "BREACH", status: "HOT", current_price: 648.82, entry: 650, stop: 642, t1: 666, t2: 676, t3: 688, strategy: "Range Breakout", thesis: "Compression beneath the range high with breadth improvement. Entry confirms only above the defined level.", submitted_at: hoursAgo(2), score: null, r_result: null },
-    { id: "setup-02", user_id: "preview-02", handle: "deltafoundry", ticker: "NVDA", direction: "SHORT", horizon: "DAY_TRADE", trigger_type: "PULLBACK", status: "NEAR", current_price: 184.2, entry: 186.5, stop: 189.1, t1: 181.3, t2: 177.4, t3: null, strategy: "Reversal", thesis: "Failed acceptance above the prior value area. Looking for a weak rally back into supply.", submitted_at: hoursAgo(4), score: null, r_result: null },
-    { id: "setup-03", user_id: "preview-03", handle: "tape_reader", ticker: "QQQ", direction: "LONG", horizon: "DAY_TRADE", trigger_type: "MARKET", status: "ACTIVE", current_price: 585.34, entry: 582.8, stop: 579.9, t1: 588.6, t2: 592.4, t3: null, strategy: "Trend Continuation", thesis: "Opening range reclaim with relative strength in semiconductors.", submitted_at: hoursAgo(7), score: null, r_result: 0.88 },
-    { id: "setup-04", user_id: "preview-04", handle: "rvol", ticker: "BTC-USD", direction: "LONG", horizon: "POSITION", trigger_type: "BREACH", status: "QUEUED", current_price: 118420, entry: 121000, stop: 113900, t1: 135200, t2: 149400, t3: 164000, strategy: "Breakout", thesis: "Weekly continuation structure. No position unless price accepts above the trigger.", submitted_at: hoursAgo(11), score: null, r_result: null },
-    { id: "setup-05", user_id: "preview-06", handle: "daft", ticker: "DBI", direction: "LONG", horizon: "SWING", trigger_type: "MARKET", status: "QUEUED", current_price: 6.2, entry: 6.14, stop: 5.81, t1: 8.98, t2: null, t3: null, strategy: "Trend Continuation", thesis: "", submitted_at: daysAgo(21), score: null, r_result: null },
-    { id: "setup-06", user_id: "preview-06", handle: "daft", ticker: "BBBY", direction: "LONG", horizon: "SWING", trigger_type: "PULLBACK", status: "QUEUED", current_price: 4.49, entry: 3.8, stop: 3.59, t1: 7.98, t2: 8.48, t3: 11.48, strategy: "Reversal", thesis: "D Shark", submitted_at: daysAgo(42), score: null, r_result: null },
-    { id: "setup-07", user_id: "preview-06", handle: "daft", ticker: "ACHR", direction: "LONG", horizon: "SWING", trigger_type: "BREACH", status: "RESOLVED", current_price: 8.04, entry: 9.4, stop: 8.5, t1: 11.2, t2: null, t3: null, strategy: "Breakout", thesis: "Archived Ledger record.", submitted_at: daysAgo(55), archived_at: daysAgo(48), final_status: "STOPPED", score: -1, r_result: -1 },
-    { id: "setup-08", user_id: "preview-06", handle: "daft", ticker: "ANGI", direction: "LONG", horizon: "SWING", trigger_type: "BREACH", status: "RESOLVED", current_price: 1.76, entry: 2.2, stop: 1.94, t1: 2.72, t2: null, t3: null, strategy: "Range Breakout", thesis: "Archived Ledger record.", submitted_at: daysAgo(89), archived_at: daysAgo(82), final_status: "STOPPED", score: -1, r_result: -1 }
-  ];
+  const previewSetups = [];
+  const previewStats = { setups: 2, resolved: 2 };
 
   const state = {
     supabase: null,
@@ -66,7 +53,7 @@
     if (liveConfigPresent && window.supabase?.createClient) {
       await connectLiveData();
     } else {
-      setNetworkState("Preview network", true);
+      setNetworkState("Backend setup required", true);
     }
   }
 
@@ -239,7 +226,7 @@
 
   async function signIn(provider) {
     if (!state.supabase) {
-      showToast("Auth setup required", "Add the Supabase project URL and publishable key to runtime-config.js.", true);
+      showToast("Sign-in is not active yet", "The Supabase project and OAuth providers must be configured first.", true);
       return;
     }
     const redirectTo = config.siteUrl || `${location.origin}${location.pathname}`;
@@ -531,17 +518,25 @@
 
   function renderActivity() {
     const items = state.setups.slice().sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at)).slice(0, 7);
-    $("#activity-stream").innerHTML = items.map((setup) => `<div class="activity-item">
+    $("#activity-stream").innerHTML = items.length ? items.map((setup) => `<div class="activity-item">
       <div class="activity-node">${setup.direction === "LONG" ? "↗" : "↘"}</div>
       <div class="activity-copy"><b>@${escapeHtml(setup.handle)} published ${escapeHtml(setup.ticker)}</b><span>${escapeHtml(setup.direction)} ${escapeHtml(labelize(setup.trigger_type))} at ${formatPrice(setup.entry)} · ${escapeHtml(setup.strategy || "Uncategorized")}</span></div>
       <time>${formatRelative(setup.submitted_at)}</time>
-    </div>`).join("");
+    </div>`).join("") : '<div class="activity-empty"><b>No current public signals</b><span>Live activity will appear here after the backend and submission flow are activated.</span></div>';
   }
 
   function renderNetworkIntel() {
     const rows = state.setups;
+    if (!rows.length) {
+      $("#long-bias-label").textContent = "NO LIVE DATA";
+      $("#long-bias-bar").style.width = "0%";
+      $("#top-horizon").textContent = "—";
+      $("#top-trigger").textContent = "—";
+      $("#median-r").textContent = "—";
+      return;
+    }
     const longCount = rows.filter((setup) => setup.direction === "LONG").length;
-    const longPct = rows.length ? Math.round((longCount / rows.length) * 100) : 50;
+    const longPct = Math.round((longCount / rows.length) * 100);
     $("#long-bias-label").textContent = `${longPct}% LONG`;
     $("#long-bias-bar").style.width = `${longPct}%`;
     $("#top-horizon").textContent = modeOf(rows.map((setup) => setup.horizon || "SWING"));
@@ -743,15 +738,35 @@
     renderNetworkChart();
     updateAccountUI();
     updateFormAuthState();
+    updateAuthAvailability();
   }
 
   function renderMetrics() {
     const operatorCount = state.live ? state.rankTotal : state.leaders.length;
-    const setupCount = state.setups.length;
-    const resolvedCount = state.setups.filter((setup) => normalizeState(setup.status) === "resolved").length;
+    const setupCount = state.live ? state.setups.length : previewStats.setups;
+    const resolvedCount = state.live ? state.setups.filter((setup) => normalizeState(setup.status) === "resolved").length : previewStats.resolved;
     $$('[data-metric="operators"]').forEach((node) => node.textContent = formatInteger(operatorCount));
     $$('[data-metric="setups"]').forEach((node) => node.textContent = formatInteger(setupCount));
     $$('[data-metric="resolved"]').forEach((node) => node.textContent = formatInteger(resolvedCount));
+  }
+
+  function updateAuthAvailability() {
+    const notice = $("#auth-setup-notice");
+    if (notice) notice.hidden = liveConfigPresent;
+    [["#google-auth", "Google"], ["#x-auth", "X"]].forEach(([selector, provider]) => {
+      const button = $(selector);
+      if (!button) return;
+      button.classList.toggle("is-unavailable", !liveConfigPresent);
+      if (liveConfigPresent) button.removeAttribute("aria-describedby");
+      else button.setAttribute("aria-describedby", "auth-setup-notice");
+      const detail = button.querySelector("small");
+      if (detail) detail.textContent = liveConfigPresent ? `Use your ${provider} identity` : "Backend setup required";
+    });
+    const identityState = $("#network-identity-state");
+    if (identityState) {
+      identityState.textContent = liveConfigPresent ? "SSO READY" : "SETUP REQUIRED";
+      identityState.classList.toggle("positive", liveConfigPresent);
+    }
   }
 
   function setNetworkState(label, preview) {

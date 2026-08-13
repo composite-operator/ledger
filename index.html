@@ -114,14 +114,14 @@
             <div class="orbit orbit-three"><span></span></div>
             <div class="orbital-core">
               <small>OPEN SIGNALS</small>
-              <strong id="hero-open-signals">3</strong>
+              <strong id="hero-open-signals">0</strong>
               <span>public calls</span>
             </div>
           </div>
           <div class="mini-terminal">
-            <div><span>STATUS</span><b class="positive">SYSTEM READY</b></div>
+            <div><span>STATUS</span><b class="positive">PREVIEW READY</b></div>
             <div><span>SCORING</span><b>R-MULTIPLE</b></div>
-            <div><span>IDENTITY</span><b>SSO VERIFIED</b></div>
+            <div><span>IDENTITY</span><b id="network-identity-state">SETUP REQUIRED</b></div>
           </div>
         </section>
       </div>
@@ -135,7 +135,7 @@
         </article>
         <article class="metric-card">
           <span class="metric-index">02 / SIGNALS</span>
-          <div class="metric-value"><strong data-metric="setups">5</strong><small>total</small></div>
+          <div class="metric-value"><strong data-metric="setups">2</strong><small>total</small></div>
           <p>Timestamped trade ideas</p>
           <svg class="sparkline" viewBox="0 0 160 42" preserveAspectRatio="none" aria-hidden="true"><path d="M0 35 20 30 35 33 52 20 68 25 84 14 102 18 118 8 136 13 160 3"/></svg>
         </article>
@@ -147,9 +147,9 @@
         </article>
         <article class="metric-card accent-card">
           <span class="metric-index">04 / INTEGRITY</span>
-          <div class="metric-value"><strong>100</strong><small>%</small></div>
-          <p>Original risk plan retained</p>
-          <div class="hash-line">0X7E4F…A91C <span>VERIFIED</span></div>
+          <div class="metric-value"><strong>—</strong><small></small></div>
+          <p>Activates with the live backend</p>
+          <div class="hash-line">AUTH / DATABASE <span>PENDING</span></div>
         </article>
       </section>
 
@@ -261,12 +261,12 @@
         <aside class="setup-filters glass-panel">
           <div class="filter-heading">STATE FILTER</div>
           <div class="vertical-tabs" id="setup-state-tabs">
-            <button class="is-active" data-setup-state="all" type="button"><span>All signals</span><b id="count-all">5</b></button>
-            <button data-setup-state="queued" type="button"><span>Queued</span><b id="count-queued">3</b></button>
+            <button class="is-active" data-setup-state="all" type="button"><span>All signals</span><b id="count-all">0</b></button>
+            <button data-setup-state="queued" type="button"><span>Queued</span><b id="count-queued">0</b></button>
             <button data-setup-state="hot" type="button"><span>Hot</span><b id="count-hot">0</b></button>
             <button data-setup-state="near" type="button"><span>Near</span><b id="count-near">0</b></button>
             <button data-setup-state="active" type="button"><span>Active</span><b id="count-active">0</b></button>
-            <button data-setup-state="resolved" type="button"><span>Resolved</span><b id="count-resolved">2</b></button>
+            <button data-setup-state="resolved" type="button"><span>Resolved</span><b id="count-resolved">0</b></button>
           </div>
           <div class="filter-heading">DIRECTION</div>
           <div class="segmented-control" id="direction-filter">
@@ -294,7 +294,7 @@
             </select>
           </div>
           <div class="setup-card-grid" id="setup-card-grid"></div>
-          <div class="table-empty glass-panel" id="setup-empty" hidden>No setups match these filters.</div>
+          <div class="table-empty glass-panel" id="setup-empty" hidden>No current public setups. Historical Sheet records will appear after the live migration.</div>
         </section>
 
         <aside class="market-intel glass-panel">
@@ -334,6 +334,10 @@
       <span class="eyebrow">VERIFIED IDENTITY</span>
       <h2>Enter the Ledger</h2>
       <p>Your SSO account owns your public operator profile and every submitted setup.</p>
+      <div class="auth-setup-notice" id="auth-setup-notice">
+        <b>AUTHENTICATION IS NOT ACTIVE YET</b>
+        <span>The Supabase project and Google/X OAuth apps must be configured before these buttons can redirect.</span>
+      </div>
       <div class="auth-options">
         <button class="oauth-button google-button" id="google-auth" type="button">
           <span class="oauth-logo">G</span>

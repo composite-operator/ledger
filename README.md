@@ -11,7 +11,7 @@ The site is designed for GitHub Pages. Supabase supplies the parts that a static
 - indexed leaderboard metrics
 - paginated search and profile views
 
-The repository starts in an explicit preview mode. Preview mode shows labeled fixture data so the full interface can be reviewed before credentials and live records exist.
+The repository starts in an explicit preview mode. Preview mode shows only a verified snapshot from the current Ledger source Sheet. It does not invent operators, setups, or performance metrics while credentials and live records are unavailable.
 
 ## What ships
 
