@@ -151,11 +151,35 @@
     });
     $("#credential-sign-up").addEventListener("click", () => authenticateWithPassword("signup"));
 
-    [authDialog, submitDialog, methodDialog, $("#command-dialog"), $("#profile-dialog")].forEach((dialog) => {
+    const dialogs = [authDialog, submitDialog, methodDialog, $("#command-dialog"), $("#profile-dialog")];
+    let overlayScrollY = 0;
+    let overlayScrollLocked = false;
+    const syncOverlayScrollLock = () => {
+      const hasOpenDialog = dialogs.some((dialog) => dialog.open);
+      if (hasOpenDialog && !overlayScrollLocked) {
+        overlayScrollY = window.scrollY;
+        document.body.style.setProperty("--overlay-scroll-y", `${overlayScrollY}px`);
+        document.documentElement.classList.add("overlay-open");
+        document.body.classList.add("overlay-open");
+        overlayScrollLocked = true;
+      } else if (!hasOpenDialog && overlayScrollLocked) {
+        document.documentElement.classList.remove("overlay-open");
+        document.body.classList.remove("overlay-open");
+        document.body.style.removeProperty("--overlay-scroll-y");
+        window.scrollTo(0, overlayScrollY);
+        overlayScrollLocked = false;
+      }
+    };
+
+    dialogs.forEach((dialog) => {
       dialog.addEventListener("click", (event) => {
         if (event.target === dialog) dialog.close();
       });
+      dialog.addEventListener("close", syncOverlayScrollLock);
+      dialog.addEventListener("cancel", () => requestAnimationFrame(syncOverlayScrollLock));
+      new MutationObserver(syncOverlayScrollLock).observe(dialog, { attributes: true, attributeFilter: ["open"] });
     });
+    syncOverlayScrollLock();
   }
 
   async function connectLiveData() {
@@ -553,7 +577,7 @@
     if (state.live && state.supabase && leader.id) {
       const [profileResult, setupsResult, metricsResult] = await Promise.all([
         state.supabase.from("profiles").select("id, handle, display_name, avatar_url, bio, created_at").eq("id", leader.id).maybeSingle(),
-        state.supabase.from("setups_public").select("*").eq("user_id", leader.id).order("submitted_at", { ascending: false }).limit(25),
+        state.supabase.from("setups_public").select("*").eq("user_id", leader.id).order("submitted_at", { ascending: false }).limit(100),
         state.supabase.rpc("leaderboard_page", { p_sort: "goat", p_search: leader.handle || "", p_limit: 5, p_offset: 0 })
       ]);
       const metricRow = (metricsResult.data || []).map(normalizeLeader).find((item) => String(item.id) === String(leader.id));
@@ -561,11 +585,11 @@
       if (profileResult.data) detailedLeader = { ...detailedLeader, ...profileResult.data, id: profileResult.data.id };
       if (setupsResult.data) profileSetups = setupsResult.data.map(normalizeSetup);
     }
-    const recent = profileSetups.slice().sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at)).slice(0, 7);
+    const recent = profileSetups.slice().sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at)).slice(0, 100);
     const drawer = $("#profile-drawer");
     const isOwnProfile = Boolean(state.session?.user && String(state.session.user.id) === String(detailedLeader.id));
-    drawer.innerHTML = `<div class="profile-head">
-      <button class="modal-close" type="button" data-close-profile aria-label="Close profile">×</button>
+    drawer.innerHTML = `<button class="modal-close profile-close" type="button" data-close-profile aria-label="Close profile">×</button>
+    <div class="profile-head">
       <div class="profile-avatar-large">${profileAvatar(detailedLeader)}</div>
       <h2>${escapeHtml(detailedLeader.display_name || detailedLeader.handle)}</h2>
       <p class="profile-handle">@${escapeHtml(detailedLeader.handle)}</p>
@@ -586,7 +610,7 @@
         <div><span>TARGET HITS</span><b><small>T1</small> ${formatInteger(detailedLeader.t1_hits)} <small>T2</small> ${formatInteger(detailedLeader.t2_hits)} <small>T3</small> ${formatInteger(detailedLeader.t3_hits)}</b></div>
       </div>
       ${isOwnProfile ? profileEditor(detailedLeader) : ""}
-      <div class="profile-section-title">RECENT PUBLIC RECORDS</div>
+      <div class="profile-section-title">PUBLIC RECORDS <span>${recent.length}</span></div>
       <div class="profile-records">${recent.length ? recent.map(profileRecord).join("") : '<div class="table-empty">No public setups yet.</div>'}</div>
     </div>`;
     $("[data-close-profile]", drawer).addEventListener("click", () => $("#profile-dialog").close());
