@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#06070b">
+  <meta name="description" content="Composite Operator Ledger — public setup tracking, transparent outcomes, and an operator leaderboard.">
+  <title>Ledger — Composite Operator</title>
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="site.webmanifest">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/styles.css?v=1">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
+  <script src="assets/runtime-config.js" defer></script>
+  <script src="assets/app.js?v=1" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+
+  <div class="ambient-grid" aria-hidden="true"></div>
+  <div class="ambient-glow ambient-glow-a" aria-hidden="true"></div>
+  <div class="ambient-glow ambient-glow-b" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <a class="brand" href="https://ximxesabortion.github.io/" aria-label="Composite Operator Hub">
+      <span class="brand-mark" aria-hidden="true">
+        <span></span><span></span><span></span>
+      </span>
+      <span class="brand-copy">
+        <strong>COMPOSITE</strong>
+        <small>OPERATOR / LEDGER</small>
+      </span>
+    </a>
+
+    <nav class="primary-nav" aria-label="Ledger sections">
+      <button class="nav-item is-active" data-view-target="overview" type="button">Overview</button>
+      <button class="nav-item" data-view-target="leaderboard" type="button">Leaderboard</button>
+      <button class="nav-item" data-view-target="setups" type="button">Live setups</button>
+    </nav>
+
+    <button class="command-trigger" id="command-trigger" type="button" aria-label="Search operators and setups">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.35-4.35m2.35-5.65a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z"/></svg>
+      <span>Search operators or tickers</span>
+      <kbd>/</kbd>
+    </button>
+
+    <div class="topbar-actions">
+      <div class="network-state" id="network-state" title="Application data status">
+        <span class="pulse-dot"></span>
+        <span id="network-state-label">Preview network</span>
+      </div>
+      <button class="icon-button" id="theme-toggle" type="button" aria-label="Toggle contrast">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.91-.1-1.35A7 7 0 0 1 12 3Z"/></svg>
+      </button>
+      <button class="account-button" id="account-button" type="button">
+        <span class="account-avatar" id="account-avatar">CO</span>
+        <span id="account-label">Sign in</span>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="market-rail" aria-label="Ledger activity summary">
+    <div class="rail-label"><span class="pulse-dot"></span>LEDGER LIVE</div>
+    <div class="rail-track" id="market-rail-track">
+      <span><b>QUEUED</b> <i id="rail-queued">3</i></span>
+      <span><b>HOT</b> <i id="rail-hot">0</i></span>
+      <span><b>NEAR</b> <i id="rail-near">0</i></span>
+      <span><b>ACTIVE</b> <i id="rail-active">0</i></span>
+      <span><b>RESOLVED</b> <i id="rail-resolved">2</i></span>
+      <span><b>OPERATORS</b> <i id="rail-operators">1</i></span>
+      <span class="rail-copy"><b>TRANSPARENT OUTCOMES</b> EVERY SETUP SCORED AGAINST ITS ORIGINAL ENTRY, STOP, AND TARGETS</span>
+    </div>
+  </div>
+
+  <main id="main-content">
+    <section class="app-view is-active" data-view="overview">
+      <div class="overview-grid">
+        <section class="hero-panel glass-panel">
+          <div class="panel-kicker">
+            <span class="signal-bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+            PUBLIC PERFORMANCE NETWORK
+          </div>
+          <h1>Every call.<br><span>Tracked in public.</span></h1>
+          <p class="hero-copy">A credibility layer for market operators. Publish a setup before it triggers, track the full path, and let resolved outcomes build your record.</p>
+          <div class="hero-actions">
+            <button class="button button-primary" data-open-submit type="button">
+              <span>Submit a setup</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 14 0m-6-6 6 6-6 6"/></svg>
+            </button>
+            <button class="button button-ghost" data-view-target="leaderboard" type="button">Explore rankings</button>
+          </div>
+          <div class="hero-proof">
+            <div><span>01</span><p><b>Authenticate</b><small>Google or X</small></p></div>
+            <div><span>02</span><p><b>Publish</b><small>Entry + invalidation</small></p></div>
+            <div><span>03</span><p><b>Resolve</b><small>Immutable score</small></p></div>
+          </div>
+        </section>
+
+        <section class="score-orbit glass-panel" aria-label="Network score preview">
+          <div class="orbit-header">
+            <div>
+              <span class="eyebrow">NETWORK SIGNAL</span>
+              <h2>Conviction flow</h2>
+            </div>
+            <span class="live-chip"><i></i> LIVE</span>
+          </div>
+          <div class="orbital-visual" aria-hidden="true">
+            <div class="orbit orbit-one"><span></span></div>
+            <div class="orbit orbit-two"><span></span></div>
+            <div class="orbit orbit-three"><span></span></div>
+            <div class="orbital-core">
+              <small>OPEN SIGNALS</small>
+              <strong id="hero-open-signals">3</strong>
+              <span>public calls</span>
+            </div>
+          </div>
+          <div class="mini-terminal">
+            <div><span>STATUS</span><b class="positive">SYSTEM READY</b></div>
+            <div><span>SCORING</span><b>R-MULTIPLE</b></div>
+            <div><span>IDENTITY</span><b>SSO VERIFIED</b></div>
+          </div>
+        </section>
+      </div>
+
+      <section class="metric-strip" aria-label="Ledger metrics">
+        <article class="metric-card">
+          <span class="metric-index">01 / NETWORK</span>
+          <div class="metric-value"><strong data-metric="operators">1</strong><small>operators</small></div>
+          <p>Verified public profiles</p>
+          <div class="micro-bars" aria-hidden="true"><i style="--h:28%"></i><i style="--h:38%"></i><i style="--h:46%"></i><i style="--h:60%"></i><i style="--h:72%"></i><i style="--h:92%"></i></div>
+        </article>
+        <article class="metric-card">
+          <span class="metric-index">02 / SIGNALS</span>
+          <div class="metric-value"><strong data-metric="setups">5</strong><small>total</small></div>
+          <p>Timestamped trade ideas</p>
+          <svg class="sparkline" viewBox="0 0 160 42" preserveAspectRatio="none" aria-hidden="true"><path d="M0 35 20 30 35 33 52 20 68 25 84 14 102 18 118 8 136 13 160 3"/></svg>
+        </article>
+        <article class="metric-card">
+          <span class="metric-index">03 / RESOLUTION</span>
+          <div class="metric-value"><strong data-metric="resolved">2</strong><small>closed</small></div>
+          <p>Scored final outcomes</p>
+          <div class="metric-ring" style="--value:40"><span>40%</span></div>
+        </article>
+        <article class="metric-card accent-card">
+          <span class="metric-index">04 / INTEGRITY</span>
+          <div class="metric-value"><strong>100</strong><small>%</small></div>
+          <p>Original risk plan retained</p>
+          <div class="hash-line">0X7E4F…A91C <span>VERIFIED</span></div>
+        </article>
+      </section>
+
+      <section class="content-grid">
+        <article class="leaderboard-panel glass-panel">
+          <header class="section-header">
+            <div>
+              <span class="eyebrow">RANKING ENGINE / GOAT SCORE</span>
+              <h2>Operator leaderboard</h2>
+            </div>
+            <button class="text-button" data-view-target="leaderboard" type="button">Full board <span>↗</span></button>
+          </header>
+          <div class="compact-leaderboard" id="compact-leaderboard"></div>
+        </article>
+
+        <article class="activity-panel glass-panel">
+          <header class="section-header">
+            <div>
+              <span class="eyebrow">TIME-ORDERED / PUBLIC</span>
+              <h2>Signal stream</h2>
+            </div>
+            <div class="live-chip"><i></i> INGEST</div>
+          </header>
+          <div class="activity-stream" id="activity-stream"></div>
+        </article>
+      </section>
+
+      <section class="manifesto-panel glass-panel">
+        <div class="manifesto-number">// 001</div>
+        <div>
+          <span class="eyebrow">THE OPERATING RULE</span>
+          <h2>Receipts over reputation.</h2>
+          <p>The ledger records the idea before the market decides. Entries, stops, targets, timestamps, and final outcomes remain attached to the operator record.</p>
+        </div>
+        <div class="manifesto-stats">
+          <div><b>T–0</b><span>Published first</span></div>
+          <div><b>1R</b><span>Normalized risk</span></div>
+          <div><b>∞</b><span>Searchable history</span></div>
+        </div>
+      </section>
+    </section>
+
+    <section class="app-view" data-view="leaderboard">
+      <header class="page-heading">
+        <div>
+          <span class="eyebrow">GLOBAL OPERATOR INDEX</span>
+          <h1>Leaderboard</h1>
+          <p>Credibility-weighted rankings from resolved, timestamped setups.</p>
+        </div>
+        <button class="button button-primary" data-open-submit type="button">Submit a setup</button>
+      </header>
+
+      <div class="ranking-controls glass-panel">
+        <div class="mode-tabs" role="tablist" aria-label="Leaderboard ranking mode">
+          <button class="is-active" data-rank-mode="goat" type="button" role="tab">GOAT score</button>
+          <button data-rank-mode="last30" type="button" role="tab">Last 30 days</button>
+          <button data-rank-mode="score" type="button" role="tab">Total score</button>
+          <button data-rank-mode="win" type="button" role="tab">Win rate</button>
+        </div>
+        <label class="inline-search">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.35-4.35m2.35-5.65a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z"/></svg>
+          <span class="sr-only">Filter operators</span>
+          <input id="leaderboard-search" type="search" placeholder="Filter operators…" autocomplete="off">
+        </label>
+      </div>
+
+      <section class="ranking-stage">
+        <div class="ranking-podium" id="ranking-podium"></div>
+        <div class="ranking-table-shell glass-panel">
+          <table class="ranking-table">
+            <thead>
+              <tr>
+                <th scope="col">Rank / Operator</th>
+                <th scope="col">GOAT</th>
+                <th scope="col">30D score</th>
+                <th scope="col">Win rate</th>
+                <th scope="col">Avg R</th>
+                <th scope="col">Resolved</th>
+                <th scope="col">Total score</th>
+                <th scope="col"><span class="sr-only">Open profile</span></th>
+              </tr>
+            </thead>
+            <tbody id="leaderboard-body"></tbody>
+          </table>
+          <div class="table-empty" id="leaderboard-empty" hidden>No operators match this search.</div>
+          <footer class="table-footer">
+            <span id="leaderboard-count">Showing 0 operators</span>
+            <div class="pagination">
+              <button id="leaderboard-prev" type="button" aria-label="Previous leaderboard page">←</button>
+              <span id="leaderboard-page">01</span>
+              <button id="leaderboard-next" type="button" aria-label="Next leaderboard page">→</button>
+            </div>
+          </footer>
+        </div>
+      </section>
+    </section>
+
+    <section class="app-view" data-view="setups">
+      <header class="page-heading">
+        <div>
+          <span class="eyebrow">PUBLIC SETUP TAPE</span>
+          <h1>Live setups</h1>
+          <p>Every published thesis, from queue to resolved outcome.</p>
+        </div>
+        <button class="button button-primary" data-open-submit type="button">Submit a setup</button>
+      </header>
+
+      <div class="setup-dashboard">
+        <aside class="setup-filters glass-panel">
+          <div class="filter-heading">STATE FILTER</div>
+          <div class="vertical-tabs" id="setup-state-tabs">
+            <button class="is-active" data-setup-state="all" type="button"><span>All signals</span><b id="count-all">5</b></button>
+            <button data-setup-state="queued" type="button"><span>Queued</span><b id="count-queued">3</b></button>
+            <button data-setup-state="hot" type="button"><span>Hot</span><b id="count-hot">0</b></button>
+            <button data-setup-state="near" type="button"><span>Near</span><b id="count-near">0</b></button>
+            <button data-setup-state="active" type="button"><span>Active</span><b id="count-active">0</b></button>
+            <button data-setup-state="resolved" type="button"><span>Resolved</span><b id="count-resolved">2</b></button>
+          </div>
+          <div class="filter-heading">DIRECTION</div>
+          <div class="segmented-control" id="direction-filter">
+            <button class="is-active" data-direction="all" type="button">All</button>
+            <button data-direction="LONG" type="button">Long</button>
+            <button data-direction="SHORT" type="button">Short</button>
+          </div>
+          <div class="filter-note">
+            <span class="pulse-dot"></span>
+            New submissions appear after validation.
+          </div>
+        </aside>
+
+        <section class="setup-feed">
+          <div class="setup-toolbar glass-panel">
+            <label class="inline-search wide-search">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.35-4.35m2.35-5.65a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z"/></svg>
+              <span class="sr-only">Search setups</span>
+              <input id="setup-search" type="search" placeholder="Search ticker, operator, strategy, or thesis…" autocomplete="off">
+            </label>
+            <select id="setup-sort" aria-label="Sort setups">
+              <option value="newest">Newest first</option>
+              <option value="trigger">Closest to trigger</option>
+              <option value="score">Highest score</option>
+            </select>
+          </div>
+          <div class="setup-card-grid" id="setup-card-grid"></div>
+          <div class="table-empty glass-panel" id="setup-empty" hidden>No setups match these filters.</div>
+        </section>
+
+        <aside class="market-intel glass-panel">
+          <div class="filter-heading">NETWORK PULSE</div>
+          <div class="bias-gauge">
+            <div class="gauge-labels"><span>SHORT</span><b id="long-bias-label">80% LONG</b><span>LONG</span></div>
+            <div class="gauge-track"><i id="long-bias-bar" style="width:80%"></i></div>
+          </div>
+          <div class="chart-shell"><canvas id="network-chart" aria-label="Setup activity over time"></canvas></div>
+          <div class="intel-list">
+            <div><span>Most active horizon</span><b id="top-horizon">SWING</b></div>
+            <div><span>Most used trigger</span><b id="top-trigger">PULLBACK</b></div>
+            <div><span>Median planned R</span><b id="median-r">2.1R</b></div>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-brand">
+      <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
+      <div><strong>COMPOSITE OPERATOR</strong><small>Public process. Verifiable outcomes.</small></div>
+    </div>
+    <div class="footer-links">
+      <a href="https://ximxesabortion.github.io/">Hub</a>
+      <a href="https://discord.gg/C3SSKZ26md">Foundry</a>
+      <a href="https://substack.com/@compositeoperator">Substack</a>
+      <button id="open-methodology" type="button">Methodology</button>
+    </div>
+    <p>Research and education only. Nothing here is financial advice.</p>
+  </footer>
+
+  <dialog class="auth-dialog modal-shell" id="auth-dialog">
+    <form method="dialog" class="modal-card auth-card">
+      <button class="modal-close" value="cancel" aria-label="Close sign in">×</button>
+      <span class="eyebrow">VERIFIED IDENTITY</span>
+      <h2>Enter the Ledger</h2>
+      <p>Your SSO account owns your public operator profile and every submitted setup.</p>
+      <div class="auth-options">
+        <button class="oauth-button google-button" id="google-auth" type="button">
+          <span class="oauth-logo">G</span>
+          <span><b>Continue with Google</b><small>Use your Google identity</small></span>
+          <i>↗</i>
+        </button>
+        <button class="oauth-button x-button" id="x-auth" type="button">
+          <span class="oauth-logo">𝕏</span>
+          <span><b>Continue with X</b><small>Connect your X profile</small></span>
+          <i>↗</i>
+        </button>
+      </div>
+      <div class="auth-footnote"><span class="shield-icon">◇</span> OAuth credentials stay with Google, X, and the configured auth provider.</div>
+    </form>
+  </dialog>
+
+  <dialog class="submit-dialog modal-shell" id="submit-dialog">
+    <form class="modal-card submit-card" id="setup-form" novalidate>
+      <button class="modal-close" type="button" data-close-submit aria-label="Close submission form">×</button>
+      <div class="submit-header">
+        <div>
+          <span class="eyebrow">NEW PUBLIC RECORD</span>
+          <h2>Submit a setup</h2>
+          <p>The initial entry, stop, targets, and thesis are retained with the outcome.</p>
+        </div>
+        <div class="form-progress" aria-label="Submission progress"><i class="is-active"></i><i></i><i></i></div>
+      </div>
+
+      <div class="form-alert" id="form-auth-alert">
+        <span class="pulse-dot"></span>
+        <p><b>Sign in required</b><small>Connect Google or X before publishing a setup.</small></p>
+        <button type="button" data-open-auth>Sign in</button>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-label"><span>01</span> MARKET IDEA</div>
+        <div class="field-grid field-grid-primary">
+          <label class="field ticker-field">
+            <span>Ticker <b>*</b></span>
+            <div class="field-control field-control-prefix"><i>$</i><input name="ticker" id="ticker" type="text" required maxlength="16" placeholder="SPY" autocomplete="off" spellcheck="false"></div>
+          </label>
+          <fieldset class="field direction-field">
+            <legend>Direction <b>*</b></legend>
+            <div class="direction-switch">
+              <input id="direction-long" name="direction" type="radio" value="LONG" checked>
+              <label for="direction-long">↗ LONG</label>
+              <input id="direction-short" name="direction" type="radio" value="SHORT">
+              <label for="direction-short">↘ SHORT</label>
+            </div>
+          </fieldset>
+          <label class="field">
+            <span>Time horizon</span>
+            <select name="horizon" id="horizon">
+              <option value="SWING">Swing (default)</option>
+              <option value="DAY_TRADE">Day trade</option>
+              <option value="POSITION">Position</option>
+              <option value="LONG_TERM">Long term</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Strategy</span>
+            <select name="strategy" id="strategy">
+              <option value="">Select strategy</option>
+              <option>Breakout</option>
+              <option>Pullback</option>
+              <option>Reversal</option>
+              <option>Range Breakout</option>
+              <option>Range Reversion</option>
+              <option>Trend Continuation</option>
+              <option>News / Catalyst</option>
+              <option>Other</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-label"><span>02</span> EXECUTION MAP</div>
+        <fieldset class="trigger-selector">
+          <legend>Entry trigger <b>*</b></legend>
+          <label><input type="radio" name="trigger_type" value="BREACH" checked><span><i>↗</i><b>Breach</b><small>Crosses entry</small></span></label>
+          <label><input type="radio" name="trigger_type" value="PULLBACK"><span><i>↘</i><b>Pullback</b><small>Returns to entry</small></span></label>
+          <label><input type="radio" name="trigger_type" value="MARKET"><span><i>◆</i><b>Market</b><small>Enter now</small></span></label>
+        </fieldset>
+
+        <div class="price-map">
+          <label class="field">
+            <span>Entry <b>*</b></span>
+            <div class="field-control field-control-prefix"><i>$</i><input name="entry" id="entry" type="number" min="0.000001" step="any" required placeholder="0.00"></div>
+          </label>
+          <label class="field risk-field">
+            <span>Stop loss <b>*</b></span>
+            <div class="field-control field-control-prefix"><i>$</i><input name="stop" id="stop" type="number" min="0.000001" step="any" required placeholder="0.00"></div>
+          </label>
+          <label class="field target-field">
+            <span>T1 <b>*</b></span>
+            <div class="field-control field-control-prefix"><i>$</i><input name="t1" id="t1" type="number" min="0.000001" step="any" required placeholder="0.00"></div>
+          </label>
+          <label class="field">
+            <span>T2</span>
+            <div class="field-control field-control-prefix"><i>$</i><input name="t2" id="t2" type="number" min="0.000001" step="any" placeholder="Optional"></div>
+          </label>
+          <label class="field">
+            <span>T3</span>
+            <div class="field-control field-control-prefix"><i>$</i><input name="t3" id="t3" type="number" min="0.000001" step="any" placeholder="Optional"></div>
+          </label>
+        </div>
+
+        <div class="risk-preview" id="risk-preview">
+          <div><span>RISK / UNIT</span><b id="risk-value">—</b></div>
+          <div><span>T1 REWARD</span><b id="reward-value">—</b></div>
+          <div><span>PLANNED R</span><b id="planned-r-value">—</b></div>
+          <div class="risk-visual"><i id="risk-visual-loss"></i><i id="risk-visual-gain"></i><span>ENTRY</span></div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-label"><span>03</span> THESIS</div>
+        <label class="field thesis-field">
+          <span>Notes / thesis</span>
+          <textarea name="thesis" id="thesis" rows="4" maxlength="1200" placeholder="What is the setup, what confirms it, and what would make you wrong?"></textarea>
+          <small><span id="thesis-count">0</span> / 1200</small>
+        </label>
+      </div>
+
+      <div class="form-error" id="form-error" role="alert" hidden></div>
+      <footer class="submit-footer">
+        <div class="immutability-note"><span>◇</span><p><b>Public record</b><small>Core risk fields lock after submission.</small></p></div>
+        <button class="button button-primary publish-button" id="publish-setup" type="submit">
+          <span>Publish setup</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 14 0m-6-6 6 6-6 6"/></svg>
+        </button>
+      </footer>
+    </form>
+  </dialog>
+
+  <dialog class="command-dialog modal-shell" id="command-dialog">
+    <div class="command-card">
+      <div class="command-input-wrap">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.35-4.35m2.35-5.65a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z"/></svg>
+        <input id="command-input" type="search" placeholder="Search operators, tickers, or jump to a view…" autocomplete="off">
+        <kbd>ESC</kbd>
+      </div>
+      <div class="command-results" id="command-results"></div>
+      <div class="command-hints"><span>↑↓ Navigate</span><span>↵ Open</span><span>/ Search</span></div>
+    </div>
+  </dialog>
+
+  <dialog class="profile-dialog modal-shell" id="profile-dialog">
+    <div class="profile-drawer" id="profile-drawer"></div>
+  </dialog>
+
+  <dialog class="method-dialog modal-shell" id="method-dialog">
+    <div class="modal-card method-card">
+      <button class="modal-close" type="button" data-close-method aria-label="Close methodology">×</button>
+      <span class="eyebrow">SCORING CONTRACT</span>
+      <h2>How the Ledger ranks operators</h2>
+      <div class="method-grid">
+        <div><span>01</span><h3>Resolved records only</h3><p>Leaderboard metrics use locked archived setups. Open ideas do not improve a rank.</p></div>
+        <div><span>02</span><h3>Risk-normalized outcomes</h3><p>Stops and targets translate each setup into comparable R multiples.</p></div>
+        <div><span>03</span><h3>Sample weighting</h3><p>GOAT score starts after three triggered setups and reaches full weight at twenty.</p></div>
+        <div><span>04</span><h3>Outlier control</h3><p>Average R is capped at ±5 inside the GOAT score so one result cannot dominate.</p></div>
+      </div>
+      <code>GOAT = (70% × capped Avg R + 30% × Win Rate) × sample weight</code>
+    </div>
+  </dialog>
+
+  <div class="toast-region" id="toast-region" aria-live="polite" aria-atomic="true"></div>
+</body>
+</html>
