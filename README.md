@@ -21,6 +21,7 @@ The repository starts in an explicit preview mode. Preview mode shows only a ver
 - Public per-operator profile drawers
 - Queue, Hot, Near, Active, and Resolved setup states
 - Structured setup form with live risk/reward checks
+- Server-verified MARKET activation with a ±0.5% reference-price tolerance
 - Collapsible public discussions with authenticated comments and starred OP replies
 - Shareable setup links and a most-discussed feed sort
 - Immutable entry, stop, target, and thesis fields after publication
@@ -101,6 +102,7 @@ The metric contract preserves the current 14-column leaderboard. See [`docs/ARCH
 - Row-level security limits user writes to their own setup submissions.
 - Public risk fields lock after submission.
 - Outcome updates use a trusted service process.
+- MARKET submissions use an authenticated Edge Function. It verifies Yahoo Finance first, uses Google Finance only as a fallback, snaps entry to the verified quote, and activates the setup immediately when the submitted reference is within ±0.5%.
 - Private Google workbook tabs remain outside the public application.
 
 ## License

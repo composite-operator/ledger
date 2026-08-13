@@ -884,8 +884,11 @@
 
     const publishButton = $("#publish-setup");
     publishButton.disabled = true;
-    publishButton.querySelector("span").textContent = "Publishing…";
-    const { data, error } = await state.supabase.from("setups").insert(payload).select().single();
+    publishButton.querySelector("span").textContent = payload.trigger_type === "MARKET" ? "Checking live quote…" : "Publishing…";
+    const result = payload.trigger_type === "MARKET"
+      ? await submitVerifiedMarketSetup(payload)
+      : await state.supabase.from("setups").insert(payload).select().single();
+    const { data, error, marketValidation } = result;
     publishButton.disabled = false;
     publishButton.querySelector("span").textContent = "Publish setup";
 
@@ -899,11 +902,38 @@
     event.currentTarget.reset();
     $("#thesis-count").textContent = "0";
     updateRiskPreview();
-    showToast("Setup published", `${payload.ticker} is now part of your public record.`);
+    if (marketValidation) {
+      showToast("Market setup active", `${payload.ticker} was verified at ${formatPrice(marketValidation.verifiedEntry)} via ${labelize(marketValidation.source)}.`);
+    } else {
+      showToast("Setup published", `${payload.ticker} is now part of your public record.`);
+    }
     if (data) state.setups.unshift(normalizeSetup({ ...data, handle: state.profile?.handle || "operator" }));
     await loadLiveData().catch(() => null);
     renderAll();
     switchView("setups");
+  }
+
+  async function submitVerifiedMarketSetup(payload) {
+    const { data: sessionData } = await state.supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    if (!accessToken) return { data: null, error: { message: "Your Ledger session expired. Sign in again." } };
+
+    try {
+      const response = await fetch(`${config.supabaseUrl}/functions/v1/submit-market-setup`, {
+        method: "POST",
+        headers: {
+          apikey: config.supabasePublishableKey,
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) return { data: null, error: { message: result.message || "The live quote could not be verified." } };
+      return { data: result.setup, error: null, marketValidation: result.marketValidation };
+    } catch (_error) {
+      return { data: null, error: { message: "The live quote service is unavailable. No setup was published." } };
+    }
   }
 
   function validateSetup(payload) {

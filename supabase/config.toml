@@ -1,0 +1,2 @@
+[functions.submit-market-setup]
+verify_jwt = true
