@@ -14,8 +14,8 @@
   <link rel="stylesheet" href="assets/styles.css?v=1">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
-  <script src="assets/runtime-config.js" defer></script>
-  <script src="assets/app.js?v=1" defer></script>
+  <script src="assets/runtime-config.js?v=2" defer></script>
+  <script src="assets/app.js?v=2" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to content</a>
@@ -147,9 +147,9 @@
         </article>
         <article class="metric-card accent-card">
           <span class="metric-index">04 / INTEGRITY</span>
-          <div class="metric-value"><strong>—</strong><small></small></div>
-          <p>Activates with the live backend</p>
-          <div class="hash-line">AUTH / DATABASE <span>PENDING</span></div>
+          <div class="metric-value"><strong id="integrity-status">—</strong><small id="integrity-detail">standby</small></div>
+          <p id="integrity-description">Verifies public reads and account ownership</p>
+          <div class="hash-line">AUTH / DATABASE <span id="integrity-network-state">PENDING</span></div>
         </article>
       </section>
 

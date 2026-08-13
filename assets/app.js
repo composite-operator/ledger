@@ -585,7 +585,7 @@
       <div class="activity-node">${setup.direction === "LONG" ? "↗" : "↘"}</div>
       <div class="activity-copy"><b>@${escapeHtml(setup.handle)} published ${escapeHtml(setup.ticker)}</b><span>${escapeHtml(setup.direction)} ${escapeHtml(labelize(setup.trigger_type))} at ${formatPrice(setup.entry)} · ${escapeHtml(setup.strategy || "Uncategorized")}</span></div>
       <time>${formatRelative(setup.submitted_at)}</time>
-    </div>`).join("") : '<div class="activity-empty"><b>No current public signals</b><span>Live activity will appear here after the backend and submission flow are activated.</span></div>';
+    </div>`).join("") : '<div class="activity-empty"><b>No current public signals</b><span>The stream is ready for the first operator submission.</span></div>';
   }
 
   function renderNetworkIntel() {
@@ -808,9 +808,16 @@
     const operatorCount = state.live ? state.rankTotal : state.leaders.length;
     const setupCount = state.live ? state.setups.length : previewStats.setups;
     const resolvedCount = state.live ? state.setups.filter((setup) => normalizeState(setup.status) === "resolved").length : previewStats.resolved;
+    const resolutionRate = setupCount > 0 ? Math.round((resolvedCount / setupCount) * 100) : 0;
     $$('[data-metric="operators"]').forEach((node) => node.textContent = formatInteger(operatorCount));
     $$('[data-metric="setups"]').forEach((node) => node.textContent = formatInteger(setupCount));
     $$('[data-metric="resolved"]').forEach((node) => node.textContent = formatInteger(resolvedCount));
+    const resolutionRing = $(".metric-ring");
+    if (resolutionRing) {
+      resolutionRing.style.setProperty("--value", resolutionRate);
+      const label = $("span", resolutionRing);
+      if (label) label.textContent = `${resolutionRate}%`;
+    }
   }
 
   function updateAuthAvailability() {
@@ -826,6 +833,12 @@
       identityState.textContent = liveConfigPresent ? "ACCOUNTS READY" : "SETUP REQUIRED";
       identityState.classList.toggle("positive", liveConfigPresent);
     }
+    const integrityStatus = $("#integrity-status");
+    const integrityDetail = $("#integrity-detail");
+    const integrityNetworkState = $("#integrity-network-state");
+    if (integrityStatus) integrityStatus.textContent = state.live ? "RLS" : "—";
+    if (integrityDetail) integrityDetail.textContent = state.live ? "enforced" : "standby";
+    if (integrityNetworkState) integrityNetworkState.textContent = state.live ? "VERIFIED" : "PENDING";
   }
 
   function setNetworkState(label, preview) {

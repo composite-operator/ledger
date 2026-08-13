@@ -3,8 +3,8 @@
  * Database security comes from the row-level security policies in /supabase.
  */
 window.LEDGER_CONFIG = Object.freeze({
-  supabaseUrl: "",
-  supabasePublishableKey: "",
+  supabaseUrl: "https://pynosegrafnskdlthdcr.supabase.co",
+  supabasePublishableKey: "sb_publishable_PiqCuSrReoRf9zCl-m0omQ_CT2qNBlO",
   siteUrl: "https://ximxesabortion.github.io/ledger/",
-  demoMode: true
+  demoMode: false
 });
