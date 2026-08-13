@@ -3,19 +3,20 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#06070b">
+  <meta name="theme-color" id="theme-color-meta" content="#06070b">
   <meta name="description" content="Composite Operator Ledger — public setup tracking, transparent outcomes, and an operator leaderboard.">
   <title>Ledger — Composite Operator</title>
+  <script>try{document.documentElement.dataset.theme=localStorage.getItem("ledger-theme")==="light"?"light":"dark"}catch(_error){document.documentElement.dataset.theme="dark"}</script>
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
   <link rel="manifest" href="site.webmanifest">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/styles.css?v=5">
+  <link rel="stylesheet" href="assets/styles.css?v=6">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
   <script src="assets/runtime-config.js?v=3" defer></script>
-  <script src="assets/app.js?v=7" defer></script>
+  <script src="assets/app.js?v=8" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to content</a>
@@ -52,8 +53,9 @@
         <span class="pulse-dot"></span>
         <span id="network-state-label">Preview network</span>
       </div>
-      <button class="icon-button" id="theme-toggle" type="button" aria-label="Toggle contrast">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.91-.1-1.35A7 7 0 0 1 12 3Z"/></svg>
+      <button class="icon-button theme-button" id="theme-toggle" type="button" aria-label="Switch to light mode" title="Switch to light mode">
+        <svg class="theme-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg>
+        <svg class="theme-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.91-.1-1.35A7 7 0 0 1 12 3Z"/></svg>
       </button>
       <button class="account-button" id="account-button" type="button">
         <span class="account-avatar" id="account-avatar">CO</span>

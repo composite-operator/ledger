@@ -54,6 +54,7 @@
   document.addEventListener("DOMContentLoaded", init);
 
   async function init() {
+    initTheme();
     bindNavigation();
     bindDialogs();
     bindLeaderboard();
@@ -1027,6 +1028,7 @@
 
   function renderNetworkChart() {
     if (!window.Chart || !$("#network-chart")) return;
+    const lightTheme = document.documentElement.dataset.theme === "light";
     const buckets = [0, 0, 0, 0, 0, 0, 0];
     state.setups.forEach((setup) => {
       const age = Math.floor((Date.now() - new Date(setup.submitted_at).getTime()) / 86400000);
@@ -1038,14 +1040,14 @@
       type: "line",
       data: {
         labels: ["-6d", "-5d", "-4d", "-3d", "-2d", "-1d", "NOW"],
-        datasets: [{ data: buckets, borderColor: "#c8ff2e", backgroundColor: "rgba(200,255,46,.07)", fill: true, tension: .42, pointRadius: 0, borderWidth: 1.4 }]
+        datasets: [{ data: buckets, borderColor: lightTheme ? "#607d00" : "#c8ff2e", backgroundColor: lightTheme ? "rgba(96,125,0,.1)" : "rgba(200,255,46,.07)", fill: true, tension: .42, pointRadius: 0, borderWidth: 1.4 }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { display: false }, tooltip: { displayColors: false, backgroundColor: "#12151d", borderColor: "rgba(255,255,255,.1)", borderWidth: 1, titleFont: { family: "DM Mono", size: 8 }, bodyFont: { family: "DM Mono", size: 8 } } },
+        plugins: { legend: { display: false }, tooltip: { displayColors: false, backgroundColor: lightTheme ? "#ffffff" : "#12151d", titleColor: lightTheme ? "#111827" : "#f4f6f8", bodyColor: lightTheme ? "#4b5563" : "#f4f6f8", borderColor: lightTheme ? "rgba(15,23,42,.16)" : "rgba(255,255,255,.1)", borderWidth: 1, titleFont: { family: "DM Mono", size: 8 }, bodyFont: { family: "DM Mono", size: 8 } } },
         scales: {
-          x: { grid: { display: false }, border: { display: false }, ticks: { color: "#5d6371", font: { family: "DM Mono", size: 7 } } },
+          x: { grid: { display: false }, border: { display: false }, ticks: { color: lightTheme ? "#6b7280" : "#5d6371", font: { family: "DM Mono", size: 7 } } },
           y: { display: false, beginAtZero: true }
         }
       }
@@ -1235,9 +1237,35 @@
   }
 
   function bindUtilities() {
-    $("#theme-toggle").addEventListener("click", () => document.body.classList.toggle("high-contrast"));
+    $("#theme-toggle").addEventListener("click", toggleTheme);
     applyLocationRoute();
     window.addEventListener("popstate", applyLocationRoute);
+  }
+
+  function initTheme() {
+    const savedTheme = document.documentElement.dataset.theme === "light" ? "light" : "dark";
+    applyTheme(savedTheme, false);
+  }
+
+  function toggleTheme() {
+    const nextTheme = document.documentElement.dataset.theme === "light" ? "dark" : "light";
+    applyTheme(nextTheme, true);
+    renderNetworkChart();
+  }
+
+  function applyTheme(theme, persist) {
+    const nextTheme = theme === "light" ? "light" : "dark";
+    document.documentElement.dataset.theme = nextTheme;
+    document.body.classList.toggle("light-mode", nextTheme === "light");
+    const button = $("#theme-toggle");
+    const targetLabel = nextTheme === "light" ? "Switch to dark mode" : "Switch to light mode";
+    button.setAttribute("aria-label", targetLabel);
+    button.setAttribute("title", targetLabel);
+    button.setAttribute("aria-pressed", String(nextTheme === "light"));
+    $("#theme-color-meta").setAttribute("content", nextTheme === "light" ? "#eef1f5" : "#06070b");
+    if (persist) {
+      try { localStorage.setItem("ledger-theme", nextTheme); } catch (_error) { /* Storage can be disabled. */ }
+    }
   }
 
   function applyLocationRoute() {
