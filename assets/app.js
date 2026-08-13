@@ -403,7 +403,7 @@
     podium.innerHTML = leaders.map((leader, index) => `<article class="podium-card" data-rank="0${index + 1}" data-profile-id="${escapeAttr(leader.id)}">
       <div class="podium-top"><span class="podium-rank">RANK / 0${index + 1}</span><span class="podium-score">GOAT ${formatNumber(leader.goat_score, 2, "NQ")}</span></div>
       <div class="podium-operator">${avatar(leader)}<div><b>${escapeHtml(leader.display_name)}</b><small>@${escapeHtml(leader.handle)}</small></div></div>
-      <div class="podium-metrics"><div><span>WIN RATE</span><b>${formatPercent(leader.win_rate)}</b></div><div><span>AVG R</span><b>${formatR(leader.avg_r)}</b></div><div><span>RESOLVED</span><b>${formatInteger(leader.triggered_setups)}</b></div></div>
+      <div class="podium-metrics"><div><span>WIN RATE</span><b>${formatPercent(leader.win_rate)}</b></div><div><span>AVG R</span><b>${formatR(leader.avg_r)}</b></div><div><span>TRIGGERED</span><b>${formatInteger(leader.triggered_setups)}</b></div></div>
     </article>`).join("");
     bindProfileTriggers(podium);
   }
@@ -458,7 +458,7 @@
       <div class="profile-avatar-large">${initials(leader.handle)}</div>
       <h2>${escapeHtml(leader.display_name || leader.handle)}</h2>
       <p>@${escapeHtml(leader.handle)} · ${escapeHtml(leader.bio || "Public Ledger operator")}</p>
-      <div class="profile-badges"><span>LEDGER ACCOUNT</span><span>PUBLIC RECORD</span><span>${leader.triggered_setups || 0} RESOLVED</span></div>
+      <div class="profile-badges"><span>LEDGER ACCOUNT</span><span>PUBLIC RECORD</span><span>${leader.triggered_setups || 0} TRIGGERED</span></div>
       ${isOwnProfile ? '<button class="profile-signout" type="button" data-sign-out>Sign out</button>' : ''}
     </div>
     <div class="profile-body">
@@ -987,7 +987,7 @@
       if (requestToken !== state.commandToken) return;
       if (data) commandLeaders = data.map(normalizeLeader);
     }
-    const leaderItems = commandLeaders.map((leader) => ({ type: "OPERATOR", icon: initials(leader.handle), label: `@${leader.handle}`, note: `${leader.triggered_setups} resolved · ${formatR(leader.avg_r)} average`, action: () => openProfile(leader) }));
+    const leaderItems = commandLeaders.map((leader) => ({ type: "OPERATOR", icon: initials(leader.handle), label: `@${leader.handle}`, note: `${leader.triggered_setups} triggered · ${formatR(leader.avg_r)} average`, action: () => openProfile(leader) }));
     const setupItems = state.setups.map((setup) => ({ type: "SETUP", icon: setup.direction === "LONG" ? "↗" : "↘", label: setup.ticker, note: `@${setup.handle} · ${setup.status} · ${setup.strategy || "Uncategorized"}`, action: () => { state.setupSearch = setup.ticker.toLowerCase(); $("#setup-search").value = setup.ticker; switchView("setups"); renderSetups(); } }));
     state.commandItems = [...viewItems, ...leaderItems, ...setupItems].filter((item) => !query || `${item.label} ${item.note} ${item.type}`.toLowerCase().includes(query)).slice(0, 12);
     $("#command-results").innerHTML = state.commandItems.map((item, index) => `<div class="command-result ${index === 0 ? "is-selected" : ""}" data-command-index="${index}"><span class="command-result-icon">${escapeHtml(item.icon)}</span><span class="command-result-copy"><b>${escapeHtml(item.label)}</b><small>${escapeHtml(item.note)}</small></span><span class="command-result-type">${item.type}</span></div>`).join("") || '<div class="table-empty">No matching operators or setups.</div>';
