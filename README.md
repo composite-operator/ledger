@@ -19,6 +19,8 @@ The repository starts in an explicit preview mode. Preview mode shows only a ver
 - Private email/password sign-in with public handles
 - Searchable and sortable leaderboard
 - Public per-operator profile drawers
+- Owner-editable profile pictures, display names, and bios
+- Public join dates, complete performance stats, and recent setup history
 - Queue, Hot, Near, Active, and Resolved setup states
 - Permanent setup-book URLs for every state and the operator index
 - Sortable setup fields for posted date, entry distance, planned R, operator history, score, and comments
@@ -43,12 +45,13 @@ The repository starts in an explicit preview mode. Preview mode shows only a ver
 6. Run [`supabase/migrations/202608130004_activate_original_spy_market_test.sql`](supabase/migrations/202608130004_activate_original_spy_market_test.sql) only when the original SPY test row exists.
 7. Run [`supabase/migrations/202608130005_setup_book_operator_metrics.sql`](supabase/migrations/202608130005_setup_book_operator_metrics.sql).
 8. Deploy `supabase/functions/submit-market-setup` and `supabase/functions/setup-book-quotes` as Edge Functions.
-9. In **Authentication → URL Configuration**, set:
+9. Run [`supabase/migrations/202608130006_profile_avatars.sql`](supabase/migrations/202608130006_profile_avatars.sql) to create the public avatar bucket and owner-only upload policies.
+10. In **Authentication → URL Configuration**, set:
    - Site URL: `https://ximxesabortion.github.io/ledger/`
    - Redirect URL: `https://ximxesabortion.github.io/ledger/`
 
-10. In **Authentication → Sign In / Providers → Email**, keep Email enabled.
-11. For the $0 MVP, turn **Confirm email** off. This avoids relying on a paid production mail service. Add verified-email delivery later if the product needs email ownership proof or password-reset email.
+11. In **Authentication → Sign In / Providers → Email**, keep Email enabled.
+12. For the $0 MVP, turn **Confirm email** off. This avoids relying on a paid production mail service. Add verified-email delivery later if the product needs email ownership proof or password-reset email.
 
 Google and X are optional future identity links. They are not required for Ledger accounts.
 
@@ -111,6 +114,7 @@ The metric contract preserves the current 14-column leaderboard. See [`docs/ARCH
 - Outcome updates use a trusted service process.
 - MARKET submissions use an authenticated Edge Function. It verifies Yahoo Finance first, uses Google Finance only as a fallback, snaps entry to the verified quote, and activates the setup immediately when the submitted reference is within ±0.5%.
 - Setup-book distance uses a publishable-key Edge Function with request-size and per-minute limits. A 50% entry sanity gate suppresses ambiguous symbols instead of showing a misleading price.
+- Avatar files live in the public `avatars` bucket. Storage policies limit upload and replacement to the authenticated owner folder, while public reads support profile, leaderboard, header, and discussion images.
 - Private Google workbook tabs remain outside the public application.
 
 ## License

@@ -312,7 +312,8 @@
       total_score: Number(row.total_score || 0),
       goat_score: nullableNumber(row.goat_score),
       last_30d_score: Number(row.last_30d_score || 0),
-      bio: row.bio || ""
+      bio: row.bio || "",
+      created_at: row.created_at || null
     };
   }
 
@@ -407,7 +408,9 @@
     }
     const handle = state.profile?.handle || state.session.user.user_metadata?.user_name || state.session.user.user_metadata?.name || "Operator";
     label.textContent = handle;
-    avatar.textContent = initials(handle);
+    avatar.innerHTML = state.profile?.avatar_url
+      ? `<img src="${escapeAttr(state.profile.avatar_url)}" alt="">`
+      : escapeHtml(initials(handle));
   }
 
   function profileFromSession() {
@@ -424,7 +427,8 @@
       total_score: 0,
       goat_score: null,
       last_30d_score: 0,
-      bio: state.profile?.bio || ""
+      bio: state.profile?.bio || "",
+      created_at: state.profile?.created_at || state.session?.user?.created_at || null
     };
   }
 
@@ -543,43 +547,146 @@
   }
 
   async function openProfile(leader) {
+    let detailedLeader = { ...leader };
     let profileSetups = state.setups.filter((setup) => String(setup.user_id) === String(leader.id) || setup.handle === leader.handle);
     if (state.live && state.supabase && leader.id) {
-      const { data } = await state.supabase
-        .from("setups_public")
-        .select("*")
-        .eq("user_id", leader.id)
-        .order("submitted_at", { ascending: false })
-        .limit(25);
-      if (data) profileSetups = data.map(normalizeSetup);
+      const [profileResult, setupsResult, metricsResult] = await Promise.all([
+        state.supabase.from("profiles").select("id, handle, display_name, avatar_url, bio, created_at").eq("id", leader.id).maybeSingle(),
+        state.supabase.from("setups_public").select("*").eq("user_id", leader.id).order("submitted_at", { ascending: false }).limit(25),
+        state.supabase.rpc("leaderboard_page", { p_sort: "goat", p_search: leader.handle || "", p_limit: 5, p_offset: 0 })
+      ]);
+      const metricRow = (metricsResult.data || []).map(normalizeLeader).find((item) => String(item.id) === String(leader.id));
+      if (metricRow) detailedLeader = { ...detailedLeader, ...metricRow };
+      if (profileResult.data) detailedLeader = { ...detailedLeader, ...profileResult.data, id: profileResult.data.id };
+      if (setupsResult.data) profileSetups = setupsResult.data.map(normalizeSetup);
     }
     const recent = profileSetups.slice().sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at)).slice(0, 7);
     const drawer = $("#profile-drawer");
-    const isOwnProfile = Boolean(state.session?.user && String(state.session.user.id) === String(leader.id));
+    const isOwnProfile = Boolean(state.session?.user && String(state.session.user.id) === String(detailedLeader.id));
     drawer.innerHTML = `<div class="profile-head">
       <button class="modal-close" type="button" data-close-profile aria-label="Close profile">×</button>
-      <div class="profile-avatar-large">${initials(leader.handle)}</div>
-      <h2>${escapeHtml(leader.display_name || leader.handle)}</h2>
-      <p>@${escapeHtml(leader.handle)} · ${escapeHtml(leader.bio || "Public Ledger operator")}</p>
-      <div class="profile-badges"><span>LEDGER ACCOUNT</span><span>PUBLIC RECORD</span><span>${leader.triggered_setups || 0} TRIGGERED</span></div>
+      <div class="profile-avatar-large">${profileAvatar(detailedLeader)}</div>
+      <h2>${escapeHtml(detailedLeader.display_name || detailedLeader.handle)}</h2>
+      <p class="profile-handle">@${escapeHtml(detailedLeader.handle)}</p>
+      <p class="profile-bio">${escapeHtml(detailedLeader.bio || "No bio yet.")}</p>
+      <div class="profile-badges"><span>LEDGER ACCOUNT</span><span>PUBLIC RECORD</span><span>JOINED ${escapeHtml(formatMonthYear(detailedLeader.created_at))}</span><span>${detailedLeader.triggered_setups || 0} TRIGGERED</span></div>
       ${isOwnProfile ? '<button class="profile-signout" type="button" data-sign-out>Sign out</button>' : ''}
     </div>
     <div class="profile-body">
       <div class="profile-metric-grid">
-        <div><span>GOAT SCORE</span><b>${formatNumber(leader.goat_score, 2, "NQ")}</b></div>
-        <div><span>WIN RATE</span><b>${formatPercent(leader.win_rate)}</b></div>
-        <div><span>AVG R</span><b class="${metricClass(leader.avg_r)}">${formatR(leader.avg_r)}</b></div>
-        <div><span>TOTAL SCORE</span><b class="${metricClass(leader.total_score)}">${formatSigned(leader.total_score)}</b></div>
-        <div><span>30D SCORE</span><b class="${metricClass(leader.last_30d_score)}">${formatSigned(leader.last_30d_score)}</b></div>
-        <div><span>TOTAL SETUPS</span><b>${formatInteger(leader.total_setups)}</b></div>
+        <div><span>GOAT SCORE</span><b>${formatNumber(detailedLeader.goat_score, 2, "NQ")}</b></div>
+        <div><span>WIN RATE</span><b>${formatPercent(detailedLeader.win_rate)}</b></div>
+        <div><span>AVG R</span><b class="${metricClass(detailedLeader.avg_r)}">${formatR(detailedLeader.avg_r)}</b></div>
+        <div><span>TOTAL SCORE</span><b class="${metricClass(detailedLeader.total_score)}">${formatSigned(detailedLeader.total_score)}</b></div>
+        <div><span>30D SCORE</span><b class="${metricClass(detailedLeader.last_30d_score)}">${formatSigned(detailedLeader.last_30d_score)}</b></div>
+        <div><span>TOTAL SETUPS</span><b>${formatInteger(detailedLeader.total_setups)}</b></div>
+        <div><span>TRIGGERED</span><b>${formatInteger(detailedLeader.triggered_setups)}</b></div>
+        <div><span>STOPPED</span><b>${formatInteger(detailedLeader.stopped_setups)}</b></div>
+        <div><span>TARGET HITS</span><b><small>T1</small> ${formatInteger(detailedLeader.t1_hits)} <small>T2</small> ${formatInteger(detailedLeader.t2_hits)} <small>T3</small> ${formatInteger(detailedLeader.t3_hits)}</b></div>
       </div>
+      ${isOwnProfile ? profileEditor(detailedLeader) : ""}
       <div class="profile-section-title">RECENT PUBLIC RECORDS</div>
       <div class="profile-records">${recent.length ? recent.map(profileRecord).join("") : '<div class="table-empty">No public setups yet.</div>'}</div>
     </div>`;
     $("[data-close-profile]", drawer).addEventListener("click", () => $("#profile-dialog").close());
     const signOutButton = $("[data-sign-out]", drawer);
     if (signOutButton) signOutButton.addEventListener("click", signOut);
-    $("#profile-dialog").showModal();
+    const profileForm = $("[data-profile-form]", drawer);
+    if (profileForm) profileForm.addEventListener("submit", (event) => saveProfile(event, detailedLeader));
+    const avatarInput = $("input[name='avatar']", drawer);
+    if (avatarInput) avatarInput.addEventListener("change", () => updateAvatarFileLabel(avatarInput));
+    if (!$("#profile-dialog").open) $("#profile-dialog").showModal();
+  }
+
+  function profileAvatar(profile) {
+    if (profile.avatar_url) return `<img src="${escapeAttr(profile.avatar_url)}" alt="${escapeAttr(profile.display_name || profile.handle)} profile picture">`;
+    return escapeHtml(initials(profile.handle));
+  }
+
+  function profileEditor(profile) {
+    return `<details class="profile-editor">
+      <summary><span>EDIT PUBLIC PROFILE</span><i>OPEN +</i></summary>
+      <form data-profile-form>
+        <label><span>PROFILE PICTURE</span><input name="avatar" type="file" accept="image/jpeg,image/png,image/webp"><small data-avatar-file>JPG, PNG, or WEBP · 2 MB maximum</small></label>
+        <label><span>DISPLAY NAME</span><input name="display_name" type="text" maxlength="80" required value="${escapeAttr(profile.display_name || profile.handle)}"></label>
+        <label><span>BIO</span><textarea name="bio" maxlength="600" rows="5" placeholder="What do you trade? What is your process?">${escapeHtml(profile.bio || "")}</textarea></label>
+        <p class="profile-form-status" data-profile-status></p>
+        <button type="submit">SAVE PROFILE <span>→</span></button>
+      </form>
+    </details>`;
+  }
+
+  function updateAvatarFileLabel(input) {
+    const file = input.files?.[0];
+    const label = $("[data-avatar-file]", input.closest("form"));
+    if (label) label.textContent = file ? `${file.name} · ${formatFileSize(file.size)}` : "JPG, PNG, or WEBP · 2 MB maximum";
+  }
+
+  async function saveProfile(event, leader) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const status = $("[data-profile-status]", form);
+    const button = $("button[type='submit']", form);
+    const displayName = String(new FormData(form).get("display_name") || "").trim();
+    const bio = String(new FormData(form).get("bio") || "").trim();
+    const avatarFile = $("input[name='avatar']", form).files?.[0] || null;
+    if (!displayName) return setProfileFormStatus(status, "Display name is required.", true);
+    if (bio.length > 600) return setProfileFormStatus(status, "Bio must be 600 characters or fewer.", true);
+    if (avatarFile && (!['image/jpeg', 'image/png', 'image/webp'].includes(avatarFile.type) || avatarFile.size > 2097152)) {
+      return setProfileFormStatus(status, "Use a JPG, PNG, or WEBP image no larger than 2 MB.", true);
+    }
+
+    button.disabled = true;
+    button.textContent = avatarFile ? "UPLOADING…" : "SAVING…";
+    setProfileFormStatus(status, "Saving your public profile…");
+    try {
+      let avatarUrl = leader.avatar_url || null;
+      if (avatarFile) {
+        const objectPath = `${state.session.user.id}/avatar`;
+        const { error: uploadError } = await state.supabase.storage.from("avatars").upload(objectPath, avatarFile, {
+          cacheControl: "3600",
+          contentType: avatarFile.type,
+          upsert: true
+        });
+        if (uploadError) throw uploadError;
+        const { data: publicUrlData } = state.supabase.storage.from("avatars").getPublicUrl(objectPath);
+        avatarUrl = `${publicUrlData.publicUrl}?v=${Date.now()}`;
+      }
+
+      const { data, error } = await state.supabase
+        .from("profiles")
+        .update({ display_name: displayName, bio, avatar_url: avatarUrl })
+        .eq("id", state.session.user.id)
+        .select("*")
+        .single();
+      if (error) throw error;
+      applyProfileUpdate(data);
+      renderAll();
+      showToast("Profile updated", "Your avatar, bio, and public profile are live.");
+      await openProfile({ ...leader, ...data });
+    } catch (error) {
+      button.disabled = false;
+      button.innerHTML = 'SAVE PROFILE <span>→</span>';
+      setProfileFormStatus(status, error.message || "The profile could not be saved.", true);
+    }
+  }
+
+  function setProfileFormStatus(node, message, isError = false) {
+    node.textContent = message;
+    node.classList.toggle("is-error", isError);
+  }
+
+  function applyProfileUpdate(profile) {
+    state.profile = { ...state.profile, ...profile };
+    const patchLeader = (item) => String(item.id) === String(profile.id) ? { ...item, ...profile } : item;
+    state.leaders = state.leaders.map(patchLeader);
+    state.compactLeaders = state.compactLeaders.map(patchLeader);
+    state.podiumLeaders = state.podiumLeaders.map(patchLeader);
+    state.setups.forEach((setup) => {
+      if (String(setup.user_id) !== String(profile.id)) return;
+      setup.display_name = profile.display_name;
+      setup.avatar_url = profile.avatar_url;
+    });
   }
 
   async function signOut() {
@@ -735,7 +842,7 @@
     }
 
     const composer = state.session?.user ? `<form class="comment-composer" data-comment-form="${escapeAttr(setupId)}">
-      <span class="comment-avatar">${initials(state.profile?.handle || state.session.user.email)}</span>
+      <span class="comment-avatar">${avatarContent(state.profile?.avatar_url, state.profile?.handle || state.session.user.email)}</span>
       <label><span class="sr-only">Comment on ${escapeHtml(setup.ticker)}</span><textarea name="comment" maxlength="600" required placeholder="Add signal, context, or a question…"></textarea></label>
       <button type="submit">POST COMMENT <span>→</span></button>
     </form>` : `<button class="comment-sign-in" type="button" data-comment-auth>Sign in to join the discussion <span>→</span></button>`;
@@ -755,7 +862,7 @@
   function commentItem(comment) {
     const ownComment = state.session?.user?.id === comment.user_id;
     return `<article class="comment-item${comment.is_op ? " is-op" : ""}${comment.is_deleted ? " is-deleted" : ""}">
-      <span class="comment-avatar">${initials(comment.handle)}</span>
+      <span class="comment-avatar">${avatarContent(comment.avatar_url, comment.handle)}</span>
       <div class="comment-content">
         <header><b>@${escapeHtml(comment.handle)}</b>${comment.is_op ? '<strong>★ OP</strong>' : ""}<time>${formatRelative(comment.created_at)}</time></header>
         <p>${escapeHtml(comment.body)}</p>
@@ -1216,6 +1323,11 @@
     return `<span class="operator-avatar">${initials(leader.handle)}</span>`;
   }
 
+  function avatarContent(avatarUrl, fallback) {
+    if (avatarUrl) return `<img src="${escapeAttr(avatarUrl)}" alt="">`;
+    return escapeHtml(initials(fallback));
+  }
+
   function initials(value) {
     return String(value || "CO").split(/[\s_-]+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase().slice(0, 2) || "CO";
   }
@@ -1324,6 +1436,17 @@
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return "—";
     return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  }
+
+  function formatMonthYear(value) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "—";
+    return date.toLocaleDateString(undefined, { month: "short", year: "numeric" }).toUpperCase();
+  }
+
+  function formatFileSize(bytes) {
+    if (!Number.isFinite(Number(bytes))) return "—";
+    return `${formatNumber(Number(bytes) / 1048576, 2)} MB`;
   }
 
   function labelize(value) {
