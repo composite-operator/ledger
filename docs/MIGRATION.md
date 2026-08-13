@@ -8,7 +8,7 @@ Move the user-facing workflow to the Ledger site without interrupting the curren
 
 1. Deploy the GitHub Pages interface in preview mode.
 2. Create Supabase and run the migration.
-3. Configure Google and X providers.
+3. Enable native Ledger email/password accounts.
 4. Import the existing public profiles, setups, archive, and leaderboard history.
 5. Compare Supabase metrics with the current `Leaderboard` tab.
 6. Keep the Google Form active during validation.
@@ -51,7 +51,7 @@ After a successful parallel period:
 
 ### Identity Registry → `profiles`
 
-The Supabase auth user must exist before its profile can own imported records. For historical handles with no login, use a controlled migration identity or retain them as legacy profiles in a dedicated import process. Do not fabricate Google or X account ownership.
+The Supabase auth user must exist before its profile can own imported records. For historical handles with no login, use a controlled migration identity or retain them as legacy profiles in a dedicated import process. Do not fabricate account ownership.
 
 ### Setups Master / Archive → `setups`
 
@@ -95,9 +95,9 @@ The database trigger rejects changes to the original risk plan.
 
 ## Cutover gates
 
-- Google sign-in succeeds from the production Pages URL.
-- X OAuth 2.0 sign-in succeeds from the production Pages URL.
-- Duplicate OAuth returns the same profile.
+- Ledger account creation succeeds from the production Pages URL.
+- Email/password sign-in and sign-out succeed.
+- Repeated sign-in returns the same profile.
 - A user cannot submit for another profile ID.
 - A user cannot update or delete a published setup.
 - Long and short risk geometry rejects invalid values.

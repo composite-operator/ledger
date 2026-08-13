@@ -4,7 +4,7 @@ A public setup tracker and operator leaderboard for the Composite Operator Hub.
 
 The site is designed for GitHub Pages. Supabase supplies the parts that a static host cannot supply:
 
-- Google and X OAuth sign-in
+- native Ledger email/password accounts
 - public operator profiles
 - durable setup records
 - row-level access control
@@ -16,7 +16,7 @@ The repository starts in an explicit preview mode. Preview mode shows only a ver
 ## What ships
 
 - Modern responsive Ledger interface
-- Google and X sign-in buttons
+- Private email/password sign-in with public handles
 - Searchable and sortable leaderboard
 - Public per-operator profile drawers
 - Queue, Hot, Near, Active, and Resolved setup states
@@ -36,25 +36,12 @@ The repository starts in an explicit preview mode. Preview mode shows only a ver
    - Site URL: `https://ximxesabortion.github.io/ledger/`
    - Redirect URL: `https://ximxesabortion.github.io/ledger/`
 
-### 2. Enable Google sign-in
+5. In **Authentication → Sign In / Providers → Email**, keep Email enabled.
+6. For the $0 MVP, turn **Confirm email** off. This avoids relying on a paid production mail service. Add verified-email delivery later if the product needs email ownership proof or password-reset email.
 
-1. Create a Web application client in Google Auth Platform.
-2. Add `https://ximxesabortion.github.io` as an authorized JavaScript origin.
-3. Add the callback URL shown in **Supabase → Authentication → Providers → Google** as an authorized redirect URI. It has this shape:
-   - `https://<project-ref>.supabase.co/auth/v1/callback`
-4. Add the Google client ID and client secret to the Supabase Google provider.
+Google and X are optional future identity links. They are not required for Ledger accounts.
 
-### 3. Enable X sign-in
-
-1. Create a Web App in the X Developer Portal.
-2. Enable user authentication and request email access.
-3. Use the callback URL shown in **Supabase → Authentication → Providers → X / Twitter (OAuth 2.0)**:
-   - `https://<project-ref>.supabase.co/auth/v1/callback`
-4. Add the X OAuth 2.0 client ID and client secret to Supabase.
-
-The browser code uses the current Supabase provider name `x`. It does not use the legacy OAuth 1.0a `twitter` provider.
-
-### 4. Configure the browser client
+### 2. Configure the browser client
 
 Copy the project URL and publishable key from **Supabase → Project Settings → API** into [`assets/runtime-config.js`](assets/runtime-config.js):
 
@@ -69,13 +56,13 @@ window.LEDGER_CONFIG = Object.freeze({
 
 The Supabase publishable key is safe in a browser application when row-level security is active. Never put the `service_role` key in this repository or in browser code.
 
-### 5. Enable GitHub Pages
+### 3. Enable GitHub Pages
 
 In **Repository Settings → Pages**, select **GitHub Actions** as the source. A push to `main` then runs [`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml).
 
 ## Local preview
 
-Serve the repository root through any static HTTP server. Do not open `index.html` through a `file://` URL because OAuth redirects and module requests require an HTTP origin.
+Serve the repository root through any static HTTP server. Do not open `index.html` through a `file://` URL because authentication and API requests require an HTTP origin.
 
 ```powershell
 python -m http.server 4173
@@ -90,7 +77,7 @@ The new form preserves the current Google Form fields:
 | Current field | Ledger field |
 | --- | --- |
 | Username | Authenticated profile handle |
-| Private Handle Key | Removed; Google/X account owns identity |
+| Private Handle Key | Removed; the private Ledger account owns identity |
 | Ticker | `setups.ticker` |
 | Direction | `LONG` or `SHORT` |
 | Time Horizon | `DAY_TRADE`, `SWING`, `POSITION`, `LONG_TERM` |
@@ -106,7 +93,7 @@ The metric contract preserves the current 14-column leaderboard. See [`docs/ARCH
 ## Security boundary
 
 - GitHub Pages hosts only static public files.
-- Google and X secrets live in Supabase provider settings.
+- Password hashes stay in Supabase Auth and never enter this repository.
 - Browser users receive only a publishable Supabase key.
 - Row-level security limits user writes to their own setup submissions.
 - Public risk fields lock after submission.

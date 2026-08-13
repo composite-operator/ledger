@@ -94,7 +94,7 @@
             <button class="button button-ghost" data-view-target="leaderboard" type="button">Explore rankings</button>
           </div>
           <div class="hero-proof">
-            <div><span>01</span><p><b>Authenticate</b><small>Google or X</small></p></div>
+            <div><span>01</span><p><b>Authenticate</b><small>Ledger account</small></p></div>
             <div><span>02</span><p><b>Publish</b><small>Entry + invalidation</small></p></div>
             <div><span>03</span><p><b>Resolve</b><small>Immutable score</small></p></div>
           </div>
@@ -329,28 +329,26 @@
   </footer>
 
   <dialog class="auth-dialog modal-shell" id="auth-dialog">
-    <form method="dialog" class="modal-card auth-card">
-      <button class="modal-close" value="cancel" aria-label="Close sign in">×</button>
-      <span class="eyebrow">VERIFIED IDENTITY</span>
+    <form class="modal-card auth-card" id="auth-form">
+      <button class="modal-close" type="button" data-close-auth aria-label="Close sign in">×</button>
+      <span class="eyebrow">LEDGER ACCOUNT / $0 ACCESS</span>
       <h2>Enter the Ledger</h2>
-      <p>Your SSO account owns your public operator profile and every submitted setup.</p>
+      <p>Create a Ledger account or sign in. Your email stays private. Your handle owns the public record.</p>
       <div class="auth-setup-notice" id="auth-setup-notice">
-        <b>AUTHENTICATION IS NOT ACTIVE YET</b>
-        <span>The Supabase project and Google/X OAuth apps must be configured before these buttons can redirect.</span>
+        <b>FREE BACKEND CONNECTION REQUIRED</b>
+        <span>Create the free Supabase project and add its public connection values. Google, X, and a custom domain are not required.</span>
       </div>
-      <div class="auth-options">
-        <button class="oauth-button google-button" id="google-auth" type="button">
-          <span class="oauth-logo">G</span>
-          <span><b>Continue with Google</b><small>Use your Google identity</small></span>
-          <i>↗</i>
-        </button>
-        <button class="oauth-button x-button" id="x-auth" type="button">
-          <span class="oauth-logo">𝕏</span>
-          <span><b>Continue with X</b><small>Connect your X profile</small></span>
-          <i>↗</i>
-        </button>
+      <div class="credential-fields">
+        <label><span>PUBLIC HANDLE <i>NEW ACCOUNTS ONLY</i></span><input id="auth-handle" type="text" minlength="3" maxlength="30" pattern="[a-zA-Z0-9][a-zA-Z0-9_-]{2,29}" autocomplete="username" placeholder="your_handle"></label>
+        <label><span>PRIVATE EMAIL</span><input id="auth-email" type="email" autocomplete="email" placeholder="you@example.com"></label>
+        <label><span>PASSWORD</span><input id="auth-password" type="password" minlength="8" autocomplete="current-password" placeholder="8+ characters"></label>
       </div>
-      <div class="auth-footnote"><span class="shield-icon">◇</span> OAuth credentials stay with Google, X, and the configured auth provider.</div>
+      <div class="credential-actions">
+        <button class="publish-button" id="credential-sign-in" type="submit">Sign in <span>→</span></button>
+        <button class="secondary-auth-button" id="credential-sign-up" type="button">Create free account</button>
+      </div>
+      <div class="auth-inline-status" id="auth-inline-status" aria-live="polite"></div>
+      <div class="auth-footnote"><span class="shield-icon">◇</span> Passwords are hashed by the auth service and never stored in this repository.</div>
     </form>
   </dialog>
 
@@ -368,7 +366,7 @@
 
       <div class="form-alert" id="form-auth-alert">
         <span class="pulse-dot"></span>
-        <p><b>Sign in required</b><small>Connect Google or X before publishing a setup.</small></p>
+        <p><b>Sign in required</b><small>Enter your Ledger account before publishing a setup.</small></p>
         <button type="button" data-open-auth>Sign in</button>
       </div>
 

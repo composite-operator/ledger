@@ -91,10 +91,14 @@
       submitDialog.showModal();
     }));
     $$('[data-close-submit]').forEach((button) => button.addEventListener("click", () => submitDialog.close()));
+    $("[data-close-auth]").addEventListener("click", () => authDialog.close());
     $("#open-methodology").addEventListener("click", () => methodDialog.showModal());
     $$('[data-close-method]').forEach((button) => button.addEventListener("click", () => methodDialog.close()));
-    $("#google-auth").addEventListener("click", () => signIn("google"));
-    $("#x-auth").addEventListener("click", () => signIn("x"));
+    $("#auth-form").addEventListener("submit", (event) => {
+      event.preventDefault();
+      authenticateWithPassword("signin");
+    });
+    $("#credential-sign-up").addEventListener("click", () => authenticateWithPassword("signup"));
 
     [authDialog, submitDialog, methodDialog, $("#command-dialog"), $("#profile-dialog")].forEach((dialog) => {
       dialog.addEventListener("click", (event) => {
@@ -224,14 +228,61 @@
     };
   }
 
-  async function signIn(provider) {
+  async function authenticateWithPassword(mode) {
     if (!state.supabase) {
-      showToast("Sign-in is not active yet", "The Supabase project and OAuth providers must be configured first.", true);
+      showToast("Account system is not active yet", "Connect the free Supabase project first.", true);
       return;
     }
-    const redirectTo = config.siteUrl || `${location.origin}${location.pathname}`;
-    const { error } = await state.supabase.auth.signInWithOAuth({ provider, options: { redirectTo } });
-    if (error) showToast("Sign-in failed", error.message, true);
+    const email = $("#auth-email").value.trim();
+    const password = $("#auth-password").value;
+    const handle = $("#auth-handle").value.trim().toLowerCase();
+
+    $("#auth-inline-status").classList.remove("is-error", "is-success");
+    if (!email || !email.includes("@")) return setAuthStatus("Enter a valid email address.", true);
+    if (password.length < 8) return setAuthStatus("Use a password with at least 8 characters.", true);
+    if (mode === "signup" && !/^[a-z0-9][a-z0-9_-]{2,29}$/.test(handle)) {
+      return setAuthStatus("Handle: 3–30 letters, numbers, underscores, or hyphens.", true);
+    }
+
+    setAuthBusy(true);
+    setAuthStatus(mode === "signup" ? "Creating your Ledger account…" : "Signing in…");
+    try {
+      if (mode === "signup") {
+        const { data, error } = await state.supabase.auth.signUp({
+          email,
+          password,
+          options: { data: { user_name: handle, name: handle } }
+        });
+        if (error) throw error;
+        if (data.session) {
+          $("#auth-dialog").close();
+          showToast("Account created", `Welcome to the Ledger, @${handle}.`);
+        } else {
+          setAuthStatus("Account created. Check your email if confirmation is enabled.", false, true);
+        }
+      } else {
+        const { error } = await state.supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        $("#auth-dialog").close();
+        showToast("Signed in", "Your Ledger account is active.");
+      }
+      $("#auth-password").value = "";
+    } catch (error) {
+      setAuthStatus(error.message || "Authentication failed.", true);
+    } finally {
+      setAuthBusy(false);
+    }
+  }
+
+  function setAuthStatus(message, isError = false, isSuccess = false) {
+    const status = $("#auth-inline-status");
+    status.textContent = message;
+    status.classList.toggle("is-error", isError);
+    status.classList.toggle("is-success", isSuccess);
+  }
+
+  function setAuthBusy(busy) {
+    [$("#credential-sign-in"), $("#credential-sign-up")].forEach((button) => { button.disabled = busy; });
   }
 
   function updateAccountUI() {
@@ -392,12 +443,14 @@
     }
     const recent = profileSetups.slice().sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at)).slice(0, 7);
     const drawer = $("#profile-drawer");
+    const isOwnProfile = Boolean(state.session?.user && String(state.session.user.id) === String(leader.id));
     drawer.innerHTML = `<div class="profile-head">
       <button class="modal-close" type="button" data-close-profile aria-label="Close profile">×</button>
       <div class="profile-avatar-large">${initials(leader.handle)}</div>
       <h2>${escapeHtml(leader.display_name || leader.handle)}</h2>
       <p>@${escapeHtml(leader.handle)} · ${escapeHtml(leader.bio || "Public Ledger operator")}</p>
-      <div class="profile-badges"><span>SSO VERIFIED</span><span>PUBLIC RECORD</span><span>${leader.triggered_setups || 0} RESOLVED</span></div>
+      <div class="profile-badges"><span>LEDGER ACCOUNT</span><span>PUBLIC RECORD</span><span>${leader.triggered_setups || 0} RESOLVED</span></div>
+      ${isOwnProfile ? '<button class="profile-signout" type="button" data-sign-out>Sign out</button>' : ''}
     </div>
     <div class="profile-body">
       <div class="profile-metric-grid">
@@ -412,7 +465,17 @@
       <div class="profile-records">${recent.length ? recent.map(profileRecord).join("") : '<div class="table-empty">No public setups yet.</div>'}</div>
     </div>`;
     $("[data-close-profile]", drawer).addEventListener("click", () => $("#profile-dialog").close());
+    const signOutButton = $("[data-sign-out]", drawer);
+    if (signOutButton) signOutButton.addEventListener("click", signOut);
     $("#profile-dialog").showModal();
+  }
+
+  async function signOut() {
+    if (!state.supabase) return;
+    const { error } = await state.supabase.auth.signOut();
+    if (error) return showToast("Sign-out failed", error.message, true);
+    $("#profile-dialog").close();
+    showToast("Signed out", "Your public Ledger remains available.");
   }
 
   function profileRecord(setup) {
@@ -609,7 +672,7 @@
     const errorNode = $("#form-error");
     errorNode.hidden = true;
     if (!state.session?.user || !state.supabase) {
-      errorNode.textContent = "Sign in with Google or X before you publish this setup.";
+      errorNode.textContent = "Sign in to your Ledger account before you publish this setup.";
       errorNode.hidden = false;
       $("#auth-dialog").showModal();
       return;
@@ -753,18 +816,14 @@
   function updateAuthAvailability() {
     const notice = $("#auth-setup-notice");
     if (notice) notice.hidden = liveConfigPresent;
-    [["#google-auth", "Google"], ["#x-auth", "X"]].forEach(([selector, provider]) => {
-      const button = $(selector);
+    [$("#credential-sign-in"), $("#credential-sign-up")].forEach((button) => {
       if (!button) return;
-      button.classList.toggle("is-unavailable", !liveConfigPresent);
       if (liveConfigPresent) button.removeAttribute("aria-describedby");
       else button.setAttribute("aria-describedby", "auth-setup-notice");
-      const detail = button.querySelector("small");
-      if (detail) detail.textContent = liveConfigPresent ? `Use your ${provider} identity` : "Backend setup required";
     });
     const identityState = $("#network-identity-state");
     if (identityState) {
-      identityState.textContent = liveConfigPresent ? "SSO READY" : "SETUP REQUIRED";
+      identityState.textContent = liveConfigPresent ? "ACCOUNTS READY" : "SETUP REQUIRED";
       identityState.classList.toggle("positive", liveConfigPresent);
     }
   }

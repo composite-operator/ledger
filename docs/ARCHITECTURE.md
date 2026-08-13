@@ -5,7 +5,7 @@
 ```text
 GitHub Pages
   └─ Static Ledger interface
-       ├─ Supabase Auth → Google OAuth / X OAuth 2.0
+       ├─ Supabase Auth → Ledger email/password accounts
        └─ Supabase Data API → Postgres + row-level security
                                     ↑
                                     └─ trusted outcome worker
@@ -18,7 +18,7 @@ GitHub Pages cannot run server-side code or keep secrets. Supabase is the identi
 
 ### `profiles`
 
-One public operator profile per authenticated Supabase user. The `auth.users` insert trigger creates a collision-safe handle from Google or X metadata. The user can change public display fields, but cannot assign another user ID.
+One public operator profile exists per authenticated Supabase user. The `auth.users` insert trigger creates a collision-safe handle from Ledger signup metadata. The user can change public display fields, but cannot assign another user ID. Google and X can be linked later without changing this ownership model.
 
 ### `setups`
 
@@ -79,7 +79,7 @@ GOAT = (0.7 × capped Avg R + 0.3 × Win Rate) × min(1, Triggered / 20)
 - Column grants limit profile updates to display fields.
 - Core setup mutation is blocked by a database trigger, including trusted updates.
 - `setup_events` has row-level security with no browser policies.
-- Google and X client secrets are never sent to the site.
+- Password hashes stay inside Supabase Auth and are never sent to the site or repository.
 
 ## Operator controls to add before open registration
 
@@ -87,6 +87,6 @@ The initial schema supplies the core security boundary. Before broad promotion, 
 
 1. Supabase CAPTCHA or Turnstile on sign-up.
 2. A rate-limited submission Edge Function if abuse starts.
-3. Terms, privacy, and moderation pages for X and Google provider review.
+3. Terms, privacy, moderation, and optional provider-review pages before adding external social identity links.
 4. An admin audit surface for suspensions and cancelled records.
 5. Monitoring for repeated ticker spam and duplicate setup fingerprints.

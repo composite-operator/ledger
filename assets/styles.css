@@ -444,6 +444,20 @@ dialog::backdrop { background: rgba(1,2,4,.78); backdrop-filter: blur(12px); }
 .auth-setup-notice[hidden] { display: none; }
 .auth-setup-notice b { color: #ffbd5c; font-family: var(--mono); font-size: 8px; letter-spacing: .08em; }
 .auth-setup-notice span { color: var(--muted); font-size: 8px; line-height: 1.55; }
+.credential-fields { display: grid; gap: 11px; margin-top: 19px; }
+.credential-fields label { display: grid; gap: 6px; }
+.credential-fields label > span { display: flex; justify-content: space-between; color: var(--faint); font-family: var(--mono); font-size: 7px; letter-spacing: .05em; }
+.credential-fields label i { color: var(--muted); font-style: normal; }
+.credential-fields input { width: 100%; padding: 12px 13px; border: 1px solid var(--line); border-radius: 9px; outline: none; background: rgba(255,255,255,.022); color: var(--text); font-family: var(--mono); font-size: 10px; }
+.credential-fields input:focus { border-color: rgba(200,255,46,.45); box-shadow: 0 0 0 3px rgba(200,255,46,.06); }
+.credential-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 15px; }
+.credential-actions .publish-button { width: 100%; }
+.secondary-auth-button { border: 1px solid var(--line-strong); border-radius: 9px; background: rgba(255,255,255,.025); color: var(--text); cursor: pointer; font-family: var(--mono); font-size: 8px; }
+.secondary-auth-button:hover { border-color: rgba(200,255,46,.35); }
+.credential-actions button:disabled { cursor: wait; opacity: .48; }
+.auth-inline-status { min-height: 15px; margin-top: 10px; color: var(--muted); font-family: var(--mono); font-size: 7px; line-height: 1.5; }
+.auth-inline-status.is-error { color: #ff765f; }
+.auth-inline-status.is-success { color: var(--green); }
 .auth-options { display: grid; gap: 9px; margin-top: 25px; }
 .oauth-button { display: grid; grid-template-columns: 37px 1fr auto; align-items: center; gap: 12px; width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 11px; background: rgba(255,255,255,.022); color: var(--text); cursor: pointer; text-align: left; }
 .oauth-button:hover { border-color: var(--line-strong); background: rgba(255,255,255,.04); transform: translateY(-1px); }
@@ -554,6 +568,8 @@ dialog::backdrop { background: rgba(1,2,4,.78); backdrop-filter: blur(12px); }
 .profile-head p { margin: 0; color: var(--muted); font-size: 9px; }
 .profile-badges { display: flex; gap: 6px; margin-top: 13px; }
 .profile-badges span { padding: 4px 6px; border: 1px solid var(--line); border-radius: 5px; color: var(--faint); font-family: var(--mono); font-size: 6px; }
+.profile-signout { margin-top: 14px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 7px; background: transparent; color: var(--muted); cursor: pointer; font-family: var(--mono); font-size: 7px; }
+.profile-signout:hover { border-color: var(--line-strong); color: var(--text); }
 .profile-body { padding: 20px 28px 40px; }
 .profile-metric-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 7px; }
 .profile-metric-grid div { display: grid; padding: 11px; border: 1px solid var(--line); border-radius: 9px; }
@@ -678,6 +694,7 @@ dialog::backdrop { background: rgba(1,2,4,.78); backdrop-filter: blur(12px); }
   .publish-button { width: 100%; }
   .method-grid { grid-template-columns: 1fr; }
   .profile-dialog { width: 100%; }
+  .credential-actions { grid-template-columns: 1fr; }
 }
 
 @media (prefers-reduced-motion: reduce) {
