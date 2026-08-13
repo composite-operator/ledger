@@ -11,11 +11,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/styles.css?v=3">
+  <link rel="stylesheet" href="assets/styles.css?v=4">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
   <script src="assets/runtime-config.js?v=3" defer></script>
-  <script src="assets/app.js?v=5" defer></script>
+  <script src="assets/app.js?v=6" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to content</a>
@@ -66,12 +66,12 @@
   <div class="market-rail" aria-label="Ledger activity summary">
     <div class="rail-label"><span class="pulse-dot"></span>LEDGER LIVE</div>
     <div class="rail-track" id="market-rail-track">
-      <span><b>QUEUED</b> <i id="rail-queued">3</i></span>
-      <span><b>HOT</b> <i id="rail-hot">0</i></span>
-      <span><b>NEAR</b> <i id="rail-near">0</i></span>
-      <span><b>ACTIVE</b> <i id="rail-active">0</i></span>
-      <span><b>RESOLVED</b> <i id="rail-resolved">2</i></span>
-      <span><b>OPERATORS</b> <i id="rail-operators">1</i></span>
+      <a href="?book=queued#setups" data-open-book="queued"><b>QUEUED</b> <i id="rail-queued">3</i></a>
+      <a href="?book=hot#setups" data-open-book="hot"><b>HOT</b> <i id="rail-hot">0</i></a>
+      <a href="?book=near#setups" data-open-book="near"><b>NEAR</b> <i id="rail-near">0</i></a>
+      <a href="?book=active#setups" data-open-book="active"><b>ACTIVE</b> <i id="rail-active">0</i></a>
+      <a href="?book=resolved#setups" data-open-book="resolved"><b>RESOLVED</b> <i id="rail-resolved">2</i></a>
+      <a href="#leaderboard" data-view-target="leaderboard"><b>OPERATORS</b> <i id="rail-operators">1</i></a>
       <span class="rail-copy"><b>TRANSPARENT OUTCOMES</b> EVERY SETUP SCORED AGAINST ITS ORIGINAL ENTRY, STOP, AND TARGETS</span>
     </div>
   </div>
@@ -227,7 +227,7 @@
                 <th scope="col">30D score</th>
                 <th scope="col">Win rate</th>
                 <th scope="col">Avg R</th>
-                <th scope="col">Resolved</th>
+                <th scope="col">Triggered</th>
                 <th scope="col">Total score</th>
                 <th scope="col"><span class="sr-only">Open profile</span></th>
               </tr>
@@ -250,9 +250,9 @@
     <section class="app-view" data-view="setups">
       <header class="page-heading">
         <div>
-          <span class="eyebrow">PUBLIC SETUP TAPE</span>
-          <h1>Live setups</h1>
-          <p>Every published thesis, from queue to resolved outcome.</p>
+          <span class="eyebrow" id="setup-book-kicker">PUBLIC SETUP BOOK</span>
+          <h1 id="setup-book-title">All setups</h1>
+          <p id="setup-book-description">Every published thesis, from queue to resolved outcome.</p>
         </div>
         <button class="button button-primary" data-open-submit type="button">Submit a setup</button>
       </header>
@@ -287,12 +287,27 @@
               <span class="sr-only">Search setups</span>
               <input id="setup-search" type="search" placeholder="Search ticker, operator, strategy, or thesis…" autocomplete="off">
             </label>
+            <span class="quote-state" id="quote-refresh-state"><i></i> STORED PRICES</span>
             <select id="setup-sort" aria-label="Sort setups">
               <option value="newest">Newest first</option>
-              <option value="trigger">Closest to trigger</option>
+              <option value="oldest">Oldest first</option>
+              <option value="entry-near">Closest to entry</option>
+              <option value="entry-far">Furthest from entry</option>
+              <option value="operator-r">Best operator average R</option>
+              <option value="operator-win">Best operator win rate</option>
+              <option value="planned-r">Highest planned R</option>
               <option value="score">Highest score</option>
               <option value="discussed">Most discussed</option>
             </select>
+          </div>
+          <div class="setup-sort-dock glass-panel" aria-label="Sortable setup fields">
+            <span>SORT BOOK</span>
+            <button class="is-active" data-setup-sort-field="newest" type="button">POSTED ↓</button>
+            <button data-setup-sort-field="entry-near" type="button">% FROM ENTRY</button>
+            <button data-setup-sort-field="operator-r" type="button">OP AVG R</button>
+            <button data-setup-sort-field="operator-win" type="button">OP WIN</button>
+            <button data-setup-sort-field="planned-r" type="button">PLANNED R</button>
+            <button data-setup-sort-field="discussed" type="button">COMMENTS</button>
           </div>
           <div class="setup-card-grid" id="setup-card-grid"></div>
           <div class="table-empty glass-panel" id="setup-empty" hidden>No current public setups. Historical Sheet records will appear after the live migration.</div>

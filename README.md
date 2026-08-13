@@ -20,6 +20,9 @@ The repository starts in an explicit preview mode. Preview mode shows only a ver
 - Searchable and sortable leaderboard
 - Public per-operator profile drawers
 - Queue, Hot, Near, Active, and Resolved setup states
+- Permanent setup-book URLs for every state and the operator index
+- Sortable setup fields for posted date, entry distance, planned R, operator history, score, and comments
+- Live Yahoo Finance quotes with Google Finance fallback for setup-to-entry distance
 - Structured setup form with live risk/reward checks
 - Server-verified MARKET activation with a ±0.5% reference-price tolerance
 - Collapsible public discussions with authenticated comments and starred OP replies
@@ -36,12 +39,16 @@ The repository starts in an explicit preview mode. Preview mode shows only a ver
 2. Open **SQL Editor**.
 3. Run [`supabase/migrations/202608130001_initial_ledger.sql`](supabase/migrations/202608130001_initial_ledger.sql).
 4. Run [`supabase/migrations/202608130002_setup_comments.sql`](supabase/migrations/202608130002_setup_comments.sql).
-5. In **Authentication → URL Configuration**, set:
+5. Run [`supabase/migrations/202608130003_market_edge_function.sql`](supabase/migrations/202608130003_market_edge_function.sql).
+6. Run [`supabase/migrations/202608130004_activate_original_spy_market_test.sql`](supabase/migrations/202608130004_activate_original_spy_market_test.sql) only when the original SPY test row exists.
+7. Run [`supabase/migrations/202608130005_setup_book_operator_metrics.sql`](supabase/migrations/202608130005_setup_book_operator_metrics.sql).
+8. Deploy `supabase/functions/submit-market-setup` and `supabase/functions/setup-book-quotes` as Edge Functions.
+9. In **Authentication → URL Configuration**, set:
    - Site URL: `https://ximxesabortion.github.io/ledger/`
    - Redirect URL: `https://ximxesabortion.github.io/ledger/`
 
-6. In **Authentication → Sign In / Providers → Email**, keep Email enabled.
-7. For the $0 MVP, turn **Confirm email** off. This avoids relying on a paid production mail service. Add verified-email delivery later if the product needs email ownership proof or password-reset email.
+10. In **Authentication → Sign In / Providers → Email**, keep Email enabled.
+11. For the $0 MVP, turn **Confirm email** off. This avoids relying on a paid production mail service. Add verified-email delivery later if the product needs email ownership proof or password-reset email.
 
 Google and X are optional future identity links. They are not required for Ledger accounts.
 
@@ -103,6 +110,7 @@ The metric contract preserves the current 14-column leaderboard. See [`docs/ARCH
 - Public risk fields lock after submission.
 - Outcome updates use a trusted service process.
 - MARKET submissions use an authenticated Edge Function. It verifies Yahoo Finance first, uses Google Finance only as a fallback, snaps entry to the verified quote, and activates the setup immediately when the submitted reference is within ±0.5%.
+- Setup-book distance uses a publishable-key Edge Function with request-size and per-minute limits. A 50% entry sanity gate suppresses ambiguous symbols instead of showing a misleading price.
 - Private Google workbook tabs remain outside the public application.
 
 ## License

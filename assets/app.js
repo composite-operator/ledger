@@ -10,6 +10,14 @@
 
   const previewSetups = [];
   const previewStats = { setups: 2, resolved: 2 };
+  const setupBooks = {
+    all: { title: "All setups", kicker: "PUBLIC SETUP BOOK", description: "Every published thesis, from queue to resolved outcome." },
+    queued: { title: "Queued setups", kicker: "PRE-EXECUTION BOOK", description: "Ideas waiting for their entry. Review the plan and discuss it before execution." },
+    hot: { title: "Hot setups", kicker: "IMMEDIATE WATCH BOOK", description: "Setups receiving the strongest near-term attention from the network." },
+    near: { title: "Near-entry setups", kicker: "PROXIMITY BOOK", description: "Setups closest to their published entry, ordered with live market distance." },
+    active: { title: "Active setups", kicker: "LIVE EXECUTION BOOK", description: "Triggered setups now moving through their published stop and target map." },
+    resolved: { title: "Resolved setups", kicker: "OUTCOME BOOK", description: "Closed public records with the original plan, result, and full discussion intact." }
+  };
 
   const state = {
     supabase: null,
@@ -33,6 +41,7 @@
     commentErrors: new Map(),
     commentsLoading: new Set(),
     expandedComments: new Set(),
+    quoteRefreshActive: false,
     chart: null,
     commandItems: [],
     commandToken: 0,
@@ -63,18 +72,53 @@
 
   function bindNavigation() {
     $$('[data-view-target]').forEach((button) => {
-      button.addEventListener("click", () => switchView(button.dataset.viewTarget));
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        if (button.dataset.viewTarget === "setups") openSetupBook("all");
+        else switchView(button.dataset.viewTarget, true);
+      });
     });
+    $$('[data-open-book]').forEach((link) => link.addEventListener("click", (event) => {
+      event.preventDefault();
+      openSetupBook(link.dataset.openBook);
+    }));
   }
 
-  function switchView(viewName) {
+  function switchView(viewName, pushHistory = false) {
     $$(".app-view").forEach((view) => view.classList.toggle("is-active", view.dataset.view === viewName));
     $$(".nav-item").forEach((button) => button.classList.toggle("is-active", button.dataset.viewTarget === viewName));
     if (viewName === "setups") renderNetworkChart();
+    if (viewName === "leaderboard") document.title = "Leaderboard — Composite Operator Ledger";
+    if (viewName === "overview") document.title = "Ledger — Composite Operator";
     const nextUrl = new URL(location.href);
+    if (viewName !== "setups") nextUrl.searchParams.delete("book");
     nextUrl.hash = viewName === "overview" ? "" : viewName;
-    history.replaceState(null, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
+    history[pushHistory ? "pushState" : "replaceState"](null, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function openSetupBook(bookName, pushHistory = true) {
+    const book = setupBooks[bookName] ? bookName : "all";
+    state.setupState = book;
+    syncSetupBookUI();
+    renderSetups();
+    $$(".app-view").forEach((view) => view.classList.toggle("is-active", view.dataset.view === "setups"));
+    $$(".nav-item").forEach((button) => button.classList.toggle("is-active", button.dataset.viewTarget === "setups"));
+    document.title = book === "all" ? "Ledger — Composite Operator" : `${setupBooks[book].title} — Composite Operator Ledger`;
+    const nextUrl = new URL(location.href);
+    nextUrl.searchParams.set("book", book);
+    nextUrl.hash = "setups";
+    history[pushHistory ? "pushState" : "replaceState"](null, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
+    renderNetworkChart();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function syncSetupBookUI() {
+    const book = setupBooks[state.setupState] || setupBooks.all;
+    $("#setup-book-kicker").textContent = book.kicker;
+    $("#setup-book-title").textContent = book.title;
+    $("#setup-book-description").textContent = book.description;
+    $$('[data-setup-state]').forEach((item) => item.classList.toggle("is-active", item.dataset.setupState === state.setupState));
   }
 
   function bindDialogs() {
@@ -164,6 +208,60 @@
     state.compactLeaders = (compactResult.data || []).map(normalizeLeader);
     if (state.rankPage === 1) state.podiumLeaders = state.leaders.slice(0, 3);
     state.setups = (setupsResult.data || []).map(normalizeSetup);
+    void refreshSetupQuotes();
+  }
+
+  async function refreshSetupQuotes() {
+    if (!state.live || state.quoteRefreshActive || !state.setups.length) return;
+    const tickers = [...new Set(state.setups
+      .filter((setup) => normalizeState(setup.status) !== "resolved")
+      .map((setup) => setup.ticker)
+      .filter(Boolean))].slice(0, 40);
+    if (!tickers.length) return;
+    state.quoteRefreshActive = true;
+    setQuoteState("REFRESHING PRICES", "is-loading");
+    try {
+      const response = await fetch(`${config.supabaseUrl}/functions/v1/setup-book-quotes`, {
+        method: "POST",
+        headers: {
+          apikey: config.supabasePublishableKey,
+          Authorization: `Bearer ${config.supabasePublishableKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ tickers })
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !payload.quotes) {
+        setQuoteState("STORED PRICES", "");
+        return;
+      }
+      const hydratedTickers = new Set();
+      state.setups.forEach((setup) => {
+        const quote = payload.quotes[setup.ticker];
+        if (!quote || !Number.isFinite(Number(quote.price))) return;
+        const entryRatio = Number.isFinite(setup.entry) && setup.entry > 0 ? Math.abs(Number(quote.price) - setup.entry) / setup.entry : 0;
+        if (entryRatio > 0.5) return;
+        setup.current_price = Number(quote.price);
+        setup.live_quote_source = quote.source;
+        setup.live_quote_at = quote.quotedAt;
+        hydratedTickers.add(setup.ticker);
+      });
+      const quoteCount = hydratedTickers.size;
+      setQuoteState(`${quoteCount} LIVE QUOTE${quoteCount === 1 ? "" : "S"}`, "is-live");
+      renderSetups();
+    } catch (error) {
+      console.warn("Setup-book quote refresh failed", error);
+      setQuoteState("STORED PRICES", "");
+    } finally {
+      state.quoteRefreshActive = false;
+    }
+  }
+
+  function setQuoteState(label, className) {
+    const node = $("#quote-refresh-state");
+    if (!node) return;
+    node.className = `quote-state${className ? ` ${className}` : ""}`;
+    node.innerHTML = `<i></i> ${escapeHtml(label)}`;
   }
 
   async function loadLiveLeaderboardPage() {
@@ -233,7 +331,12 @@
       current_price: nullableNumber(row.current_price),
       score: nullableNumber(row.score),
       r_result: nullableNumber(row.r_result),
-      comment_count: Number(row.comment_count || 0)
+      comment_count: Number(row.comment_count || 0),
+      operator_total_setups: Number(row.operator_total_setups || 0),
+      operator_triggered_setups: Number(row.operator_triggered_setups || 0),
+      operator_win_rate: nullableNumber(row.operator_win_rate),
+      operator_avg_r: nullableNumber(row.operator_avg_r),
+      operator_goat_score: nullableNumber(row.operator_goat_score)
     };
   }
 
@@ -494,9 +597,7 @@
 
   function bindSetupFilters() {
     $$('[data-setup-state]').forEach((button) => button.addEventListener("click", () => {
-      state.setupState = button.dataset.setupState;
-      $$('[data-setup-state]').forEach((item) => item.classList.toggle("is-active", item === button));
-      renderSetups();
+      openSetupBook(button.dataset.setupState);
     }));
     $$('[data-direction]').forEach((button) => button.addEventListener("click", () => {
       state.setupDirection = button.dataset.direction;
@@ -509,8 +610,19 @@
     });
     $("#setup-sort").addEventListener("change", (event) => {
       state.setupSort = event.target.value;
+      syncSetupSortUI();
       renderSetups();
     });
+    $$('[data-setup-sort-field]').forEach((button) => button.addEventListener("click", () => {
+      state.setupSort = button.dataset.setupSortField;
+      syncSetupSortUI();
+      renderSetups();
+    }));
+  }
+
+  function syncSetupSortUI() {
+    $("#setup-sort").value = state.setupSort;
+    $$('[data-setup-sort-field]').forEach((button) => button.classList.toggle("is-active", button.dataset.setupSortField === state.setupSort));
   }
 
   function filteredSetups() {
@@ -522,8 +634,18 @@
       return matchesState && matchesDirection && matchesSearch;
     });
 
-    if (state.setupSort === "trigger") {
+    if (state.setupSort === "oldest") {
+      rows.sort((a, b) => new Date(a.submitted_at) - new Date(b.submitted_at));
+    } else if (state.setupSort === "entry-near") {
       rows.sort((a, b) => triggerDistance(a) - triggerDistance(b));
+    } else if (state.setupSort === "entry-far") {
+      rows.sort((a, b) => triggerDistance(b) - triggerDistance(a));
+    } else if (state.setupSort === "operator-r") {
+      rows.sort((a, b) => operatorMetric(b, "avg_r") - operatorMetric(a, "avg_r") || new Date(b.submitted_at) - new Date(a.submitted_at));
+    } else if (state.setupSort === "operator-win") {
+      rows.sort((a, b) => operatorMetric(b, "win_rate") - operatorMetric(a, "win_rate") || operatorMetric(b, "triggered_setups") - operatorMetric(a, "triggered_setups"));
+    } else if (state.setupSort === "planned-r") {
+      rows.sort((a, b) => (computePlannedR(b.direction, b.entry, b.stop, b.t1) ?? -Infinity) - (computePlannedR(a.direction, a.entry, a.stop, a.t1) ?? -Infinity));
     } else if (state.setupSort === "score") {
       rows.sort((a, b) => (b.score ?? -Infinity) - (a.score ?? -Infinity));
     } else if (state.setupSort === "discussed") {
@@ -535,6 +657,8 @@
   }
 
   function renderSetups() {
+    syncSetupBookUI();
+    syncSetupSortUI();
     const rows = filteredSetups();
     const grid = $("#setup-card-grid");
     grid.innerHTML = rows.map(setupCard).join("");
@@ -563,6 +687,8 @@
   function setupCard(setup) {
     const normalized = normalizeState(setup.status);
     const plannedR = computePlannedR(setup.direction, setup.entry, setup.stop, setup.t1);
+    const distance = percentFromEntry(setup);
+    const operator = operatorHistory(setup);
     const setupId = String(setup.id);
     const commentsOpen = state.expandedComments.has(setupId);
     return `<article class="setup-card is-${setup.direction.toLowerCase()}${commentsOpen ? " has-open-comments" : ""}" id="setup-${escapeAttr(setupId)}">
@@ -573,12 +699,15 @@
       <div class="setup-price-grid">
         <div><span>CURRENT</span><b>${formatPrice(setup.current_price)}</b></div>
         <div><span>ENTRY</span><b>${formatPrice(setup.entry)}</b></div>
+        <div><span>% FROM ENTRY</span><b class="${metricClass(distance)}">${formatSignedPercent(distance)}</b></div>
         <div><span>STOP</span><b class="metric-negative">${formatPrice(setup.stop)}</b></div>
         <div><span>PLANNED R</span><b class="metric-positive">${formatNumber(plannedR, 2, "—")}R</b></div>
+        <div><span>OP AVG R</span><b class="${metricClass(operator.avg_r)}">${formatR(operator.avg_r)}</b></div>
+        <div><span>OP WIN / HISTORY</span><b>${formatPercent(operator.win_rate)} <small>${formatInteger(operator.triggered_setups)}T</small></b></div>
       </div>
       <p class="setup-thesis">${escapeHtml(setup.thesis || "No public thesis was added to this setup.")}</p>
       <div class="setup-card-foot">
-        <span>@${escapeHtml(setup.handle)} · ${formatRelative(setup.submitted_at)}</span>
+        <span>@${escapeHtml(setup.handle)} · POSTED ${formatDate(setup.submitted_at)} · ${formatRelative(setup.submitted_at)}</span>
         <div><button type="button" data-share-setup="${escapeAttr(setupId)}">SHARE ↗</button><button type="button" data-open-setup-profile="${escapeAttr(setup.user_id)}" data-handle="${escapeAttr(setup.handle)}">VIEW OPERATOR ↗</button></div>
       </div>
       ${setupComments(setup)}
@@ -592,6 +721,7 @@
     const loading = state.commentsLoading.has(setupId);
     const error = state.commentErrors.get(setupId);
     const count = comments ? comments.filter((comment) => !comment.is_deleted).length : setup.comment_count;
+    const preExecution = ["queued", "hot", "near"].includes(normalizeState(setup.status));
     let conversation = "";
 
     if (loading) {
@@ -612,7 +742,7 @@
 
     return `<section class="setup-discussion${expanded ? " is-open" : ""}">
       <button class="discussion-toggle" type="button" data-toggle-comments="${escapeAttr(setupId)}" aria-expanded="${expanded}" aria-controls="comments-${escapeAttr(setupId)}">
-        <span><i class="comment-pulse"></i> DISCUSSION</span><b>${formatInteger(count)} COMMENT${count === 1 ? "" : "S"}</b><em>${expanded ? "COLLAPSE −" : "EXPAND +"}</em>
+        <span><i class="comment-pulse"></i> ${preExecution ? "PRE-EXECUTION THREAD" : "DISCUSSION"}</span><b>${formatInteger(count)} COMMENT${count === 1 ? "" : "S"}</b><em>${expanded ? "COLLAPSE −" : "EXPAND +"}</em>
       </button>
       <div class="discussion-body" id="comments-${escapeAttr(setupId)}"${expanded ? "" : " hidden"}>
         <div class="discussion-heading"><div><span>PUBLIC THREAD</span><b>${escapeHtml(setup.ticker)} / @${escapeHtml(setup.handle)}</b></div><small>OP replies carry the gold star.</small></div>
@@ -738,7 +868,7 @@
     const setupId = new URLSearchParams(location.search).get("setup");
     if (!setupId || !state.setups.some((setup) => String(setup.id) === setupId)) return;
     state.expandedComments.add(setupId);
-    switchView("setups");
+    openSetupBook("all", false);
     await loadSetupComments(setupId);
     requestAnimationFrame(() => document.getElementById(`setup-${setupId}`)?.scrollIntoView({ behavior: "smooth", block: "start" }));
   }
@@ -910,7 +1040,7 @@
     if (data) state.setups.unshift(normalizeSetup({ ...data, handle: state.profile?.handle || "operator" }));
     await loadLiveData().catch(() => null);
     renderAll();
-    switchView("setups");
+    openSetupBook("all");
   }
 
   async function submitVerifiedMarketSetup(payload) {
@@ -979,7 +1109,7 @@
     const viewItems = [
       { type: "VIEW", icon: "01", label: "Overview", note: "Network summary and signal stream", action: () => switchView("overview") },
       { type: "VIEW", icon: "02", label: "Leaderboard", note: "Global operator rankings", action: () => switchView("leaderboard") },
-      { type: "VIEW", icon: "03", label: "Live setups", note: "Public setup tape", action: () => switchView("setups") }
+      { type: "VIEW", icon: "03", label: "Setup books", note: "Sortable public setup records", action: () => openSetupBook("all") }
     ];
     let commandLeaders = uniqueLeaders([...state.leaders, ...state.compactLeaders]);
     if (state.live && state.supabase && query.length >= 2) {
@@ -988,7 +1118,7 @@
       if (data) commandLeaders = data.map(normalizeLeader);
     }
     const leaderItems = commandLeaders.map((leader) => ({ type: "OPERATOR", icon: initials(leader.handle), label: `@${leader.handle}`, note: `${leader.triggered_setups} triggered · ${formatR(leader.avg_r)} average`, action: () => openProfile(leader) }));
-    const setupItems = state.setups.map((setup) => ({ type: "SETUP", icon: setup.direction === "LONG" ? "↗" : "↘", label: setup.ticker, note: `@${setup.handle} · ${setup.status} · ${setup.strategy || "Uncategorized"}`, action: () => { state.setupSearch = setup.ticker.toLowerCase(); $("#setup-search").value = setup.ticker; switchView("setups"); renderSetups(); } }));
+    const setupItems = state.setups.map((setup) => ({ type: "SETUP", icon: setup.direction === "LONG" ? "↗" : "↘", label: setup.ticker, note: `@${setup.handle} · ${setup.status} · ${setup.strategy || "Uncategorized"}`, action: () => { state.setupSearch = setup.ticker.toLowerCase(); $("#setup-search").value = setup.ticker; openSetupBook(normalizeState(setup.status)); } }));
     state.commandItems = [...viewItems, ...leaderItems, ...setupItems].filter((item) => !query || `${item.label} ${item.note} ${item.type}`.toLowerCase().includes(query)).slice(0, 12);
     $("#command-results").innerHTML = state.commandItems.map((item, index) => `<div class="command-result ${index === 0 ? "is-selected" : ""}" data-command-index="${index}"><span class="command-result-icon">${escapeHtml(item.icon)}</span><span class="command-result-copy"><b>${escapeHtml(item.label)}</b><small>${escapeHtml(item.note)}</small></span><span class="command-result-type">${item.type}</span></div>`).join("") || '<div class="table-empty">No matching operators or setups.</div>';
     $$('[data-command-index]').forEach((element) => element.addEventListener("click", () => {
@@ -999,7 +1129,21 @@
 
   function bindUtilities() {
     $("#theme-toggle").addEventListener("click", () => document.body.classList.toggle("high-contrast"));
-    if (location.hash === "#leaderboard" || location.hash === "#setups") switchView(location.hash.slice(1));
+    applyLocationRoute();
+    window.addEventListener("popstate", applyLocationRoute);
+  }
+
+  function applyLocationRoute() {
+    const book = new URLSearchParams(location.search).get("book");
+    if (location.hash === "#setups" || setupBooks[book]) {
+      openSetupBook(book || "all", false);
+      return;
+    }
+    if (location.hash === "#leaderboard") {
+      switchView("leaderboard", false);
+      return;
+    }
+    switchView("overview", false);
   }
 
   function renderAll() {
@@ -1099,6 +1243,29 @@
     return Math.abs(setup.current_price - setup.entry) / setup.entry;
   }
 
+  function percentFromEntry(setup) {
+    if (!Number.isFinite(setup.entry) || !Number.isFinite(setup.current_price) || setup.entry === 0) return null;
+    return ((setup.current_price - setup.entry) / setup.entry) * 100;
+  }
+
+  function operatorHistory(setup) {
+    const leader = [...state.leaders, ...state.compactLeaders].find((item) => String(item.id) === String(setup.user_id) || item.handle === setup.handle);
+    return {
+      avg_r: setup.operator_avg_r ?? leader?.avg_r ?? null,
+      win_rate: setup.operator_win_rate ?? leader?.win_rate ?? null,
+      triggered_setups: setup.operator_triggered_setups || leader?.triggered_setups || 0,
+      total_setups: setup.operator_total_setups || leader?.total_setups || 0,
+      goat_score: setup.operator_goat_score ?? leader?.goat_score ?? null
+    };
+  }
+
+  function operatorMetric(setup, key) {
+    const rawValue = operatorHistory(setup)[key];
+    if (rawValue == null) return -Infinity;
+    const value = Number(rawValue);
+    return Number.isFinite(value) ? value : -Infinity;
+  }
+
   function metricClass(value) {
     if (value == null || Number(value) === 0) return "metric-neutral";
     return Number(value) > 0 ? "metric-positive" : "metric-negative";
@@ -1122,6 +1289,12 @@
   function formatPercent(value) {
     if (value == null || !Number.isFinite(Number(value))) return "—";
     return `${formatNumber(Number(value) * 100, 1)}%`;
+  }
+
+  function formatSignedPercent(value) {
+    if (value == null || !Number.isFinite(Number(value))) return "—";
+    const number = Number(value);
+    return `${number > 0 ? "+" : ""}${formatNumber(number, 2)}%`;
   }
 
   function formatR(value) {

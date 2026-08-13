@@ -1,2 +1,5 @@
 [functions.submit-market-setup]
 verify_jwt = true
+
+[functions.setup-book-quotes]
+verify_jwt = false
