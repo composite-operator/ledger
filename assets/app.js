@@ -1461,14 +1461,6 @@
         <div><span>OP AVG R</span><b class="${metricClass(operator.avg_r)}">${formatR(operator.avg_r)}</b></div>
         <div><span>OP WIN / HISTORY</span><b>${formatPercent(operator.win_rate)} <small>${formatInteger(operator.triggered_setups)}T</small></b></div>
       </div>
-      <section class="setup-target-map" aria-label="${escapeAttr(setup.ticker)} published take profit levels">
-        <header><span>TAKE PROFIT MAP</span><small>PUBLISHED / LOCKED</small></header>
-        <div>
-          <div><span>TP1</span><b>${formatPrice(setup.t1)}</b></div>
-          <div><span>TP2</span><b>${formatPrice(setup.t2)}</b></div>
-          <div><span>TP3</span><b>${formatPrice(setup.t3)}</b></div>
-        </div>
-      </section>
       ${victory ? `<button class="setup-victory-teaser" type="button" data-open-victory="${escapeAttr(setupId)}">
         <span><i>✦</i><small>VERIFIED WIN / ${escapeHtml(victoryVariant.eyebrow)}</small><b>${escapeHtml(victoryVariant.headline)}</b></span>
         <strong>${formatR(setup.r_result ?? setup.score)}</strong><em>OPEN VICTORY CARD ↗</em>
@@ -1495,6 +1487,13 @@
     const current = setup.current_price == null ? Number.NaN : Number(setup.current_price);
     const hasCurrent = Number.isFinite(current);
     const hasScale = Number.isFinite(entry) && Number.isFinite(stop) && entry !== stop;
+    const targets = [setup.t1, setup.t2, setup.t3].map((value, index) => ({
+      key: `tp${index + 1}`,
+      label: `TP${index + 1}`,
+      value: value == null ? Number.NaN : Number(value),
+      index: index + 1
+    }));
+    const publishedTargets = targets.filter((target) => Number.isFinite(target.value));
     const normalized = normalizeState(setup.status);
     const rawDistance = percentFromEntry(setup);
     const directionalDistance = rawDistance == null ? null : rawDistance * (setup.direction === "SHORT" ? -1 : 1);
@@ -1504,7 +1503,7 @@
       : normalized === "resolved" && result != null
         ? (Number(result) > 0 ? "positive" : Number(result) < 0 ? "negative" : "neutral")
         : "neutral";
-    const heading = normalized === "active" ? "LIVE POSITION MAP" : normalized === "resolved" ? "FINAL PRICE MAP" : "ENTRY PROXIMITY MAP";
+    const heading = normalized === "active" ? "LIVE EXECUTION MAP" : normalized === "resolved" ? "FINAL EXECUTION MAP" : "PRE-ENTRY EXECUTION MAP";
     const distanceLabel = directionalDistance == null
       ? "QUOTE PENDING"
       : ["queued", "hot", "near"].includes(normalized)
@@ -1514,31 +1513,95 @@
     let stopPosition = 12;
     let entryPosition = 50;
     let currentPosition = 50;
+    let position = () => 50;
     if (hasScale) {
-      const scaleValues = [stop, entry, ...(hasCurrent ? [current] : [])];
+      const scaleValues = [stop, entry, ...publishedTargets.map((target) => target.value), ...(hasCurrent ? [current] : [])];
       const floor = Math.min(...scaleValues);
       const ceiling = Math.max(...scaleValues);
       const span = Math.max(ceiling - floor, Math.abs(entry - stop));
-      const scaleFloor = floor - span * 0.12;
-      const scaleCeiling = ceiling + span * 0.12;
-      const position = (value) => Math.max(6, Math.min(94, ((value - scaleFloor) / (scaleCeiling - scaleFloor)) * 100));
+      const scaleFloor = floor - span * 0.08;
+      const scaleCeiling = ceiling + span * 0.08;
+      position = (value) => Math.max(5, Math.min(95, ((value - scaleFloor) / (scaleCeiling - scaleFloor)) * 100));
       stopPosition = position(stop);
       entryPosition = position(entry);
       currentPosition = hasCurrent ? position(current) : entryPosition;
     }
     const fillLeft = Math.min(entryPosition, currentPosition);
     const fillWidth = Math.max(0.8, Math.abs(currentPosition - entryPosition));
-    const quoteNote = setup.quote_symbol && setup.quote_symbol !== setup.ticker ? `<small>${escapeHtml(setup.quote_symbol)}</small>` : "";
+    const riskLeft = Math.min(stopPosition, entryPosition);
+    const riskWidth = Math.max(0.8, Math.abs(entryPosition - stopPosition));
+    const rewardBoundary = publishedTargets.length
+      ? (setup.direction === "SHORT"
+        ? Math.min(...publishedTargets.map((target) => target.value))
+        : Math.max(...publishedTargets.map((target) => target.value)))
+      : entry;
+    const rewardPosition = position(rewardBoundary);
+    const rewardLeft = Math.min(entryPosition, rewardPosition);
+    const rewardWidth = Math.max(0.8, Math.abs(rewardPosition - entryPosition));
+    const quoteSymbol = setup.quote_symbol || setup.ticker;
+    const quoteSource = setup.live_quote_source ? labelize(setup.live_quote_source) : "stored quote";
+    const quoteAge = setup.live_quote_at ? formatRelative(setup.live_quote_at) : "time unavailable";
+    const queued = ["queued", "hot", "near"].includes(normalized);
+    const entryExplanation = queued
+      ? "Published trigger. The setup becomes active when the market reaches this price."
+      : "Original published trigger or fill. It remains locked for outcome scoring.";
+    const stopExplanation = `Published invalidation. This ${setup.direction.toLowerCase()} setup stops when price reaches this level.`;
+    const nowExplanation = hasCurrent
+      ? `Latest tracked ${quoteSymbol} price from ${quoteSource}, quoted ${quoteAge}.`
+      : "A live quote is pending. The published entry, stop, and targets remain plotted.";
+    const tooltipAlignment = (value) => value < 22 ? "left" : value > 78 ? "right" : "center";
+    const marker = (className, label, value, markerPosition, explanation, markerText = "") => `<button class="position-marker ${className}" type="button" style="--marker-position:${markerPosition.toFixed(2)}%" data-tooltip-align="${tooltipAlignment(markerPosition)}" data-map-tooltip="${escapeAttr(`${label} ${formatPrice(value)} — ${explanation}`)}" aria-label="${escapeAttr(`${label} ${formatPrice(value)}. ${explanation}`)}">${markerText}</button>`;
+    const valueCell = (className, label, value, explanation, note = "") => `<button class="position-value ${className}" type="button" data-map-tooltip="${escapeAttr(`${label} ${formatPrice(value)} — ${explanation}`)}" aria-label="${escapeAttr(`${label} ${formatPrice(value)}. ${explanation}`)}"><span>${label}${note ? `<small>${escapeHtml(note)}</small>` : ""}</span><b>${formatPrice(value)}</b></button>`;
+    const targetMarkers = publishedTargets.map((target) => {
+      const targetR = computePlannedR(setup.direction, entry, stop, target.value);
+      const explanation = `${target.index === 1 ? "First" : target.index === 2 ? "Second" : "Final"} published take-profit${targetR == null ? "" : `, equal to ${formatNumber(targetR, 2)}R from entry`}.`;
+      return marker(`is-target is-${target.key}`, target.label, target.value, position(target.value), explanation, String(target.index));
+    }).join("");
+    const targetValueItems = targets.map((target) => {
+      const published = Number.isFinite(target.value);
+      const targetR = published ? computePlannedR(setup.direction, entry, stop, target.value) : null;
+      const explanation = published
+        ? `${target.index === 1 ? "First" : target.index === 2 ? "Second" : "Final"} published take-profit${targetR == null ? "" : `, equal to ${formatNumber(targetR, 2)}R from entry`}.`
+        : `No ${target.label} was published for this setup.`;
+      return {
+        value: published ? target.value : (setup.direction === "SHORT" ? -Number.MAX_VALUE + (4 - target.index) : Number.MAX_VALUE - (4 - target.index)),
+        tieOrder: setup.direction === "SHORT" ? 3 - target.index : target.index + 2,
+        html: valueCell(`is-target is-${target.key}${published ? "" : " is-unset"}`, target.label, published ? target.value : null, explanation, targetR == null ? "" : `${formatNumber(targetR, 2)}R`)
+      };
+    });
+    const valueItems = [
+      {
+        value: stop,
+        tieOrder: setup.direction === "SHORT" ? 5 : 0,
+        html: valueCell("is-stop", "SL", stop, stopExplanation)
+      },
+      {
+        value: entry,
+        tieOrder: setup.direction === "SHORT" ? 4 : 1,
+        html: valueCell("is-entry", "ENTRY", entry, entryExplanation)
+      },
+      ...targetValueItems,
+      {
+        value: hasCurrent ? current : (setup.direction === "SHORT" ? entry - Number.EPSILON : entry + Number.EPSILON),
+        tieOrder: setup.direction === "SHORT" ? 3 : 2,
+        html: valueCell(`is-current${hasCurrent ? "" : " is-unset"}`, "NOW", hasCurrent ? current : null, nowExplanation, quoteSymbol !== setup.ticker ? quoteSymbol : "")
+      }
+    ].sort((a, b) => a.value - b.value || a.tieOrder - b.tieOrder);
+    const orderedValues = valueItems.map((item) => item.html).join("");
+    const ariaTargets = targets.map((target) => `${target.label} ${formatPrice(Number.isFinite(target.value) ? target.value : null)}`).join(", ");
 
-    return `<section class="setup-position-map is-${tone}${hasCurrent ? "" : " is-pending"}" aria-label="${escapeAttr(setup.ticker)} price map. Stop ${escapeAttr(formatPrice(setup.stop))}, entry ${escapeAttr(formatPrice(setup.entry))}, current ${escapeAttr(formatPrice(setup.current_price))}.">
-      <header><span>${heading}</span><b>${distanceLabel}</b></header>
-      <div class="setup-position-track" style="--stop-position:${stopPosition.toFixed(2)}%;--entry-position:${entryPosition.toFixed(2)}%;--current-position:${currentPosition.toFixed(2)}%;--fill-left:${fillLeft.toFixed(2)}%;--fill-width:${fillWidth.toFixed(2)}%" aria-hidden="true">
-        <i class="position-fill"></i><i class="position-marker is-stop"></i><i class="position-marker is-entry"></i><i class="position-marker is-current"></i>
+    return `<section class="setup-position-map is-${tone}${hasCurrent ? "" : " is-pending"}" aria-label="${escapeAttr(`${setup.ticker} ${setup.direction} execution map. Stop ${formatPrice(setup.stop)}, entry ${formatPrice(setup.entry)}, ${ariaTargets}, current ${formatPrice(setup.current_price)}.`)}">
+      <header><span>${heading}<small>${escapeHtml(setup.direction)} / ${escapeHtml(quoteSymbol)}</small></span><b>${distanceLabel}</b></header>
+      <div class="setup-position-track" style="--risk-left:${riskLeft.toFixed(2)}%;--risk-width:${riskWidth.toFixed(2)}%;--reward-left:${rewardLeft.toFixed(2)}%;--reward-width:${rewardWidth.toFixed(2)}%;--fill-left:${fillLeft.toFixed(2)}%;--fill-width:${fillWidth.toFixed(2)}%">
+        <i class="position-zone is-risk" aria-hidden="true"></i><i class="position-zone is-reward" aria-hidden="true"></i>${hasCurrent ? '<i class="position-fill" aria-hidden="true"></i>' : ""}
+        ${marker("is-stop", "SL", stop, stopPosition, stopExplanation)}
+        ${marker("is-entry", "ENTRY", entry, entryPosition, entryExplanation)}
+        ${targetMarkers}
+        ${hasCurrent ? marker("is-current", "NOW", current, currentPosition, nowExplanation) : ""}
       </div>
+      <div class="position-map-key" aria-hidden="true"><span class="is-risk">RISK</span><span class="is-reward">TARGET PATH</span><span class="is-move">ENTRY → NOW</span></div>
       <div class="setup-position-values">
-        <div><span>SL</span><b class="metric-negative">${formatPrice(setup.stop)}</b></div>
-        <div><span>ENTRY</span><b>${formatPrice(setup.entry)}</b></div>
-        <div><span>NOW${quoteNote}</span><b>${formatPrice(setup.current_price)}</b></div>
+        ${orderedValues}
       </div>
     </section>`;
   }
