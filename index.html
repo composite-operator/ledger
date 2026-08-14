@@ -12,11 +12,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/styles.css?v=9">
+  <link rel="stylesheet" href="assets/styles.css?v=10">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
   <script src="assets/runtime-config.js?v=3" defer></script>
-  <script src="assets/app.js?v=11" defer></script>
+  <script src="assets/app.js?v=12" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to content</a>
@@ -57,6 +57,25 @@
         <svg class="theme-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg>
         <svg class="theme-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.91-.1-1.35A7 7 0 0 1 12 3Z"/></svg>
       </button>
+      <div class="notification-center" id="notification-center" hidden>
+        <button class="icon-button notification-button" id="notification-button" type="button" aria-label="Open notifications" aria-expanded="false" aria-controls="notification-popover">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>
+          <span class="notification-badge" id="notification-badge" hidden>0</span>
+        </button>
+        <section class="notification-popover" id="notification-popover" aria-label="Notifications" hidden>
+          <header class="notification-header">
+            <div><span>ALERT NETWORK</span><h2>Notifications</h2></div>
+            <button id="notification-settings" type="button">SETTINGS</button>
+          </header>
+          <div class="notification-controls">
+            <button id="notification-mute" type="button">MUTE</button>
+            <button id="notification-read-all" type="button">MARK READ</button>
+            <button id="notification-sweep" type="button">SWEEP</button>
+          </div>
+          <div class="notification-muted-state" id="notification-muted-state" hidden>ALERT DELIVERY MUTED</div>
+          <div class="notification-list" id="notification-list"></div>
+        </section>
+      </div>
       <button class="account-button" id="account-button" type="button">
         <span class="account-avatar" id="account-avatar">CO</span>
         <span id="account-label">Sign in</span>

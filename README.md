@@ -29,6 +29,8 @@ The repository starts in an explicit preview mode. Preview mode shows only a ver
 - Server-verified MARKET activation with a ±0.5% reference-price tolerance
 - Collapsible public discussions with authenticated comments and starred OP replies
 - Optional JPG, PNG, or WEBP chart attachments on original theses and comments
+- Operator follows with private, newest-first alerts for new setups, comments, and entry activation
+- Notification mute, mark-read, sweep, and per-channel account settings
 - Shareable setup links and a most-discussed feed sort
 - Immutable entry, stop, target, and thesis fields after publication
 - Supabase migration with row-level security
@@ -47,12 +49,13 @@ The repository starts in an explicit preview mode. Preview mode shows only a ver
 7. Run [`supabase/migrations/202608130005_setup_book_operator_metrics.sql`](supabase/migrations/202608130005_setup_book_operator_metrics.sql).
 8. Deploy `supabase/functions/submit-market-setup` and `supabase/functions/setup-book-quotes` as Edge Functions.
 9. Run [`supabase/migrations/202608130006_profile_avatars.sql`](supabase/migrations/202608130006_profile_avatars.sql) to create the public avatar bucket and owner-only upload policies.
-10. In **Authentication → URL Configuration**, set:
+10. Run [`supabase/migrations/202608130007_operator_notifications.sql`](supabase/migrations/202608130007_operator_notifications.sql) to add follows, private notification feeds, preferences, triggers, and Realtime delivery.
+11. In **Authentication → URL Configuration**, set:
    - Site URL: `https://ximxesabortion.github.io/ledger/`
    - Redirect URL: `https://ximxesabortion.github.io/ledger/`
 
-11. In **Authentication → Sign In / Providers → Email**, keep Email enabled.
-12. For the $0 MVP, turn **Confirm email** off. This avoids relying on a paid production mail service. Add verified-email delivery later if the product needs email ownership proof or password-reset email.
+12. In **Authentication → Sign In / Providers → Email**, keep Email enabled.
+13. For the $0 MVP, turn **Confirm email** off. This avoids relying on a paid production mail service. Add verified-email delivery later if the product needs email ownership proof or password-reset email.
 
 Google and X are optional future identity links. They are not required for Ledger accounts.
 
@@ -117,6 +120,7 @@ The metric contract preserves the current 14-column leaderboard. See [`docs/ARCH
 - Setup-book distance uses a publishable-key Edge Function with request-size and per-minute limits. A 50% entry sanity gate suppresses ambiguous symbols instead of showing a misleading price.
 - Avatar files live in the public `avatars` bucket. Storage policies limit upload and replacement to the authenticated owner folder, while public reads support profile, leaderboard, header, and discussion images.
 - Thesis and discussion images reuse the public `avatars` bucket under each authenticated owner's protected folder. Attachment references are retained inside the immutable thesis or comment record. The bucket accepts JPG, PNG, and WEBP images up to 2 MB.
+- Follow relationships allow only owner-created writes. Notification rows and notification preferences are readable and mutable only by their recipient account.
 - Private Google workbook tabs remain outside the public application.
 
 ## License

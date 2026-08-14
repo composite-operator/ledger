@@ -7,6 +7,12 @@
   const imageMimeTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
   const maxImageBytes = 2 * 1024 * 1024;
   const attachmentMarkerPattern = /(?:\r?\n)?\[ledger-image:([0-9a-f-]{36}\/ledger-media\/(?:setups|comments)\/[0-9a-f-]{36}\.(?:jpg|png|webp))\]$/i;
+  const defaultNotificationPreferences = {
+    notifications_muted: false,
+    notify_new_setups: true,
+    notify_comments: true,
+    notify_entry_hits: true
+  };
 
   const previewLeaders = [
     { id: "sheet-000000001", handle: "daft", display_name: "daft", total_setups: 2, triggered_setups: 2, stopped_setups: 2, t1_hits: 0, t2_hits: 0, t3_hits: 0, win_rate: 0, avg_r: -1, total_score: -2, goat_score: null, last_30d_score: 0, bio: "Verified Ledger operator from the current source sheet." }
@@ -45,6 +51,11 @@
     commentErrors: new Map(),
     commentsLoading: new Set(),
     expandedComments: new Set(),
+    followingIds: new Set(),
+    notifications: [],
+    notificationPreferences: { ...defaultNotificationPreferences },
+    notificationsAvailable: true,
+    notificationChannel: null,
     quoteRefreshActive: false,
     chart: null,
     commandItems: [],
@@ -65,6 +76,7 @@
     bindSetupFilters();
     bindSubmissionForm();
     bindCommandPalette();
+    bindNotifications();
     bindUtilities();
     renderAll();
 
@@ -209,11 +221,15 @@
       const { data: sessionData } = await state.supabase.auth.getSession();
       state.session = sessionData.session;
       await hydrateSignedInProfile();
+      await loadAccountFeatures();
+      syncNotificationSubscription();
       updateAccountUI();
 
       state.supabase.auth.onAuthStateChange(async (_event, session) => {
         state.session = session;
         await hydrateSignedInProfile();
+        await loadAccountFeatures();
+        syncNotificationSubscription();
         updateAccountUI();
         updateFormAuthState();
         renderSetups();
@@ -252,6 +268,91 @@
     if (state.rankPage === 1) state.podiumLeaders = state.leaders.slice(0, 3);
     state.setups = (setupsResult.data || []).map(normalizeSetup);
     void refreshSetupQuotes();
+  }
+
+  async function loadAccountFeatures() {
+    if (!state.supabase || !state.session?.user) {
+      state.followingIds = new Set();
+      state.notifications = [];
+      state.notificationPreferences = { ...defaultNotificationPreferences };
+      state.notificationsAvailable = true;
+      renderNotificationUI();
+      return;
+    }
+
+    const userId = state.session.user.id;
+    const [followingResult, preferencesResult, notificationsResult] = await Promise.all([
+      state.supabase.from("operator_follows").select("following_id").eq("follower_id", userId),
+      state.supabase.from("notification_preferences").select("*").eq("user_id", userId).maybeSingle(),
+      state.supabase.from("notification_feed").select("*").order("created_at", { ascending: false }).limit(100)
+    ]);
+
+    const featureError = followingResult.error || preferencesResult.error || notificationsResult.error;
+    if (featureError) {
+      state.followingIds = new Set();
+      state.notifications = [];
+      state.notificationPreferences = { ...defaultNotificationPreferences };
+      state.notificationsAvailable = false;
+      renderNotificationUI();
+      console.warn("Account notification features are unavailable.", featureError);
+      return;
+    }
+
+    state.notificationsAvailable = true;
+    state.followingIds = new Set((followingResult.data || []).map((row) => String(row.following_id)));
+    state.notificationPreferences = { ...defaultNotificationPreferences, ...(preferencesResult.data || {}) };
+    state.notifications = notificationsResult.data || [];
+
+    if (!preferencesResult.data) {
+      const { data } = await state.supabase
+        .from("notification_preferences")
+        .insert({ user_id: userId })
+        .select("*")
+        .single();
+      if (data) state.notificationPreferences = { ...defaultNotificationPreferences, ...data };
+    }
+    renderNotificationUI();
+  }
+
+  async function loadNotifications() {
+    if (!state.supabase || !state.session?.user || !state.notificationsAvailable) return;
+    const { data, error } = await state.supabase
+      .from("notification_feed")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(100);
+    if (error) {
+      console.warn("Notification inbox refresh failed.", error);
+      return;
+    }
+    state.notifications = data || [];
+    renderNotificationUI();
+  }
+
+  function syncNotificationSubscription() {
+    if (!state.supabase) return;
+    if (state.notificationChannel) {
+      state.supabase.removeChannel(state.notificationChannel);
+      state.notificationChannel = null;
+    }
+    if (!state.session?.user || !state.notificationsAvailable) return;
+
+    const userId = state.session.user.id;
+    state.notificationChannel = state.supabase
+      .channel(`ledger-notifications-${userId}`)
+      .on("postgres_changes", {
+        event: "INSERT",
+        schema: "public",
+        table: "notifications",
+        filter: `recipient_id=eq.${userId}`
+      }, async () => {
+        await loadNotifications();
+        const newest = state.notifications[0];
+        if (newest && !state.notificationPreferences.notifications_muted) {
+          showToast("New Ledger alert", notificationMessage(newest));
+        }
+      })
+      .subscribe();
   }
 
   async function refreshSetupQuotes() {
@@ -455,6 +556,7 @@
     if (!state.session?.user) {
       label.textContent = "Sign in";
       avatar.textContent = "CO";
+      renderNotificationUI();
       return;
     }
     const handle = state.profile?.handle || state.session.user.user_metadata?.user_name || state.session.user.user_metadata?.name || "Operator";
@@ -462,6 +564,7 @@
     avatar.innerHTML = state.profile?.avatar_url
       ? `<img src="${escapeAttr(state.profile.avatar_url)}" alt="">`
       : escapeHtml(initials(handle));
+    renderNotificationUI();
   }
 
   function profileFromSession() {
@@ -601,27 +704,32 @@
     let detailedLeader = { ...leader };
     let profileSetups = state.setups.filter((setup) => String(setup.user_id) === String(leader.id) || setup.handle === leader.handle);
     if (state.live && state.supabase && leader.id) {
-      const [profileResult, setupsResult, metricsResult] = await Promise.all([
+      const [profileResult, setupsResult, metricsResult, socialResult] = await Promise.all([
         state.supabase.from("profiles").select("id, handle, display_name, avatar_url, bio, created_at").eq("id", leader.id).maybeSingle(),
         state.supabase.from("setups_public").select("*").eq("user_id", leader.id).order("submitted_at", { ascending: false }).limit(100),
-        state.supabase.rpc("leaderboard_page", { p_sort: "goat", p_search: leader.handle || "", p_limit: 5, p_offset: 0 })
+        state.supabase.rpc("leaderboard_page", { p_sort: "goat", p_search: leader.handle || "", p_limit: 5, p_offset: 0 }),
+        state.supabase.rpc("operator_social_summary", { p_profile_id: leader.id })
       ]);
       const metricRow = (metricsResult.data || []).map(normalizeLeader).find((item) => String(item.id) === String(leader.id));
       if (metricRow) detailedLeader = { ...detailedLeader, ...metricRow };
       if (profileResult.data) detailedLeader = { ...detailedLeader, ...profileResult.data, id: profileResult.data.id };
       if (setupsResult.data) profileSetups = setupsResult.data.map(normalizeSetup);
+      if (socialResult.data?.[0]) detailedLeader = { ...detailedLeader, ...socialResult.data[0] };
     }
     const recent = profileSetups.slice().sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at)).slice(0, 100);
     const drawer = $("#profile-drawer");
     const isOwnProfile = Boolean(state.session?.user && String(state.session.user.id) === String(detailedLeader.id));
+    const isFollowing = state.followingIds.has(String(detailedLeader.id));
     drawer.innerHTML = `<button class="modal-close profile-close" type="button" data-close-profile aria-label="Close profile">×</button>
     <div class="profile-head">
       <div class="profile-avatar-large">${profileAvatar(detailedLeader)}</div>
       <h2>${escapeHtml(detailedLeader.display_name || detailedLeader.handle)}</h2>
       <p class="profile-handle">@${escapeHtml(detailedLeader.handle)}</p>
       <p class="profile-bio">${escapeHtml(detailedLeader.bio || "No bio yet.")}</p>
-      <div class="profile-badges"><span>LEDGER ACCOUNT</span><span>PUBLIC RECORD</span><span>JOINED ${escapeHtml(formatMonthYear(detailedLeader.created_at))}</span><span>${detailedLeader.triggered_setups || 0} TRIGGERED</span></div>
-      ${isOwnProfile ? '<button class="profile-signout" type="button" data-sign-out>Sign out</button>' : ''}
+      <div class="profile-badges"><span>LEDGER ACCOUNT</span><span>PUBLIC RECORD</span><span>JOINED ${escapeHtml(formatMonthYear(detailedLeader.created_at))}</span><span>${detailedLeader.triggered_setups || 0} TRIGGERED</span><span>${formatInteger(detailedLeader.follower_count)} FOLLOWERS</span><span>${formatInteger(detailedLeader.following_count)} FOLLOWING</span></div>
+      ${isOwnProfile
+        ? '<button class="profile-signout" type="button" data-sign-out>Sign out</button>'
+        : `<button class="profile-follow-button${isFollowing ? " is-following" : ""}" type="button" data-follow-profile="${escapeAttr(detailedLeader.id)}">${state.session?.user ? (isFollowing ? "FOLLOWING" : "FOLLOW OPERATOR") : "SIGN IN TO FOLLOW"}</button>`}
     </div>
     <div class="profile-body">
       <div class="profile-metric-grid">
@@ -635,15 +743,19 @@
         <div><span>STOPPED</span><b>${formatInteger(detailedLeader.stopped_setups)}</b></div>
         <div><span>TARGET HITS</span><b><small>T1</small> ${formatInteger(detailedLeader.t1_hits)} <small>T2</small> ${formatInteger(detailedLeader.t2_hits)} <small>T3</small> ${formatInteger(detailedLeader.t3_hits)}</b></div>
       </div>
-      ${isOwnProfile ? profileEditor(detailedLeader) : ""}
+      ${isOwnProfile ? `${profileEditor(detailedLeader)}${notificationSettingsPanel()}` : ""}
       <div class="profile-section-title">PUBLIC RECORDS <span>${recent.length}</span></div>
       <div class="profile-records">${recent.length ? recent.map(profileRecord).join("") : '<div class="table-empty">No public setups yet.</div>'}</div>
     </div>`;
     $("[data-close-profile]", drawer).addEventListener("click", () => $("#profile-dialog").close());
     const signOutButton = $("[data-sign-out]", drawer);
     if (signOutButton) signOutButton.addEventListener("click", signOut);
+    const followButton = $("[data-follow-profile]", drawer);
+    if (followButton) followButton.addEventListener("click", () => toggleFollow(detailedLeader));
     const profileForm = $("[data-profile-form]", drawer);
     if (profileForm) profileForm.addEventListener("submit", (event) => saveProfile(event, detailedLeader));
+    const notificationForm = $("[data-notification-settings-form]", drawer);
+    if (notificationForm) notificationForm.addEventListener("submit", saveNotificationSettings);
     const avatarInput = $("input[name='avatar']", drawer);
     if (avatarInput) avatarInput.addEventListener("change", () => updateAvatarFileLabel(avatarInput));
     if (!$("#profile-dialog").open) $("#profile-dialog").showModal();
@@ -665,6 +777,118 @@
         <button type="submit">SAVE PROFILE <span>→</span></button>
       </form>
     </details>`;
+  }
+
+  function notificationSettingsPanel() {
+    const preferences = state.notificationPreferences;
+    return `<details class="profile-editor notification-settings" data-notification-settings>
+      <summary><span>NOTIFICATION SETTINGS</span><i>OPEN +</i></summary>
+      <form data-notification-settings-form>
+        <p class="notification-settings-copy">Choose which activity from followed operators enters your private alert feed.</p>
+        ${notificationSetting("notifications_muted", "MUTE ALL ALERTS", "Pause delivery without changing your channel choices.", preferences.notifications_muted)}
+        ${notificationSetting("notify_new_setups", "NEW SETUPS", "Alert when a followed operator publishes a setup.", preferences.notify_new_setups)}
+        ${notificationSetting("notify_comments", "NEW COMMENTS", "Alert when a followed operator comments on any setup.", preferences.notify_comments)}
+        ${notificationSetting("notify_entry_hits", "ENTRY ACHIEVED", "Alert when a followed operator's setup reaches entry.", preferences.notify_entry_hits)}
+        <p class="profile-form-status" data-notification-settings-status></p>
+        <button type="submit">SAVE NOTIFICATIONS <span>→</span></button>
+      </form>
+    </details>`;
+  }
+
+  function notificationSetting(name, label, description, checked) {
+    return `<label class="notification-setting-row">
+      <span><b>${escapeHtml(label)}</b><small>${escapeHtml(description)}</small></span>
+      <input type="checkbox" name="${escapeAttr(name)}" ${checked ? "checked" : ""}>
+      <i aria-hidden="true"></i>
+    </label>`;
+  }
+
+  async function saveNotificationSettings(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const button = $("button[type='submit']", form);
+    const status = $("[data-notification-settings-status]", form);
+    const data = new FormData(form);
+    const nextPreferences = {
+      notifications_muted: data.has("notifications_muted"),
+      notify_new_setups: data.has("notify_new_setups"),
+      notify_comments: data.has("notify_comments"),
+      notify_entry_hits: data.has("notify_entry_hits")
+    };
+    button.disabled = true;
+    button.textContent = "SAVING...";
+    setProfileFormStatus(status, "Saving your alert channels...");
+    try {
+      await persistNotificationPreferences(nextPreferences);
+      setProfileFormStatus(status, "Notification settings saved.");
+      button.innerHTML = 'SAVE NOTIFICATIONS <span>→</span>';
+      button.disabled = false;
+      showToast("Notification settings saved", nextPreferences.notifications_muted ? "New alerts are muted." : "Your selected alert channels are active.");
+    } catch (error) {
+      button.innerHTML = 'SAVE NOTIFICATIONS <span>→</span>';
+      button.disabled = false;
+      setProfileFormStatus(status, error.message || "Notification settings could not be saved.", true);
+    }
+  }
+
+  async function persistNotificationPreferences(patch) {
+    if (!state.supabase || !state.session?.user) throw new Error("Sign in to change notification settings.");
+    const merged = { ...state.notificationPreferences, ...patch };
+    const preferenceValues = {
+      notifications_muted: Boolean(merged.notifications_muted),
+      notify_new_setups: Boolean(merged.notify_new_setups),
+      notify_comments: Boolean(merged.notify_comments),
+      notify_entry_hits: Boolean(merged.notify_entry_hits)
+    };
+    let { data, error } = await state.supabase
+      .from("notification_preferences")
+      .update(preferenceValues)
+      .eq("user_id", state.session.user.id)
+      .select("*")
+      .maybeSingle();
+    if (!error && !data) {
+      const insertResult = await state.supabase
+        .from("notification_preferences")
+        .insert({ user_id: state.session.user.id, ...preferenceValues })
+        .select("*")
+        .single();
+      data = insertResult.data;
+      error = insertResult.error;
+    }
+    if (error) throw error;
+    state.notificationPreferences = { ...defaultNotificationPreferences, ...data };
+    renderNotificationUI();
+  }
+
+  async function toggleFollow(profile) {
+    if (!state.session?.user || !state.supabase) {
+      $("#profile-dialog").close();
+      $("#auth-dialog").showModal();
+      return;
+    }
+    const profileId = String(profile.id);
+    const isFollowing = state.followingIds.has(profileId);
+    const button = $("[data-follow-profile]", $("#profile-drawer"));
+    if (button) {
+      button.disabled = true;
+      button.textContent = isFollowing ? "UNFOLLOWING..." : "FOLLOWING...";
+    }
+    const query = isFollowing
+      ? state.supabase.from("operator_follows").delete().eq("follower_id", state.session.user.id).eq("following_id", profileId)
+      : state.supabase.from("operator_follows").insert({ follower_id: state.session.user.id, following_id: profileId });
+    const { error } = await query;
+    if (error) {
+      if (button) {
+        button.disabled = false;
+        button.textContent = isFollowing ? "FOLLOWING" : "FOLLOW OPERATOR";
+      }
+      showToast("Follow action failed", error.message, true);
+      return;
+    }
+    if (isFollowing) state.followingIds.delete(profileId);
+    else state.followingIds.add(profileId);
+    showToast(isFollowing ? "Operator unfollowed" : "Operator followed", isFollowing ? `Alerts from @${profile.handle} are off.` : `Future activity from @${profile.handle} can now reach your alert feed.`);
+    await openProfile(profile);
   }
 
   function updateAvatarFileLabel(input) {
@@ -1351,6 +1575,191 @@
       $("#command-dialog").close();
       state.commandItems[Number(element.dataset.commandIndex)].action();
     }));
+  }
+
+  function bindNotifications() {
+    const center = $("#notification-center");
+    const button = $("#notification-button");
+    const popover = $("#notification-popover");
+
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const willOpen = popover.hidden;
+      popover.hidden = !willOpen;
+      button.setAttribute("aria-expanded", String(willOpen));
+      if (willOpen) void loadNotifications();
+    });
+
+    popover.addEventListener("click", (event) => event.stopPropagation());
+    document.addEventListener("click", (event) => {
+      if (!center.contains(event.target)) closeNotificationPopover();
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && !popover.hidden) closeNotificationPopover();
+    });
+
+    $("#notification-mute").addEventListener("click", async () => {
+      const nextMuted = !state.notificationPreferences.notifications_muted;
+      try {
+        await persistNotificationPreferences({ notifications_muted: nextMuted });
+        showToast(nextMuted ? "Notifications muted" : "Notifications resumed", nextMuted ? "No new followed-operator alerts will be created." : "Your selected alert channels are active again.");
+      } catch (error) {
+        showToast("Notification setting failed", error.message, true);
+      }
+    });
+
+    $("#notification-read-all").addEventListener("click", markAllNotificationsRead);
+    $("#notification-sweep").addEventListener("click", sweepNotifications);
+    $("#notification-settings").addEventListener("click", async () => {
+      closeNotificationPopover();
+      if (!state.session?.user) return;
+      const ownLeader = [...state.leaders, ...state.compactLeaders].find((leader) => String(leader.id) === String(state.session.user.id)) || profileFromSession();
+      await openProfile(ownLeader);
+      const settings = $("[data-notification-settings]", $("#profile-drawer"));
+      if (settings) {
+        settings.open = true;
+        settings.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    });
+
+    $("#notification-list").addEventListener("click", (event) => {
+      const item = event.target.closest("[data-notification-id]");
+      if (!item) return;
+      const notification = state.notifications.find((entry) => String(entry.id) === String(item.dataset.notificationId));
+      if (notification) void openNotification(notification);
+    });
+  }
+
+  function closeNotificationPopover() {
+    const popover = $("#notification-popover");
+    const button = $("#notification-button");
+    if (!popover || !button) return;
+    popover.hidden = true;
+    button.setAttribute("aria-expanded", "false");
+  }
+
+  function renderNotificationUI() {
+    const center = $("#notification-center");
+    if (!center) return;
+    const signedIn = Boolean(state.session?.user);
+    center.hidden = !signedIn;
+    if (!signedIn) {
+      closeNotificationPopover();
+      return;
+    }
+
+    const unreadCount = state.notifications.filter((notification) => !notification.read_at).length;
+    const badge = $("#notification-badge");
+    badge.hidden = unreadCount === 0;
+    badge.textContent = unreadCount > 99 ? "99+" : String(unreadCount);
+    $("#notification-button").classList.toggle("has-unread", unreadCount > 0);
+    $("#notification-button").setAttribute("aria-label", unreadCount ? `Open notifications, ${unreadCount} unread` : "Open notifications");
+
+    const isMuted = Boolean(state.notificationPreferences.notifications_muted);
+    $("#notification-mute").textContent = isMuted ? "RESUME" : "MUTE";
+    $("#notification-muted-state").hidden = !isMuted;
+    $("#notification-mute").disabled = !state.notificationsAvailable;
+    $("#notification-read-all").disabled = !state.notificationsAvailable || unreadCount === 0;
+    $("#notification-sweep").disabled = !state.notificationsAvailable || state.notifications.length === 0;
+
+    const list = $("#notification-list");
+    if (!state.notificationsAvailable) {
+      list.innerHTML = '<div class="notification-empty"><b>ALERT NETWORK OFFLINE</b><span>The notification database update is not active yet.</span></div>';
+      return;
+    }
+    if (!state.notifications.length) {
+      list.innerHTML = '<div class="notification-empty"><b>ALL CLEAR</b><span>Follow an operator to receive setup, comment, and entry alerts here.</span></div>';
+      return;
+    }
+    list.innerHTML = state.notifications.map(notificationItem).join("");
+  }
+
+  function notificationItem(notification) {
+    const unread = !notification.read_at;
+    return `<button class="notification-item${unread ? " is-unread" : ""}" type="button" data-notification-id="${escapeAttr(notification.id)}">
+      <span class="notification-type-icon" data-notification-type="${escapeAttr(notification.notification_type)}">${notificationIcon(notification.notification_type)}</span>
+      <span class="notification-copy"><b>${escapeHtml(notificationMessage(notification))}</b><small>${escapeHtml(notificationDetail(notification))}</small></span>
+      ${unread ? '<i class="notification-unread-dot" aria-label="Unread"></i>' : ""}
+    </button>`;
+  }
+
+  function notificationMessage(notification) {
+    const actor = `@${notification.actor_handle || "operator"}`;
+    const ticker = notification.ticker || "a setup";
+    if (notification.notification_type === "COMMENT") return `${actor} commented on ${ticker}`;
+    if (notification.notification_type === "ENTRY_HIT") return `${ticker} by ${actor} achieved entry`;
+    return `${actor} published ${ticker}`;
+  }
+
+  function notificationDetail(notification) {
+    const type = notification.notification_type === "COMMENT" ? "COMMENT" : notification.notification_type === "ENTRY_HIT" ? "ENTRY ACHIEVED" : "NEW SETUP";
+    const status = notification.setup_status ? ` · ${labelize(notification.setup_status)}` : "";
+    return `${type}${status} · ${formatRelative(notification.created_at)}`;
+  }
+
+  function notificationIcon(type) {
+    if (type === "COMMENT") return "C";
+    if (type === "ENTRY_HIT") return "E";
+    return "N";
+  }
+
+  async function markAllNotificationsRead() {
+    if (!state.supabase || !state.session?.user) return;
+    const readAt = new Date().toISOString();
+    const { error } = await state.supabase
+      .from("notifications")
+      .update({ read_at: readAt })
+      .eq("recipient_id", state.session.user.id)
+      .is("read_at", null);
+    if (error) {
+      showToast("Notifications not updated", error.message, true);
+      return;
+    }
+    state.notifications = state.notifications.map((notification) => ({ ...notification, read_at: notification.read_at || readAt }));
+    renderNotificationUI();
+  }
+
+  async function sweepNotifications() {
+    if (!state.supabase || !state.session?.user || !state.notifications.length) return;
+    if (!window.confirm("Clear every notification from your Ledger inbox?")) return;
+    const { error } = await state.supabase
+      .from("notifications")
+      .delete()
+      .eq("recipient_id", state.session.user.id);
+    if (error) {
+      showToast("Inbox not cleared", error.message, true);
+      return;
+    }
+    state.notifications = [];
+    renderNotificationUI();
+    showToast("Inbox swept", "Your notification feed is clear.");
+  }
+
+  async function openNotification(notification) {
+    closeNotificationPopover();
+    if (!notification.read_at && state.supabase) {
+      const readAt = new Date().toISOString();
+      notification.read_at = readAt;
+      renderNotificationUI();
+      const { error } = await state.supabase.from("notifications").update({ read_at: readAt }).eq("id", notification.id);
+      if (error) console.warn("Notification read state was not saved.", error);
+    }
+
+    let setup = state.setups.find((item) => String(item.id) === String(notification.setup_id));
+    if (!setup && state.supabase && notification.setup_id) {
+      const { data } = await state.supabase.from("setups_public").select("*").eq("id", notification.setup_id).maybeSingle();
+      if (data) {
+        setup = normalizeSetup(data);
+        state.setups.unshift(setup);
+      }
+    }
+    if (!setup) return;
+
+    const setupId = String(setup.id);
+    if (notification.notification_type === "COMMENT") state.expandedComments.add(setupId);
+    openSetupBook(normalizeState(setup.status));
+    if (notification.notification_type === "COMMENT") await loadSetupComments(setupId);
+    requestAnimationFrame(() => document.getElementById(`setup-${setupId}`)?.scrollIntoView({ behavior: "smooth", block: "start" }));
   }
 
   function bindUtilities() {
