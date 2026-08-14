@@ -1,8 +1,8 @@
 # Composite Operator Ledger
 
-## GOAT 2.0 lifecycle
+## GOAT lifecycle
 
-New Ledger records use explicit entry windows, horizon-based review cadence, allocation-weighted target outcomes, prospective public stop coaching, and the GOAT 2.0 ranking formula. See [GOAT 2.0 Lifecycle + Coaching Contract](docs/LIFECYCLE_COACHING_PROTOTYPE.md).
+New Ledger records use explicit entry windows, horizon-based review cadence, allocation-weighted target outcomes, prospective public stop coaching, and the GOAT ranking formula. See [GOAT Lifecycle + Coaching Contract](docs/LIFECYCLE_COACHING_PROTOTYPE.md).
 
 A public setup tracker and operator leaderboard for the Composite Operator Hub.
 
@@ -43,7 +43,7 @@ If the live backend is unavailable, the interface shows an empty state. It does 
 - Explicit horizon-bounded entry expiry and post-entry review cadence
 - Full-T1, scale-and-protect, or custom target allocation plans
 - Quote-driven Near, Hot, entry, target, stop, and resolution transitions
-- GOAT 2.0 scoring with NQ qualification until three triggered records resolve
+- GOAT scoring with NQ qualification until three triggered records resolve
 - Author-only prospective Ledger stop revisions and review coaching
 - Server-verified MARKET activation with a ±0.5% reference-price tolerance
 - Collapsible public discussions with authenticated comments and starred OP replies
@@ -78,7 +78,7 @@ If the live backend is unavailable, the interface shows an empty state. It does 
 15. Run [`supabase/migrations/202608140001_loss_cards.sql`](supabase/migrations/202608140001_loss_cards.sql) to add loss-card alerts and the separate loss-notification preference.
 16. Run [`supabase/migrations/202608140002_profile_handles.sql`](supabase/migrations/202608140002_profile_handles.sql) to let authenticated owners change their unique public handle.
 17. Run [`supabase/migrations/202608140003_unified_public_identity.sql`](supabase/migrations/202608140003_unified_public_identity.sql) to synchronize the legacy display-name column to the canonical handle and prevent future drift.
-18. Run [`supabase/migrations/202608140004_lifecycle_coaching_prototype.sql`](supabase/migrations/202608140004_lifecycle_coaching_prototype.sql) to activate GOAT 2.0 lifecycle automation, scoring, and the five-minute expiry job.
+18. Run [`supabase/migrations/202608140004_lifecycle_coaching_prototype.sql`](supabase/migrations/202608140004_lifecycle_coaching_prototype.sql) to activate GOAT lifecycle automation, scoring, and the five-minute expiry job.
 19. In **Authentication → URL Configuration**, set:
    - Site URL: `https://ximxesabortion.github.io/ledger/`
    - Redirect URL: `https://ximxesabortion.github.io/ledger/`

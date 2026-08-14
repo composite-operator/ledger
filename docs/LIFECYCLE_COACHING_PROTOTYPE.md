@@ -1,4 +1,4 @@
-# GOAT 2.0 Lifecycle + Coaching Contract
+# GOAT Lifecycle + Coaching Contract
 
 This contract is active for new public Ledger records. It preserves the original plan, automates entry expiry and quote-driven lifecycle transitions, and scores resolved target allocations in R.
 
@@ -31,7 +31,7 @@ This contract is active for new public Ledger records. It preserves the original
 
 These are defaults and bounded entry windows. They are not forced holding-period exits.
 
-## GOAT v2
+## GOAT
 
 For one resolved trade:
 
@@ -56,7 +56,7 @@ EdgeComponent = clamp(NetEdgeR / 2, -1, +1)
 AdjustedWinRate = (profitable trades + 2) / (triggered resolved trades + 4)
 ConsistencyComponent = 2×AdjustedWinRate - 1
 EvidenceWeight = min(1, triggered resolved trades / 20)
-GOATv2 = 100 × (0.75×EdgeComponent + 0.25×ConsistencyComponent) × EvidenceWeight
+GOAT = 100 × (0.75×EdgeComponent + 0.25×ConsistencyComponent) × EvidenceWeight
 ```
 
 The adjusted win rate shrinks small samples toward 50%. The public score remains **NQ** until three triggered records resolve. Evidence reaches full weight at twenty resolved trades. Untriggered ideas do not count as full trading losses or triggered evidence.

@@ -73,4 +73,4 @@ assert.equal(engine.validateStopRevision({ direction: "LONG", currentLedgerStop:
 assert.equal(engine.validateStopRevision({ direction: "SHORT", currentLedgerStop: 110, proposedStop: 100, currentPrice: 90 }).valid, true);
 assert.equal(engine.validateStopRevision({ direction: "SHORT", currentLedgerStop: 110, proposedStop: 115, currentPrice: 90 }).valid, false);
 
-console.log("GOAT 2.0 lifecycle engine assertions passed.");
+console.log("GOAT lifecycle engine assertions passed.");
