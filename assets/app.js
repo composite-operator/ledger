@@ -1621,6 +1621,9 @@
       : ["queued", "hot", "near"].includes(normalized)
         ? `${formatNumber(Math.abs(rawDistance), 2)}% FROM ENTRY`
         : `${formatNumber(Math.abs(directionalDistance), 2)}% ${directionalDistance >= 0 ? "FAVORABLE" : "ADVERSE"}`;
+    const glanceDistanceLabel = rawDistance == null
+      ? "QUOTE PENDING"
+      : `${formatNumber(Math.abs(rawDistance), 2)}% FROM ENTRY`;
 
     let stopPosition = 12;
     let entryPosition = 50;
@@ -1703,7 +1706,7 @@
     const ariaTargets = targets.map((target) => `${target.label} ${formatPrice(Number.isFinite(target.value) ? target.value : null)}`).join(", ");
 
     return `<section class="setup-position-map is-${tone}${hasCurrent ? "" : " is-pending"}" aria-label="${escapeAttr(`${setup.ticker} ${setup.direction} execution map. Stop ${formatPrice(setup.stop)}, entry ${formatPrice(setup.entry)}, ${ariaTargets}, current ${formatPrice(setup.current_price)}.`)}">
-      <header><span>${heading}<small>${escapeHtml(setup.direction)} / ${escapeHtml(quoteSymbol)}</small></span><b>${distanceLabel}</b></header>
+      <header><span>${heading}<small>${escapeHtml(setup.direction)} / ${escapeHtml(quoteSymbol)}</small></span><b><span class="map-distance-full">${distanceLabel}</span><span class="map-distance-glance">${glanceDistanceLabel}</span></b></header>
       <div class="setup-position-track" style="--risk-left:${riskLeft.toFixed(2)}%;--risk-width:${riskWidth.toFixed(2)}%;--reward-left:${rewardLeft.toFixed(2)}%;--reward-width:${rewardWidth.toFixed(2)}%;--fill-left:${fillLeft.toFixed(2)}%;--fill-width:${fillWidth.toFixed(2)}%">
         <i class="position-zone is-risk" aria-hidden="true"></i><i class="position-zone is-reward" aria-hidden="true"></i>${hasCurrent ? '<i class="position-fill" aria-hidden="true"></i>' : ""}
         ${marker("is-stop", "SL", stop, stopPosition, stopExplanation)}

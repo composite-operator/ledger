@@ -29,7 +29,7 @@ The repository starts in an explicit preview mode. Preview mode shows only a ver
 - Adaptive setup-book rail with Network Pulse physically nested directly below the state filters
 - Readable default typography for controls, setup records, discussions, authentication, and the complete submission form
 - Direction-aware execution maps with SL, entry, current price, TP1-TP3, R multiples, and accessible hover or keyboard explanations
-- Persistent Panels, Linear, and Compact setup-book layouts for responsive comparison, full-record reading, or rapid price scanning without chart or thesis bulk
+- Persistent Panels, Linear, and At a glance setup-book layouts for responsive comparison, full-record reading, or execution-bar scanning with one distance percentage
 - Live Yahoo Finance quotes with Google Finance fallback for setup-to-entry distance
 - Shared demand-driven quote cache with visible-tab refresh and automatic closed-symbol cleanup
 - Top-100 crypto normalization from bare symbols such as `BTC` and `ETH` to canonical USD pairs
