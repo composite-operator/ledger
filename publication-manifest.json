@@ -10,11 +10,15 @@
     },
     {
       "path": "assets/app.js",
-      "sha256": "c4369442adf9f4f4b08302f6159d186c2dfee745ba9328b5004dcecf6d3e0502"
+      "sha256": "584ee319c0df672a64c9a5f5e40e863f5e4a1b98af9d224e742d001f2fd3be7c"
+    },
+    {
+      "path": "assets/brand-mark.svg",
+      "sha256": "87ad9bc02a5f9ce4fd71cab0ac7c181d80c76c6df01a53069e933918df2eae3a"
     },
     {
       "path": "assets/icon.svg",
-      "sha256": "2fcfe317968e34044cce5f3ce58e503177c925f7fe768e90aecad01826ad0ed6"
+      "sha256": "646b9d4174d046f17e7c2036b611556eef6ad80b44e783ee55f3bd88c3ab1cfd"
     },
     {
       "path": "assets/lifecycle-engine.js",
@@ -46,7 +50,7 @@
     },
     {
       "path": "assets/styles.css",
-      "sha256": "03b13ed82e2bc79490627fa7729260a27e3db15ddd6902614f028302b97eba31"
+      "sha256": "3402e84086da39782d62c96c642935d1f0bc92a5b8794396bb41130c1cabadda"
     },
     {
       "path": "assets/victory/chud-terminal.webp",
@@ -66,7 +70,7 @@
     },
     {
       "path": "index.html",
-      "sha256": "82c248f99759a644f82f0164b07b4110f833d7901147778c8c3195ba20c6fb60"
+      "sha256": "26a42f5676ebe620a79931c692772c32d46c5137ecbf01a886a2244fb0a13a14"
     },
     {
       "path": "site.webmanifest",

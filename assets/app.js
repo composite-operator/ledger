@@ -2376,7 +2376,7 @@
       <div class="victory-noise" aria-hidden="true"></div>
       <header class="victory-card-header">
         <a class="victory-brand" href="${escapeAttr(config.siteUrl || location.href)}" target="_blank" rel="noopener noreferrer" aria-label="Open Composite Operator Ledger">
-          <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
+          <span class="brand-mark" aria-hidden="true"><img src="assets/brand-mark.svg" alt=""></span>
           <span><b>COMPOSITE</b><small>OPERATOR / LEDGER</small></span>
         </a>
         <span class="victory-verified"><i></i> VERIFIED PUBLIC OUTCOME</span>
@@ -2421,7 +2421,7 @@
       <div class="victory-noise" aria-hidden="true"></div>
       <header class="victory-card-header">
         <a class="victory-brand" href="${escapeAttr(config.siteUrl || location.href)}" target="_blank" rel="noopener noreferrer" aria-label="Open Composite Operator Ledger">
-          <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
+          <span class="brand-mark" aria-hidden="true"><img src="assets/brand-mark.svg" alt=""></span>
           <span><b>COMPOSITE</b><small>OPERATOR / LEDGER</small></span>
         </a>
         <span class="victory-verified"><i></i> VERIFIED PUBLIC LOSS</span>
