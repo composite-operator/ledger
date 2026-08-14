@@ -25,7 +25,7 @@ The repository starts in an explicit preview mode. Preview mode shows only a ver
 - Public join dates, complete performance stats, and recent setup history
 - Queue, Hot, Near, Active, and Resolved setup states
 - Permanent setup-book URLs for every state and the operator index
-- Sortable setup fields for posted date, entry distance, planned R, operator history, score, and comments
+- Reversible heading sorts for posted date, entry distance, planned R, operator history, and comments, plus score sorting in the dropdown
 - Adaptive setup-book rail with Network Pulse physically nested directly below the state filters
 - Readable default typography for controls, setup records, discussions, authentication, and the complete submission form
 - Direction-aware execution maps with SL, entry, current price, TP1-TP3, R multiples, and accessible hover or keyboard explanations

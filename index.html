@@ -336,10 +336,14 @@
               <option value="entry-near">Closest to entry</option>
               <option value="entry-far">Furthest from entry</option>
               <option value="operator-r">Best operator average R</option>
+              <option value="operator-r-low">Lowest operator average R</option>
               <option value="operator-win">Best operator win rate</option>
+              <option value="operator-win-low">Lowest operator win rate</option>
               <option value="planned-r">Highest planned R</option>
+              <option value="planned-r-low">Lowest planned R</option>
               <option value="score">Highest score</option>
               <option value="discussed">Most discussed</option>
+              <option value="discussed-low">Least discussed</option>
             </select>
             <div class="setup-layout-switcher" role="group" aria-label="Setup display layout">
               <button class="is-active" type="button" data-setup-layout="panels" aria-pressed="true" aria-controls="setup-card-grid" title="Responsive multi-column setup panels"><i class="is-panels" aria-hidden="true"></i><span>PANELS</span></button>
@@ -349,12 +353,12 @@
           </div>
           <div class="setup-sort-dock glass-panel" aria-label="Sortable setup fields">
             <span>SORT BOOK</span>
-            <button class="is-active" data-setup-sort-field="newest" type="button">POSTED ↓</button>
-            <button data-setup-sort-field="entry-near" type="button">% FROM ENTRY</button>
-            <button data-setup-sort-field="operator-r" type="button">OP AVG R</button>
-            <button data-setup-sort-field="operator-win" type="button">OP WIN</button>
-            <button data-setup-sort-field="planned-r" type="button">PLANNED R</button>
-            <button data-setup-sort-field="discussed" type="button">COMMENTS</button>
+            <button class="is-active" data-setup-sort-field="newest" data-sort-label="POSTED" type="button" aria-pressed="true">POSTED ↓</button>
+            <button data-setup-sort-field="entry-near" data-sort-label="% FROM ENTRY" type="button" aria-pressed="false">% FROM ENTRY</button>
+            <button data-setup-sort-field="operator-r" data-sort-label="OP AVG R" type="button" aria-pressed="false">OP AVG R</button>
+            <button data-setup-sort-field="operator-win" data-sort-label="OP WIN" type="button" aria-pressed="false">OP WIN</button>
+            <button data-setup-sort-field="planned-r" data-sort-label="PLANNED R" type="button" aria-pressed="false">PLANNED R</button>
+            <button data-setup-sort-field="discussed" data-sort-label="COMMENTS" type="button" aria-pressed="false">COMMENTS</button>
           </div>
           <div class="setup-card-grid layout-panels" id="setup-card-grid"></div>
           <div class="table-empty glass-panel" id="setup-empty" hidden>No current public setups. Historical Sheet records will appear after the live migration.</div>

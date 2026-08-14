@@ -14,6 +14,20 @@
   const mentionSearchCache = new Map();
   const mentionQueryLimit = 8;
   const setupLayoutOptions = new Set(["panels", "linear", "compact"]);
+  const setupSortModes = {
+    newest: { field: "newest", reverse: "oldest", arrow: "↓", order: "newest first" },
+    oldest: { field: "newest", reverse: "newest", arrow: "↑", order: "oldest first" },
+    "entry-near": { field: "entry-near", reverse: "entry-far", arrow: "↑", order: "closest first" },
+    "entry-far": { field: "entry-near", reverse: "entry-near", arrow: "↓", order: "furthest first" },
+    "operator-r": { field: "operator-r", reverse: "operator-r-low", arrow: "↓", order: "highest first" },
+    "operator-r-low": { field: "operator-r", reverse: "operator-r", arrow: "↑", order: "lowest first" },
+    "operator-win": { field: "operator-win", reverse: "operator-win-low", arrow: "↓", order: "highest first" },
+    "operator-win-low": { field: "operator-win", reverse: "operator-win", arrow: "↑", order: "lowest first" },
+    "planned-r": { field: "planned-r", reverse: "planned-r-low", arrow: "↓", order: "highest first" },
+    "planned-r-low": { field: "planned-r", reverse: "planned-r", arrow: "↑", order: "lowest first" },
+    discussed: { field: "discussed", reverse: "discussed-low", arrow: "↓", order: "most discussed first" },
+    "discussed-low": { field: "discussed", reverse: "discussed", arrow: "↑", order: "least discussed first" }
+  };
   const attachmentMarkerPattern = /(?:\r?\n)?\[ledger-image:([0-9a-f-]{36}\/ledger-media\/(?:setups|comments)\/[0-9a-f-]{36}\.(?:jpg|png|webp))\]$/i;
   const defaultNotificationPreferences = {
     notifications_muted: false,
@@ -1424,7 +1438,10 @@
       renderSetups();
     });
     $$('[data-setup-sort-field]').forEach((button) => button.addEventListener("click", () => {
-      state.setupSort = button.dataset.setupSortField;
+      const currentMode = setupSortModes[state.setupSort];
+      state.setupSort = currentMode?.field === button.dataset.setupSortField
+        ? currentMode.reverse
+        : button.dataset.setupSortField;
       syncSetupSortUI();
       renderSetups();
     }));
@@ -1434,7 +1451,17 @@
 
   function syncSetupSortUI() {
     $("#setup-sort").value = state.setupSort;
-    $$('[data-setup-sort-field]').forEach((button) => button.classList.toggle("is-active", button.dataset.setupSortField === state.setupSort));
+    const currentMode = setupSortModes[state.setupSort];
+    $$('[data-setup-sort-field]').forEach((button) => {
+      const active = currentMode?.field === button.dataset.setupSortField;
+      const label = button.dataset.sortLabel;
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-pressed", String(active));
+      button.textContent = `${label}${active ? ` ${currentMode.arrow}` : ""}`;
+      button.setAttribute("aria-label", active
+        ? `${label}, ${currentMode.order}. Click to reverse order.`
+        : `Sort by ${label}.`);
+    });
   }
 
   function setSetupLayout(layout) {
@@ -1474,14 +1501,22 @@
       rows.sort((a, b) => triggerDistance(b) - triggerDistance(a));
     } else if (state.setupSort === "operator-r") {
       rows.sort((a, b) => operatorMetric(b, "avg_r") - operatorMetric(a, "avg_r") || new Date(b.submitted_at) - new Date(a.submitted_at));
+    } else if (state.setupSort === "operator-r-low") {
+      rows.sort((a, b) => operatorMetric(a, "avg_r") - operatorMetric(b, "avg_r") || new Date(a.submitted_at) - new Date(b.submitted_at));
     } else if (state.setupSort === "operator-win") {
       rows.sort((a, b) => operatorMetric(b, "win_rate") - operatorMetric(a, "win_rate") || operatorMetric(b, "triggered_setups") - operatorMetric(a, "triggered_setups"));
+    } else if (state.setupSort === "operator-win-low") {
+      rows.sort((a, b) => operatorMetric(a, "win_rate") - operatorMetric(b, "win_rate") || operatorMetric(a, "triggered_setups") - operatorMetric(b, "triggered_setups"));
     } else if (state.setupSort === "planned-r") {
       rows.sort((a, b) => (computePlannedR(b.direction, b.entry, b.stop, b.t1) ?? -Infinity) - (computePlannedR(a.direction, a.entry, a.stop, a.t1) ?? -Infinity));
+    } else if (state.setupSort === "planned-r-low") {
+      rows.sort((a, b) => (computePlannedR(a.direction, a.entry, a.stop, a.t1) ?? Infinity) - (computePlannedR(b.direction, b.entry, b.stop, b.t1) ?? Infinity));
     } else if (state.setupSort === "score") {
       rows.sort((a, b) => (b.score ?? -Infinity) - (a.score ?? -Infinity));
     } else if (state.setupSort === "discussed") {
       rows.sort((a, b) => b.comment_count - a.comment_count || new Date(b.submitted_at) - new Date(a.submitted_at));
+    } else if (state.setupSort === "discussed-low") {
+      rows.sort((a, b) => a.comment_count - b.comment_count || new Date(a.submitted_at) - new Date(b.submitted_at));
     } else {
       rows.sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at));
     }
