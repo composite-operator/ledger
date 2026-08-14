@@ -19,7 +19,7 @@ The repository starts in an explicit preview mode. Preview mode shows only a ver
 - Password-manager-friendly email/password sign-in with editable, unique public handles
 - Searchable and sortable leaderboard
 - Public per-operator profile drawers
-- Owner-editable profile pictures, display names, and bios
+- Owner-editable profile pictures, unique public handles, and bios
 - Case-insensitive public-handle availability checks and collision-safe profile updates
 - Setup-card author avatars with initials fallbacks for rapid operator identification
 - Public join dates, complete performance stats, and recent setup history
@@ -66,12 +66,13 @@ The repository starts in an explicit preview mode. Preview mode shows only a ver
 14. Run [`supabase/migrations/202608130011_victory_cards.sql`](supabase/migrations/202608130011_victory_cards.sql) to add victory alerts, the win-notification preference, and the result fields used by notification cards.
 15. Run [`supabase/migrations/202608140001_loss_cards.sql`](supabase/migrations/202608140001_loss_cards.sql) to add loss-card alerts and the separate loss-notification preference.
 16. Run [`supabase/migrations/202608140002_profile_handles.sql`](supabase/migrations/202608140002_profile_handles.sql) to let authenticated owners change their unique public handle.
-17. In **Authentication → URL Configuration**, set:
+17. Run [`supabase/migrations/202608140003_unified_public_identity.sql`](supabase/migrations/202608140003_unified_public_identity.sql) to synchronize the legacy display-name column to the canonical handle and prevent future drift.
+18. In **Authentication → URL Configuration**, set:
    - Site URL: `https://ximxesabortion.github.io/ledger/`
    - Redirect URL: `https://ximxesabortion.github.io/ledger/`
 
-18. In **Authentication → Sign In / Providers → Email**, keep Email enabled.
-19. For the $0 MVP, turn **Confirm email** off. This avoids relying on a paid production mail service. Add verified-email delivery later if the product needs email ownership proof or password-reset email.
+19. In **Authentication → Sign In / Providers → Email**, keep Email enabled.
+20. For the $0 MVP, turn **Confirm email** off. This avoids relying on a paid production mail service. Add verified-email delivery later if the product needs email ownership proof or password-reset email.
 
 Google and X are optional future identity links. They are not required for Ledger accounts.
 

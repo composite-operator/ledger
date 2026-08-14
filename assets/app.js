@@ -637,7 +637,7 @@
       rank_position: Number(row.rank_position || 0),
       total_count: Number(row.total_count || 0),
       handle: row.handle,
-      display_name: row.display_name || row.handle,
+      display_name: row.handle,
       avatar_url: row.avatar_url || null,
       total_setups: Number(row.total_setups || 0),
       triggered_setups: Number(row.triggered_setups || 0),
@@ -775,7 +775,7 @@
     return {
       id: state.session?.user?.id,
       handle,
-      display_name: state.profile?.display_name || handle,
+      display_name: handle,
       avatar_url: state.profile?.avatar_url || null,
       total_setups: 0,
       triggered_setups: 0,
@@ -821,7 +821,7 @@
   function rankedLeaders() {
     if (state.live) return state.leaders.slice();
     const search = state.rankSearch;
-    const filtered = state.leaders.filter((leader) => !search || `${leader.handle} ${leader.display_name}`.toLowerCase().includes(search));
+    const filtered = state.leaders.filter((leader) => !search || leader.handle.toLowerCase().includes(search));
     const getter = {
       goat: (leader) => leader.goat_score ?? -Infinity,
       last30: (leader) => leader.last_30d_score ?? -Infinity,
@@ -851,7 +851,7 @@
 
   function leaderboardRow(leader, rank) {
     return `<tr data-profile-id="${escapeAttr(leader.id)}">
-      <td><div class="rank-operator-cell"><span>${String(rank).padStart(2, "0")}</span>${avatar(leader)}<div class="operator-copy"><b>${escapeHtml(leader.display_name)}</b><small>@${escapeHtml(leader.handle)}</small></div></div></td>
+      <td><div class="rank-operator-cell"><span>${String(rank).padStart(2, "0")}</span>${avatar(leader)}<div class="operator-copy"><b>@${escapeHtml(leader.handle)}</b></div></div></td>
       <td class="${metricClass(leader.goat_score)}">${formatNumber(leader.goat_score, 2, "—")}</td>
       <td class="${metricClass(leader.last_30d_score)}">${formatSigned(leader.last_30d_score)}</td>
       <td>${formatPercent(leader.win_rate)}</td>
@@ -866,7 +866,7 @@
     const podium = $("#ranking-podium");
     podium.innerHTML = leaders.map((leader, index) => `<article class="podium-card" data-rank="0${index + 1}" data-profile-id="${escapeAttr(leader.id)}">
       <div class="podium-top"><span class="podium-rank">RANK / 0${index + 1}</span><span class="podium-score">GOAT ${formatNumber(leader.goat_score, 2, "NQ")}</span></div>
-      <div class="podium-operator">${avatar(leader)}<div><b>${escapeHtml(leader.display_name)}</b><small>@${escapeHtml(leader.handle)}</small></div></div>
+      <div class="podium-operator">${avatar(leader)}<div><b>@${escapeHtml(leader.handle)}</b></div></div>
       <div class="podium-metrics"><div><span>WIN RATE</span><b>${formatPercent(leader.win_rate)}</b></div><div><span>AVG R</span><b>${formatR(leader.avg_r)}</b></div><div><span>TRIGGERED</span><b>${formatInteger(leader.triggered_setups)}</b></div></div>
     </article>`).join("");
     bindProfileTriggers(podium);
@@ -880,7 +880,7 @@
     const target = $("#compact-leaderboard");
     target.innerHTML = leaders.map((leader, index) => `<div class="compact-row" data-profile-id="${escapeAttr(leader.id)}">
       <span class="rank-number">${String(index + 1).padStart(2, "0")}</span>
-      <div class="operator-cell">${avatar(leader)}<div class="operator-copy"><b>${escapeHtml(leader.display_name)}</b><small>@${escapeHtml(leader.handle)}</small></div></div>
+      <div class="operator-cell">${avatar(leader)}<div class="operator-copy"><b>@${escapeHtml(leader.handle)}</b></div></div>
       ${compactStat("GOAT", formatNumber(leader.goat_score, 2, "NQ"), metricClass(leader.goat_score))}
       ${compactStat("WIN", formatPercent(leader.win_rate), "")}
       ${compactStat("AVG R", formatR(leader.avg_r), metricClass(leader.avg_r))}
@@ -940,9 +940,7 @@
       : [];
     drawer.innerHTML = `<button class="modal-close profile-close" type="button" data-close-profile aria-label="Close profile">×</button>
     <div class="profile-head">
-      <div class="profile-avatar-large">${profileAvatar(detailedLeader)}</div>
-      <h2>${escapeHtml(detailedLeader.display_name || detailedLeader.handle)}</h2>
-      <p class="profile-handle">@${escapeHtml(detailedLeader.handle)}</p>
+      <div class="profile-avatar-row"><div class="profile-avatar-large">${profileAvatar(detailedLeader)}</div><div class="profile-identity-block"><h2>@${escapeHtml(detailedLeader.handle)}</h2>${isOwnProfile ? profileEditor(detailedLeader) : ""}</div></div>
       <p class="profile-bio">${escapeHtml(detailedLeader.bio || "No bio yet.")}</p>
       <div class="profile-badges"><span>LEDGER ACCOUNT</span><span>PUBLIC RECORD</span><span>JOINED ${escapeHtml(formatMonthYear(detailedLeader.created_at))}</span><span>${detailedLeader.triggered_setups || 0} TRIGGERED</span><span>${formatInteger(detailedLeader.follower_count)} FOLLOWERS</span><span>${formatInteger(detailedLeader.following_count)} FOLLOWING</span></div>
       ${isOwnProfile
@@ -961,7 +959,7 @@
         <div><span>STOPPED</span><b>${formatInteger(detailedLeader.stopped_setups)}</b></div>
         <div><span>TARGET HITS</span><b><small>T1</small> ${formatInteger(detailedLeader.t1_hits)} <small>T2</small> ${formatInteger(detailedLeader.t2_hits)} <small>T3</small> ${formatInteger(detailedLeader.t3_hits)}</b></div>
       </div>
-      ${isOwnProfile ? `${profileEditor(detailedLeader)}${notificationSettingsPanel()}` : ""}
+      ${isOwnProfile ? notificationSettingsPanel() : ""}
       ${isOwnProfile ? followedSetupDashboard(followedSetups) : ""}
       <div class="profile-section-title">PUBLIC RECORDS <span>${recent.length}</span></div>
       <div class="profile-records">${recent.length ? recent.map(profileRecord).join("") : '<div class="table-empty">No public setups yet.</div>'}</div>
@@ -1009,7 +1007,7 @@
   }
 
   function profileAvatar(profile) {
-    if (profile.avatar_url) return `<img src="${escapeAttr(profile.avatar_url)}" alt="${escapeAttr(profile.display_name || profile.handle)} profile picture">`;
+    if (profile.avatar_url) return `<img src="${escapeAttr(profile.avatar_url)}" alt="@${escapeAttr(profile.handle)} profile picture">`;
     return escapeHtml(initials(profile.handle));
   }
 
@@ -1019,7 +1017,6 @@
       <form data-profile-form>
         <label><span>PROFILE PICTURE</span><input name="avatar" type="file" accept="image/jpeg,image/png,image/webp"><small data-avatar-file>JPG, PNG, or WEBP · 2 MB maximum</small></label>
         <label><span>PUBLIC HANDLE</span><span class="profile-handle-control"><i aria-hidden="true">@</i><input name="handle" type="text" minlength="3" maxlength="30" pattern="[a-z0-9][a-z0-9_-]{2,29}" autocomplete="off" autocapitalize="none" spellcheck="false" required value="${escapeAttr(profile.handle)}"></span><small data-profile-handle-status>3–30 lowercase letters, numbers, underscores, or hyphens. Handles are unique.</small></label>
-        <label><span>DISPLAY NAME</span><input name="display_name" type="text" maxlength="80" required value="${escapeAttr(profile.display_name || profile.handle)}"></label>
         <label><span>BIO</span><textarea name="bio" maxlength="600" rows="5" placeholder="What do you trade? What is your process?">${escapeHtml(profile.bio || "")}</textarea></label>
         <p class="profile-form-status" data-profile-status></p>
         <button type="submit">SAVE PROFILE <span>→</span></button>
@@ -1281,11 +1278,9 @@
     const button = $("button[type='submit']", form);
     const formData = new FormData(form);
     const handle = normalizeProfileHandle(formData.get("handle"));
-    const displayName = String(formData.get("display_name") || "").trim();
     const bio = String(formData.get("bio") || "").trim();
     const avatarFile = $("input[name='avatar']", form).files?.[0] || null;
     if (!validProfileHandle(handle)) return setProfileFormStatus(status, "Handle: use 3–30 lowercase letters, numbers, underscores, or hyphens.", true);
-    if (!displayName) return setProfileFormStatus(status, "Display name is required.", true);
     if (bio.length > 600) return setProfileFormStatus(status, "Bio must be 600 characters or fewer.", true);
     if (avatarFile && (!['image/jpeg', 'image/png', 'image/webp'].includes(avatarFile.type) || avatarFile.size > 2097152)) {
       return setProfileFormStatus(status, "Use a JPG, PNG, or WEBP image no larger than 2 MB.", true);
@@ -1320,7 +1315,7 @@
 
       const { data, error } = await state.supabase
         .from("profiles")
-        .update({ handle, display_name: displayName, bio, avatar_url: avatarUrl })
+        .update({ handle, bio, avatar_url: avatarUrl })
         .eq("id", state.session.user.id)
         .select("*")
         .single();
@@ -1357,13 +1352,13 @@
     state.setups.forEach((setup) => {
       if (String(setup.user_id) !== String(profile.id)) return;
       setup.handle = profile.handle;
-      setup.display_name = profile.display_name;
+      setup.display_name = profile.handle;
       setup.avatar_url = profile.avatar_url;
     });
     state.commentsBySetup.forEach((comments) => comments.forEach((comment) => {
       if (String(comment.user_id) !== String(profile.id)) return;
       comment.handle = profile.handle;
-      comment.display_name = profile.display_name;
+      comment.display_name = profile.handle;
       comment.avatar_url = profile.avatar_url;
     }));
   }
@@ -1884,12 +1879,12 @@
     if (!items) {
       let request = state.supabase
         .from("profiles")
-        .select("id, handle, display_name, avatar_url")
+        .select("id, handle, avatar_url")
         .eq("is_public", true)
         .eq("account_status", "ACTIVE")
         .order("handle", { ascending: true })
         .limit(mentionQueryLimit);
-      if (query) request = request.or(`handle.ilike.${query}%,display_name.ilike.%${query}%`);
+      if (query) request = request.ilike("handle", `${query}%`);
 
       const { data, error } = await request;
       if (error) {
@@ -1898,7 +1893,6 @@
       }
       items = (data || []).filter((item) => item.handle).map((item) => ({
         avatar_url: item.avatar_url || "",
-        display_name: item.display_name || item.handle,
         handle: String(item.handle).toLowerCase(),
         id: item.id
       }));
@@ -1926,7 +1920,7 @@
 
     panel.innerHTML = items.map((item, index) => `<button class="mention-option${index === lookup.activeIndex ? " is-active" : ""}" id="${escapeAttr(panel.id)}-option-${index}" type="button" role="option" aria-selected="${index === lookup.activeIndex}" data-mention-index="${index}">
       <span class="mention-option-avatar">${avatarContent(item.avatar_url, item.handle)}</span>
-      <span class="mention-option-copy"><b>@${escapeHtml(item.handle)}</b><small>${escapeHtml(item.display_name)}</small></span>
+      <span class="mention-option-copy"><b>@${escapeHtml(item.handle)}</b></span>
     </button>`).join("");
     syncMentionActiveOption(textarea, panel);
 
