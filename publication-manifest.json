@@ -10,7 +10,7 @@
     },
     {
       "path": "assets/app.js",
-      "sha256": "584ee319c0df672a64c9a5f5e40e863f5e4a1b98af9d224e742d001f2fd3be7c"
+      "sha256": "715d9bdaf2812932e63fe15e4441c671102b4d9f6b8b2c9dd494d1fe1b8ad082"
     },
     {
       "path": "assets/brand-mark.svg",
@@ -41,6 +41,18 @@
       "sha256": "77125b6e50bce44c4c49abe52ea97b8c20ca4e59f9b599d285b164f221578711"
     },
     {
+      "path": "assets/operator-face-icon-192.png",
+      "sha256": "ccdbcf40096d1d97d03ab2d996fb97eec19bf9f14fa74483893cac31665c899e"
+    },
+    {
+      "path": "assets/operator-face-mark.png",
+      "sha256": "9ca5aae76b915de806af7ec928a44ffdc9ec6d698242dacaeecf4ff4fb12e50f"
+    },
+    {
+      "path": "assets/operator-master-seal.png",
+      "sha256": "00c54e08444831e3bd8fb0bd380695178eed71d2d487977643812a246d8b202d"
+    },
+    {
       "path": "assets/runtime-config.example.js",
       "sha256": "1740f77ab817dafa1bf839ff8833d0afc4674a79be89305ac1e3a246f6ee29d1"
     },
@@ -50,7 +62,7 @@
     },
     {
       "path": "assets/styles.css",
-      "sha256": "3402e84086da39782d62c96c642935d1f0bc92a5b8794396bb41130c1cabadda"
+      "sha256": "f70647bee97e850bba0dab253f95fecb2c1f020b73b5f46f4e21f62bd0bcef29"
     },
     {
       "path": "assets/victory/chud-terminal.webp",
@@ -70,11 +82,11 @@
     },
     {
       "path": "index.html",
-      "sha256": "26a42f5676ebe620a79931c692772c32d46c5137ecbf01a886a2244fb0a13a14"
+      "sha256": "65d6ab583380b9fff00c61bd88c777c66a74e6459791246f9bbe52411ecaaa67"
     },
     {
       "path": "site.webmanifest",
-      "sha256": "762bb3fe9462e7c31256096b14ec7398ef743918268e9bbb821656a1c3e804f2"
+      "sha256": "6173876b3ea4104e2417cd460f4015576bfeac881b67ec3c62dab45b295840ea"
     }
   ],
   "profile": "ledger",
