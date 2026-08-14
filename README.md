@@ -53,6 +53,7 @@ The repository starts in an explicit preview mode. Preview mode shows only a ver
 9. Run [`supabase/migrations/202608130006_profile_avatars.sql`](supabase/migrations/202608130006_profile_avatars.sql) to create the public avatar bucket and owner-only upload policies.
 10. Run [`supabase/migrations/202608130007_operator_notifications.sql`](supabase/migrations/202608130007_operator_notifications.sql) to add follows, private notification feeds, preferences, triggers, and Realtime delivery.
 11. Run [`supabase/migrations/202608130008_setup_follows.sql`](supabase/migrations/202608130008_setup_follows.sql) to add personal setup watchlists plus Hot, entry, target, and stop-out alerts.
+12. Run [`supabase/migrations/202608130009_comment_replies_mentions.sql`](supabase/migrations/202608130009_comment_replies_mentions.sql) to add comment replies, clickable references, handle mentions, and private reply or mention alerts.
 12. In **Authentication → URL Configuration**, set:
    - Site URL: `https://ximxesabortion.github.io/ledger/`
    - Redirect URL: `https://ximxesabortion.github.io/ledger/`

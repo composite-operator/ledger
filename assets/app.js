@@ -57,6 +57,7 @@
     commentErrors: new Map(),
     commentsLoading: new Set(),
     expandedComments: new Set(),
+    replyTargets: new Map(),
     followingIds: new Set(),
     followedSetupIds: new Set(),
     setupFollowsAvailable: true,
@@ -554,7 +555,14 @@
 
   function normalizeComment(row) {
     const attachment = parseAttachmentText(row.body);
-    return { ...row, body: attachment.text, image_path: attachment.path };
+    const replyAttachment = parseAttachmentText(row.reply_to_body);
+    return {
+      ...row,
+      body: attachment.text,
+      image_path: attachment.path,
+      reply_to_body: replyAttachment.text,
+      reply_to_image_path: replyAttachment.path
+    };
   }
 
   async function authenticateWithPassword(mode) {
@@ -1274,6 +1282,10 @@
       const form = button.closest("form");
       clearAttachmentPreview($("[data-comment-image]", form), $(".attachment-preview", form));
     }));
+    $$("[data-reply-comment]", grid).forEach((button) => button.addEventListener("click", () => beginCommentReply(button.dataset.setupId, button.dataset.replyComment)));
+    $$("[data-cancel-comment-reply]", grid).forEach((button) => button.addEventListener("click", () => cancelCommentReply(button.dataset.cancelCommentReply)));
+    $$("[data-jump-comment]", grid).forEach((button) => button.addEventListener("click", () => jumpToComment(button.dataset.setupId, button.dataset.jumpComment)));
+    $$("[data-comment-handle]", grid).forEach((button) => button.addEventListener("click", () => openProfileByHandle(button.dataset.commentHandle)));
     $$("[data-delete-comment]", grid).forEach((button) => button.addEventListener("click", () => softDeleteComment(button.dataset.setupId, button.dataset.deleteComment)));
     $$("[data-share-setup]", grid).forEach((button) => button.addEventListener("click", () => shareSetup(button.dataset.shareSetup)));
     $$("[data-follow-setup]", grid).forEach((button) => button.addEventListener("click", () => {
@@ -1324,6 +1336,8 @@
     const error = state.commentErrors.get(setupId);
     const count = comments ? comments.filter((comment) => !comment.is_deleted).length : setup.comment_count;
     const preExecution = ["queued", "hot", "near"].includes(normalizeState(setup.status));
+    const replyTargetId = state.replyTargets.get(setupId);
+    const replyTarget = comments?.find((comment) => String(comment.id) === String(replyTargetId) && !comment.is_deleted);
     let conversation = "";
 
     if (loading) {
@@ -1336,10 +1350,18 @@
       conversation = `<div class="comment-list">${comments.map(commentItem).join("")}</div>`;
     }
 
-    const composer = state.session?.user ? `<form class="comment-composer" data-comment-form="${escapeAttr(setupId)}">
+    if (replyTargetId && !replyTarget) state.replyTargets.delete(setupId);
+    const replyContext = replyTarget ? `<div class="comment-reply-context">
+      <span>REPLYING TO <b>@${escapeHtml(replyTarget.handle)}</b></span>
+      <p>${escapeHtml(commentPreview(replyTarget.body, replyTarget.image_path))}</p>
+      <button type="button" data-cancel-comment-reply="${escapeAttr(setupId)}" aria-label="Cancel reply">CANCEL</button>
+    </div>` : "";
+    const replyDraft = replyTarget ? `@${replyTarget.handle} ` : "";
+    const composer = state.session?.user ? `<form class="comment-composer" data-comment-form="${escapeAttr(setupId)}"${replyTarget ? ` data-reply-to-comment="${escapeAttr(replyTarget.id)}"` : ""}>
       <span class="comment-avatar">${avatarContent(state.profile?.avatar_url, state.profile?.handle || state.session.user.email)}</span>
       <div class="comment-compose-body">
-        <label><span class="sr-only">Comment on ${escapeHtml(setup.ticker)}</span><textarea name="comment" maxlength="600" placeholder="Add signal, context, or a question… Paste a chart with Ctrl+V."></textarea></label>
+        ${replyContext}
+        <label><span class="sr-only">Comment on ${escapeHtml(setup.ticker)}</span><textarea name="comment" maxlength="600" placeholder="Add signal, context, or a question… Use @handle or paste a chart with Ctrl+V.">${escapeHtml(replyDraft)}</textarea></label>
         <div class="comment-attachment-actions">
           <label class="comment-image-picker" tabindex="0"><input class="attachment-input" name="comment_image" type="file" accept="image/jpeg,image/png,image/webp" data-comment-image><span>▧ ATTACH / PASTE</span></label>
           <small>CTRL+V · JPG, PNG, or WEBP · 2 MB maximum</small>
@@ -1367,15 +1389,88 @@
 
   function commentItem(comment) {
     const ownComment = state.session?.user?.id === comment.user_id;
-    return `<article class="comment-item${comment.is_op ? " is-op" : ""}${comment.is_deleted ? " is-deleted" : ""}">
+    const replyReference = comment.reply_to_comment_id ? `<button class="comment-reply-reference" type="button" data-jump-comment="${escapeAttr(comment.reply_to_comment_id)}" data-setup-id="${escapeAttr(comment.setup_id)}">
+      <span>↳ @${escapeHtml(comment.reply_to_handle || "comment")}</span>
+      <small>${escapeHtml(commentPreview(comment.reply_to_body, comment.reply_to_image_path, comment.reply_to_is_deleted))}</small>
+    </button>` : "";
+    return `<article class="comment-item${comment.is_op ? " is-op" : ""}${comment.is_deleted ? " is-deleted" : ""}" id="comment-${escapeAttr(comment.id)}">
       <span class="comment-avatar">${avatarContent(comment.avatar_url, comment.handle)}</span>
       <div class="comment-content">
-        <header><b>@${escapeHtml(comment.handle)}</b>${comment.is_op ? '<strong>★ OP</strong>' : ""}<time>${formatRelative(comment.created_at)}</time></header>
-        ${comment.body ? `<p>${escapeHtml(comment.body)}</p>` : ""}
+        ${replyReference}
+        <header><button class="comment-handle" type="button" data-comment-handle="${escapeAttr(comment.handle)}">@${escapeHtml(comment.handle)}</button>${comment.is_op ? '<strong>★ OP</strong>' : ""}<time>${formatRelative(comment.created_at)}</time></header>
+        ${comment.body ? `<p>${commentBodyHtml(comment.body)}</p>` : ""}
         ${comment.image_path && !comment.is_deleted ? `<a class="comment-image" href="${escapeAttr(publicMediaUrl(comment.image_path))}" target="_blank" rel="noopener noreferrer"><img src="${escapeAttr(publicMediaUrl(comment.image_path))}" loading="lazy" alt="Image attached by @${escapeAttr(comment.handle)}"></a>` : ""}
       </div>
-      ${ownComment && !comment.is_deleted ? `<button class="comment-delete" type="button" data-delete-comment="${escapeAttr(comment.id)}" data-setup-id="${escapeAttr(comment.setup_id)}" aria-label="Remove your comment">REMOVE</button>` : ""}
+      ${!comment.is_deleted ? `<div class="comment-actions"><button class="comment-reply" type="button" data-reply-comment="${escapeAttr(comment.id)}" data-setup-id="${escapeAttr(comment.setup_id)}">REPLY</button>${ownComment ? `<button class="comment-delete" type="button" data-delete-comment="${escapeAttr(comment.id)}" data-setup-id="${escapeAttr(comment.setup_id)}" aria-label="Remove your comment">REMOVE</button>` : ""}</div>` : ""}
     </article>`;
+  }
+
+  function commentPreview(body, imagePath, isDeleted = false) {
+    if (isDeleted) return "Comment removed";
+    const clean = String(body || "").replace(/\s+/g, " ").trim();
+    if (clean) return clean.length > 116 ? `${clean.slice(0, 113)}…` : clean;
+    return imagePath ? "Image attachment" : "Referenced comment";
+  }
+
+  function commentBodyHtml(body) {
+    return escapeHtml(body || "").replace(
+      /(^|[\s([{])@([a-z0-9][a-z0-9_-]{2,29})/gi,
+      (_match, prefix, handle) => `${prefix}<button class="comment-mention" type="button" data-comment-handle="${escapeAttr(handle.toLowerCase())}">@${escapeHtml(handle)}</button>`
+    );
+  }
+
+  async function openProfileByHandle(handle) {
+    const normalizedHandle = String(handle || "").replace(/^@/, "").toLowerCase();
+    let profile = [...state.leaders, ...state.compactLeaders].find((item) => String(item.handle).toLowerCase() === normalizedHandle);
+    if (!profile) {
+      const setup = state.setups.find((item) => String(item.handle).toLowerCase() === normalizedHandle);
+      if (setup) profile = { id: setup.user_id, handle: setup.handle, display_name: setup.handle };
+    }
+    if (!profile && state.supabase) {
+      const { data } = await state.supabase
+        .from("profiles")
+        .select("id, handle, display_name, avatar_url, bio, created_at")
+        .eq("handle", normalizedHandle)
+        .maybeSingle();
+      if (data) profile = data;
+    }
+    if (profile) await openProfile(profile);
+    else showToast("Operator not found", `@${normalizedHandle} is not a visible Ledger profile.`, true);
+  }
+
+  function beginCommentReply(setupId, commentId) {
+    if (!state.session?.user) {
+      $("#auth-dialog").showModal();
+      return;
+    }
+    const key = String(setupId);
+    const comment = (state.commentsBySetup.get(key) || []).find((item) => String(item.id) === String(commentId) && !item.is_deleted);
+    if (!comment) return;
+    state.replyTargets.set(key, String(comment.id));
+    state.expandedComments.add(key);
+    renderSetups();
+    requestAnimationFrame(() => {
+      const form = $$("[data-comment-form]").find((item) => item.dataset.commentForm === key);
+      const textarea = form ? $("textarea", form) : null;
+      if (!textarea) return;
+      textarea.focus();
+      textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+      form.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+  }
+
+  function cancelCommentReply(setupId) {
+    state.replyTargets.delete(String(setupId));
+    renderSetups();
+  }
+
+  function jumpToComment(_setupId, commentId) {
+    const target = document.getElementById(`comment-${commentId}`);
+    if (!target) return;
+    target.scrollIntoView({ behavior: "smooth", block: "center" });
+    target.classList.remove("is-referenced");
+    requestAnimationFrame(() => target.classList.add("is-referenced"));
+    window.setTimeout(() => target.classList.remove("is-referenced"), 1800);
   }
 
   async function toggleSetupComments(setupId) {
@@ -1416,6 +1511,7 @@
     event.preventDefault();
     const form = event.currentTarget;
     const setupId = String(form.dataset.commentForm);
+    const replyToCommentId = form.dataset.replyToComment || null;
     const textarea = $("textarea", form);
     const body = textarea.value.trim();
     const imageInput = $("[data-comment-image]", form);
@@ -1444,11 +1540,13 @@
         button.textContent = "POSTING…";
       }
       const storedBody = serializeAttachmentText(body, uploadedPath, 600);
-      const { error } = await state.supabase.from("setup_comments").insert({
+      const commentRecord = {
         setup_id: setupId,
         user_id: state.session.user.id,
         body: storedBody
-      });
+      };
+      if (replyToCommentId) commentRecord.reply_to_comment_id = replyToCommentId;
+      const { error } = await state.supabase.from("setup_comments").insert(commentRecord);
       if (error) throw error;
     } catch (error) {
       if (uploadedPath) await removeLedgerImage(uploadedPath);
@@ -1460,11 +1558,12 @@
 
     const setup = state.setups.find((item) => String(item.id) === setupId);
     if (setup) setup.comment_count += 1;
+    state.replyTargets.delete(setupId);
     state.commentsBySetup.delete(setupId);
     textarea.value = "";
     clearAttachmentPreview(imageInput, $(".attachment-preview", form));
     await loadSetupComments(setupId);
-    showToast("Comment posted", "Your comment is now part of the public thread.");
+    showToast(replyToCommentId ? "Reply posted" : "Comment posted", replyToCommentId ? "The referenced operator received a reply alert." : "Your comment is now part of the public thread.");
   }
 
   async function softDeleteComment(setupId, commentId) {
@@ -1918,6 +2017,8 @@
     const actor = `@${notification.actor_handle || "operator"}`;
     const ticker = notification.ticker || "a setup";
     if (notification.notification_type === "COMMENT") return `${actor} commented on ${ticker}`;
+    if (notification.notification_type === "REPLY") return `${actor} replied to your comment on ${ticker}`;
+    if (notification.notification_type === "MENTION") return `${actor} mentioned you on ${ticker}`;
     if (notification.notification_type === "ENTRY_HIT") return `${ticker} by ${actor} achieved entry`;
     if (notification.notification_type === "SETUP_HOT") return `${ticker} moved to the Hot book`;
     if (notification.notification_type === "SETUP_ENTRY") return `${ticker} achieved entry`;
@@ -1931,6 +2032,8 @@
   function notificationDetail(notification) {
     const labels = {
       COMMENT: "COMMENT",
+      REPLY: "REPLY TO YOUR COMMENT",
+      MENTION: "HANDLE MENTION",
       ENTRY_HIT: "OPERATOR ENTRY ACHIEVED",
       NEW_SETUP: "NEW SETUP",
       SETUP_HOT: "FOLLOWED SETUP · HOT",
@@ -1947,6 +2050,8 @@
 
   function notificationIcon(type) {
     if (type === "COMMENT") return "C";
+    if (type === "REPLY") return "R";
+    if (type === "MENTION") return "@";
     if (type === "ENTRY_HIT" || type === "SETUP_ENTRY") return "E";
     if (type === "SETUP_HOT") return "H";
     if (type === "SETUP_T1") return "1";
@@ -2009,10 +2114,14 @@
     if (!setup) return;
 
     const setupId = String(setup.id);
-    if (notification.notification_type === "COMMENT") state.expandedComments.add(setupId);
+    const commentNotification = ["COMMENT", "REPLY", "MENTION"].includes(notification.notification_type);
+    if (commentNotification) state.expandedComments.add(setupId);
     openSetupBook(normalizeState(setup.status));
-    if (notification.notification_type === "COMMENT") await loadSetupComments(setupId);
-    requestAnimationFrame(() => document.getElementById(`setup-${setupId}`)?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    if (commentNotification) await loadSetupComments(setupId);
+    requestAnimationFrame(() => {
+      if (commentNotification && notification.comment_id) jumpToComment(setupId, notification.comment_id);
+      else document.getElementById(`setup-${setupId}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   }
 
   function bindUtilities() {
