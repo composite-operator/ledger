@@ -1420,6 +1420,14 @@
         <div><span>OP AVG R</span><b class="${metricClass(operator.avg_r)}">${formatR(operator.avg_r)}</b></div>
         <div><span>OP WIN / HISTORY</span><b>${formatPercent(operator.win_rate)} <small>${formatInteger(operator.triggered_setups)}T</small></b></div>
       </div>
+      <section class="setup-target-map" aria-label="${escapeAttr(setup.ticker)} published take profit levels">
+        <header><span>TAKE PROFIT MAP</span><small>PUBLISHED / LOCKED</small></header>
+        <div>
+          <div><span>TP1</span><b>${formatPrice(setup.t1)}</b></div>
+          <div><span>TP2</span><b>${formatPrice(setup.t2)}</b></div>
+          <div><span>TP3</span><b>${formatPrice(setup.t3)}</b></div>
+        </div>
+      </section>
       ${victory ? `<button class="setup-victory-teaser" type="button" data-open-victory="${escapeAttr(setupId)}">
         <span><i>✦</i><small>VERIFIED WIN / ${escapeHtml(victoryVariant.eyebrow)}</small><b>${escapeHtml(victoryVariant.headline)}</b></span>
         <strong>${formatR(setup.r_result ?? setup.score)}</strong><em>OPEN VICTORY CARD ↗</em>

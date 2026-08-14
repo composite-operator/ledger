@@ -524,6 +524,16 @@ img.operator-avatar { object-fit: cover; }
 .setup-price-grid span small { margin-left: 5px; color: var(--cyan); font-size: 5px; }
 .setup-price-grid b { margin-top: 3px; font-family: var(--mono); font-size: 8px; }
 .setup-price-grid b small { color: var(--faint); font-size: 5px; font-weight: 400; }
+.setup-target-map { display: grid; gap: 7px; margin-top: 7px; padding: 8px; border: 1px solid rgba(64,237,160,.14); border-radius: 8px; background: linear-gradient(90deg, rgba(64,237,160,.045), rgba(200,255,46,.018)); }
+.setup-target-map > header { display: flex; justify-content: space-between; align-items: center; font-family: var(--mono); }
+.setup-target-map > header span { color: var(--green); font-size: 5px; font-weight: 700; letter-spacing: .08em; }
+.setup-target-map > header small { color: var(--faint); font-size: 5px; letter-spacing: .06em; }
+.setup-target-map > div { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); }
+.setup-target-map > div > div { display: grid; gap: 2px; padding: 2px 9px; border-right: 1px solid var(--line); }
+.setup-target-map > div > div:first-child { padding-left: 0; }
+.setup-target-map > div > div:last-child { padding-right: 0; border-right: 0; }
+.setup-target-map span { color: var(--faint); font-family: var(--mono); font-size: 5px; }
+.setup-target-map b { color: var(--green); font-family: var(--mono); font-size: 10px; }
 .setup-victory-teaser { display: grid; grid-template-columns: minmax(0,1fr) auto auto; align-items: center; gap: 12px; width: 100%; margin-top: 12px; padding: 10px 11px; overflow: hidden; border: 1px solid rgba(200,255,46,.25); border-radius: 9px; background: radial-gradient(circle at 82% 50%, rgba(200,255,46,.14), transparent 30%), linear-gradient(90deg, rgba(200,255,46,.075), rgba(88,230,255,.025)); color: var(--text); cursor: pointer; text-align: left; }
 .setup-victory-teaser:hover { border-color: rgba(200,255,46,.5); box-shadow: 0 0 28px rgba(200,255,46,.08); }
 .setup-victory-teaser > span { display: grid; grid-template-columns: auto minmax(0,1fr); align-items: center; gap: 2px 7px; min-width: 0; }
@@ -1176,6 +1186,7 @@ dialog::backdrop { background: rgba(1,2,4,.78); backdrop-filter: blur(12px); }
 :root[data-theme="light"] .setup-card-foot .setup-follow-button { background: rgba(88,117,0,.06); border-color: rgba(88,117,0,.25); color: #587500; }
 :root[data-theme="light"] .setup-card-foot .setup-follow-button.is-following { background: #b9e83b; color: #182000; }
 :root[data-theme="light"] .setup-price-grid div { background: rgba(15, 23, 42, 0.025); border-color: rgba(15, 23, 42, 0.09); }
+:root[data-theme="light"] .setup-target-map { border-color: rgba(8,122,75,.2); background: linear-gradient(90deg, rgba(8,122,75,.055), rgba(88,117,0,.025)); }
 :root[data-theme="light"] .setup-discussion { background: rgba(241, 245, 249, 0.75); }
 :root[data-theme="light"] .setup-discussion.is-open { background: linear-gradient(180deg, rgba(88, 117, 0, 0.055), rgba(241, 245, 249, 0.92) 45%); }
 :root[data-theme="light"] .discussion-body { border-top-color: rgba(15, 23, 42, 0.08); }
