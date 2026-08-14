@@ -1399,7 +1399,6 @@
   function setupCard(setup) {
     const normalized = normalizeState(setup.status);
     const plannedR = computePlannedR(setup.direction, setup.entry, setup.stop, setup.t1);
-    const distance = percentFromEntry(setup);
     const operator = operatorHistory(setup);
     const setupId = String(setup.id);
     const commentsOpen = state.expandedComments.has(setupId);
@@ -1411,11 +1410,8 @@
         <div class="ticker-lockup"><div class="ticker-icon">${escapeHtml(setup.ticker.slice(0, 4))}</div><div class="ticker-copy"><b>${escapeHtml(setup.ticker)}</b><span>${escapeHtml(setup.direction)} · ${escapeHtml(labelize(setup.horizon || "SWING"))}</span></div></div>
         <span class="status-chip ${normalized}">${escapeHtml(normalized.toUpperCase())}</span>
       </div>
+      ${setupPositionMap(setup)}
       <div class="setup-price-grid">
-        <div><span>CURRENT${setup.quote_symbol && setup.quote_symbol !== setup.ticker ? `<small>${escapeHtml(setup.quote_symbol)}</small>` : ""}</span><b>${formatPrice(setup.current_price)}</b></div>
-        <div><span>ENTRY</span><b>${formatPrice(setup.entry)}</b></div>
-        <div><span>% FROM ENTRY</span><b class="${metricClass(distance)}">${formatSignedPercent(distance)}</b></div>
-        <div><span>STOP</span><b class="metric-negative">${formatPrice(setup.stop)}</b></div>
         <div><span>PLANNED R</span><b class="metric-positive">${formatNumber(plannedR, 2, "—")}R</b></div>
         <div><span>OP AVG R</span><b class="${metricClass(operator.avg_r)}">${formatR(operator.avg_r)}</b></div>
         <div><span>OP WIN / HISTORY</span><b>${formatPercent(operator.win_rate)} <small>${formatInteger(operator.triggered_setups)}T</small></b></div>
@@ -1443,6 +1439,60 @@
       </div>
       ${setupComments(setup)}
     </article>`;
+  }
+
+  function setupPositionMap(setup) {
+    const entry = Number(setup.entry);
+    const stop = Number(setup.stop);
+    const current = setup.current_price == null ? Number.NaN : Number(setup.current_price);
+    const hasCurrent = Number.isFinite(current);
+    const hasScale = Number.isFinite(entry) && Number.isFinite(stop) && entry !== stop;
+    const normalized = normalizeState(setup.status);
+    const rawDistance = percentFromEntry(setup);
+    const directionalDistance = rawDistance == null ? null : rawDistance * (setup.direction === "SHORT" ? -1 : 1);
+    const result = setup.r_result ?? setup.score;
+    const tone = normalized === "active"
+      ? (directionalDistance == null || directionalDistance === 0 ? "neutral" : directionalDistance > 0 ? "positive" : "negative")
+      : normalized === "resolved" && result != null
+        ? (Number(result) > 0 ? "positive" : Number(result) < 0 ? "negative" : "neutral")
+        : "neutral";
+    const heading = normalized === "active" ? "LIVE POSITION MAP" : normalized === "resolved" ? "FINAL PRICE MAP" : "ENTRY PROXIMITY MAP";
+    const distanceLabel = directionalDistance == null
+      ? "QUOTE PENDING"
+      : ["queued", "hot", "near"].includes(normalized)
+        ? `${formatNumber(Math.abs(rawDistance), 2)}% FROM ENTRY`
+        : `${formatNumber(Math.abs(directionalDistance), 2)}% ${directionalDistance >= 0 ? "FAVORABLE" : "ADVERSE"}`;
+
+    let stopPosition = 12;
+    let entryPosition = 50;
+    let currentPosition = 50;
+    if (hasScale) {
+      const scaleValues = [stop, entry, ...(hasCurrent ? [current] : [])];
+      const floor = Math.min(...scaleValues);
+      const ceiling = Math.max(...scaleValues);
+      const span = Math.max(ceiling - floor, Math.abs(entry - stop));
+      const scaleFloor = floor - span * 0.12;
+      const scaleCeiling = ceiling + span * 0.12;
+      const position = (value) => Math.max(6, Math.min(94, ((value - scaleFloor) / (scaleCeiling - scaleFloor)) * 100));
+      stopPosition = position(stop);
+      entryPosition = position(entry);
+      currentPosition = hasCurrent ? position(current) : entryPosition;
+    }
+    const fillLeft = Math.min(entryPosition, currentPosition);
+    const fillWidth = Math.max(0.8, Math.abs(currentPosition - entryPosition));
+    const quoteNote = setup.quote_symbol && setup.quote_symbol !== setup.ticker ? `<small>${escapeHtml(setup.quote_symbol)}</small>` : "";
+
+    return `<section class="setup-position-map is-${tone}${hasCurrent ? "" : " is-pending"}" aria-label="${escapeAttr(setup.ticker)} price map. Stop ${escapeAttr(formatPrice(setup.stop))}, entry ${escapeAttr(formatPrice(setup.entry))}, current ${escapeAttr(formatPrice(setup.current_price))}.">
+      <header><span>${heading}</span><b>${distanceLabel}</b></header>
+      <div class="setup-position-track" style="--stop-position:${stopPosition.toFixed(2)}%;--entry-position:${entryPosition.toFixed(2)}%;--current-position:${currentPosition.toFixed(2)}%;--fill-left:${fillLeft.toFixed(2)}%;--fill-width:${fillWidth.toFixed(2)}%" aria-hidden="true">
+        <i class="position-fill"></i><i class="position-marker is-stop"></i><i class="position-marker is-entry"></i><i class="position-marker is-current"></i>
+      </div>
+      <div class="setup-position-values">
+        <div><span>SL</span><b class="metric-negative">${formatPrice(setup.stop)}</b></div>
+        <div><span>ENTRY</span><b>${formatPrice(setup.entry)}</b></div>
+        <div><span>NOW${quoteNote}</span><b>${formatPrice(setup.current_price)}</b></div>
+      </div>
+    </section>`;
   }
 
   function setupComments(setup) {
