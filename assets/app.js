@@ -3,6 +3,10 @@
 
   const config = window.LEDGER_CONFIG || {};
   const liveConfigPresent = Boolean(config.supabaseUrl && config.supabasePublishableKey && config.demoMode !== true);
+  const mediaBucket = "avatars";
+  const imageMimeTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+  const maxImageBytes = 2 * 1024 * 1024;
+  const attachmentMarkerPattern = /(?:\r?\n)?\[ledger-image:([0-9a-f-]{36}\/ledger-media\/(?:setups|comments)\/[0-9a-f-]{36}\.(?:jpg|png|webp))\]$/i;
 
   const previewLeaders = [
     { id: "sheet-000000001", handle: "daft", display_name: "daft", total_setups: 2, triggered_setups: 2, stopped_setups: 2, t1_hits: 0, t2_hits: 0, t3_hits: 0, win_rate: 0, avg_r: -1, total_score: -2, goat_score: null, last_30d_score: 0, bio: "Verified Ledger operator from the current source sheet." }
@@ -158,14 +162,12 @@
       const hasOpenDialog = dialogs.some((dialog) => dialog.open);
       if (hasOpenDialog && !overlayScrollLocked) {
         overlayScrollY = window.scrollY;
-        document.body.style.setProperty("--overlay-scroll-y", `${overlayScrollY}px`);
         document.documentElement.classList.add("overlay-open");
         document.body.classList.add("overlay-open");
         overlayScrollLocked = true;
       } else if (!hasOpenDialog && overlayScrollLocked) {
         document.documentElement.classList.remove("overlay-open");
         document.body.classList.remove("overlay-open");
-        document.body.style.removeProperty("--overlay-scroll-y");
         window.scrollTo(0, overlayScrollY);
         overlayScrollLocked = false;
       }
@@ -179,6 +181,22 @@
       dialog.addEventListener("cancel", () => requestAnimationFrame(syncOverlayScrollLock));
       new MutationObserver(syncOverlayScrollLock).observe(dialog, { attributes: true, attributeFilter: ["open"] });
     });
+    document.addEventListener("keydown", (event) => {
+      if (!overlayScrollLocked || isTyping(event.target) || event.ctrlKey || event.metaKey || event.altKey) return;
+      const scrollKeys = new Set(["PageDown", "PageUp", "Home", "End", "ArrowDown", "ArrowUp", " "]);
+      if (!scrollKeys.has(event.key)) return;
+      const openDialog = dialogs.find((dialog) => dialog.open);
+      const scrollTarget = openDialog?.querySelector(".profile-drawer, .submit-card, .command-results, .modal-card");
+      event.preventDefault();
+      if (!scrollTarget || scrollTarget.scrollHeight <= scrollTarget.clientHeight) return;
+      if (event.key === "Home") scrollTarget.scrollTo({ top: 0, behavior: "smooth" });
+      else if (event.key === "End") scrollTarget.scrollTo({ top: scrollTarget.scrollHeight, behavior: "smooth" });
+      else {
+        const direction = ["PageUp", "ArrowUp"].includes(event.key) ? -1 : 1;
+        const distance = event.key.startsWith("Arrow") ? 48 : Math.max(180, scrollTarget.clientHeight * 0.8);
+        scrollTarget.scrollBy({ top: direction * distance, behavior: "smooth" });
+      }
+    }, true);
     syncOverlayScrollLock();
   }
 
@@ -343,12 +361,15 @@
   }
 
   function normalizeSetup(row) {
+    const thesisAttachment = parseAttachmentText(row.thesis);
     return {
       ...row,
       handle: row.handle || row.profile_handle || "operator",
       ticker: String(row.ticker || "").toUpperCase(),
       direction: String(row.direction || "LONG").toUpperCase(),
       status: String(row.status || "QUEUED").toUpperCase(),
+      thesis: thesisAttachment.text,
+      thesis_image_path: thesisAttachment.path,
       entry: nullableNumber(row.entry),
       stop: nullableNumber(row.stop),
       t1: nullableNumber(row.t1),
@@ -364,6 +385,11 @@
       operator_avg_r: nullableNumber(row.operator_avg_r),
       operator_goat_score: nullableNumber(row.operator_goat_score)
     };
+  }
+
+  function normalizeComment(row) {
+    const attachment = parseAttachmentText(row.body);
+    return { ...row, body: attachment.text, image_path: attachment.path };
   }
 
   async function authenticateWithPassword(mode) {
@@ -810,6 +836,11 @@
     $$("[data-toggle-comments]", grid).forEach((button) => button.addEventListener("click", () => toggleSetupComments(button.dataset.toggleComments)));
     $$("[data-comment-auth]", grid).forEach((button) => button.addEventListener("click", () => $("#auth-dialog").showModal()));
     $$("[data-comment-form]", grid).forEach((form) => form.addEventListener("submit", submitComment));
+    $$("[data-comment-image]", grid).forEach((input) => input.addEventListener("change", () => updateAttachmentPreview(input, $(".attachment-preview", input.closest("form")))));
+    $$("[data-remove-comment-image]", grid).forEach((button) => button.addEventListener("click", () => {
+      const form = button.closest("form");
+      clearAttachmentPreview($("[data-comment-image]", form), $(".attachment-preview", form));
+    }));
     $$("[data-delete-comment]", grid).forEach((button) => button.addEventListener("click", () => softDeleteComment(button.dataset.setupId, button.dataset.deleteComment)));
     $$("[data-share-setup]", grid).forEach((button) => button.addEventListener("click", () => shareSetup(button.dataset.shareSetup)));
     renderSetupCounts();
@@ -838,6 +869,7 @@
         <div><span>OP WIN / HISTORY</span><b>${formatPercent(operator.win_rate)} <small>${formatInteger(operator.triggered_setups)}T</small></b></div>
       </div>
       <p class="setup-thesis">${escapeHtml(setup.thesis || "No public thesis was added to this setup.")}</p>
+      ${setup.thesis_image_path ? `<a class="setup-thesis-image" href="${escapeAttr(publicMediaUrl(setup.thesis_image_path))}" target="_blank" rel="noopener noreferrer"><img src="${escapeAttr(publicMediaUrl(setup.thesis_image_path))}" loading="lazy" alt="Original ${escapeAttr(setup.ticker)} thesis chart"><span>ORIGINAL THESIS IMAGE ↗</span></a>` : ""}
       <div class="setup-card-foot">
         <span>@${escapeHtml(setup.handle)} · POSTED ${formatDate(setup.submitted_at)} · ${formatRelative(setup.submitted_at)}</span>
         <div><button type="button" data-share-setup="${escapeAttr(setupId)}">SHARE ↗</button><button type="button" data-open-setup-profile="${escapeAttr(setup.user_id)}" data-handle="${escapeAttr(setup.handle)}">VIEW OPERATOR ↗</button></div>
@@ -868,7 +900,18 @@
 
     const composer = state.session?.user ? `<form class="comment-composer" data-comment-form="${escapeAttr(setupId)}">
       <span class="comment-avatar">${avatarContent(state.profile?.avatar_url, state.profile?.handle || state.session.user.email)}</span>
-      <label><span class="sr-only">Comment on ${escapeHtml(setup.ticker)}</span><textarea name="comment" maxlength="600" required placeholder="Add signal, context, or a question…"></textarea></label>
+      <div class="comment-compose-body">
+        <label><span class="sr-only">Comment on ${escapeHtml(setup.ticker)}</span><textarea name="comment" maxlength="600" placeholder="Add signal, context, or a question…"></textarea></label>
+        <div class="comment-attachment-actions">
+          <label class="comment-image-picker"><input class="attachment-input" name="comment_image" type="file" accept="image/jpeg,image/png,image/webp" data-comment-image><span>▧ ATTACH IMAGE</span></label>
+          <small>JPG, PNG, or WEBP · 2 MB maximum</small>
+        </div>
+        <div class="attachment-preview comment-attachment-preview" hidden>
+          <img alt="Selected comment image preview">
+          <div><b data-attachment-name></b><small data-attachment-size></small></div>
+          <button type="button" data-remove-comment-image aria-label="Remove selected comment image">REMOVE</button>
+        </div>
+      </div>
       <button type="submit">POST COMMENT <span>→</span></button>
     </form>` : `<button class="comment-sign-in" type="button" data-comment-auth>Sign in to join the discussion <span>→</span></button>`;
 
@@ -890,7 +933,8 @@
       <span class="comment-avatar">${avatarContent(comment.avatar_url, comment.handle)}</span>
       <div class="comment-content">
         <header><b>@${escapeHtml(comment.handle)}</b>${comment.is_op ? '<strong>★ OP</strong>' : ""}<time>${formatRelative(comment.created_at)}</time></header>
-        <p>${escapeHtml(comment.body)}</p>
+        ${comment.body ? `<p>${escapeHtml(comment.body)}</p>` : ""}
+        ${comment.image_path && !comment.is_deleted ? `<a class="comment-image" href="${escapeAttr(publicMediaUrl(comment.image_path))}" target="_blank" rel="noopener noreferrer"><img src="${escapeAttr(publicMediaUrl(comment.image_path))}" loading="lazy" alt="Image attached by @${escapeAttr(comment.handle)}"></a>` : ""}
       </div>
       ${ownComment && !comment.is_deleted ? `<button class="comment-delete" type="button" data-delete-comment="${escapeAttr(comment.id)}" data-setup-id="${escapeAttr(comment.setup_id)}" aria-label="Remove your comment">REMOVE</button>` : ""}
     </article>`;
@@ -925,7 +969,7 @@
       const migrationPending = error.code === "42P01" || error.code === "42501" || /setup_comments/i.test(error.message || "");
       state.commentErrors.set(key, migrationPending ? "The comments database migration is not active yet." : error.message);
     } else {
-      state.commentsBySetup.set(key, data || []);
+      state.commentsBySetup.set(key, (data || []).map(normalizeComment));
     }
     renderSetups();
   }
@@ -936,24 +980,43 @@
     const setupId = String(form.dataset.commentForm);
     const textarea = $("textarea", form);
     const body = textarea.value.trim();
+    const imageInput = $("[data-comment-image]", form);
+    const imageFile = imageInput.files?.[0] || null;
     if (!state.session?.user || !state.supabase) {
       $("#auth-dialog").showModal();
       return;
     }
-    if (!body || body.length > 600) return;
+    if ((!body && !imageFile) || body.length > 600) {
+      showToast("Comment needs content", "Add text, an image, or both before posting.", true);
+      return;
+    }
+    const imageError = validateImageFile(imageFile);
+    if (imageError) {
+      showToast("Image not accepted", imageError, true);
+      return;
+    }
 
     const button = $("button[type='submit']", form);
     button.disabled = true;
-    button.textContent = "POSTING…";
-    const { error } = await state.supabase.from("setup_comments").insert({
-      setup_id: setupId,
-      user_id: state.session.user.id,
-      body
-    });
-    if (error) {
+    button.textContent = imageFile ? "UPLOADING…" : "POSTING…";
+    let uploadedPath = null;
+    try {
+      if (imageFile) {
+        uploadedPath = await uploadLedgerImage(imageFile, "comments");
+        button.textContent = "POSTING…";
+      }
+      const storedBody = serializeAttachmentText(body, uploadedPath, 600);
+      const { error } = await state.supabase.from("setup_comments").insert({
+        setup_id: setupId,
+        user_id: state.session.user.id,
+        body: storedBody
+      });
+      if (error) throw error;
+    } catch (error) {
+      if (uploadedPath) await removeLedgerImage(uploadedPath);
       button.disabled = false;
       button.innerHTML = "POST COMMENT <span>→</span>";
-      showToast("Comment not posted", error.message, true);
+      showToast("Comment not posted", error.message || "The comment attachment could not be published.", true);
       return;
     }
 
@@ -961,12 +1024,14 @@
     if (setup) setup.comment_count += 1;
     state.commentsBySetup.delete(setupId);
     textarea.value = "";
+    clearAttachmentPreview(imageInput, $(".attachment-preview", form));
     await loadSetupComments(setupId);
     showToast("Comment posted", "Your comment is now part of the public thread.");
   }
 
   async function softDeleteComment(setupId, commentId) {
     if (!state.session?.user || !state.supabase) return;
+    const comment = (state.commentsBySetup.get(String(setupId)) || []).find((item) => String(item.id) === String(commentId));
     const { error } = await state.supabase
       .from("setup_comments")
       .update({ deleted_at: new Date().toISOString() })
@@ -976,6 +1041,7 @@
       showToast("Comment not removed", error.message, true);
       return;
     }
+    if (comment?.image_path) await removeLedgerImage(comment.image_path);
     const key = String(setupId);
     const setup = state.setups.find((item) => String(item.id) === key);
     if (setup) setup.comment_count = Math.max(0, setup.comment_count - 1);
@@ -1083,6 +1149,8 @@
     ["entry", "stop", "t1"].forEach((id) => $(`#${id}`).addEventListener("input", updateRiskPreview));
     $$('input[name="direction"]').forEach((input) => input.addEventListener("change", updateRiskPreview));
     $("#thesis").addEventListener("input", (event) => { $("#thesis-count").textContent = event.target.value.length; });
+    $("#thesis-image").addEventListener("change", (event) => updateAttachmentPreview(event.currentTarget, $("#thesis-image-preview")));
+    $("[data-remove-thesis-image]").addEventListener("click", () => clearAttachmentPreview($("#thesis-image"), $("#thesis-image-preview")));
     form.addEventListener("submit", submitSetup);
     updateRiskPreview();
     updateFormAuthState();
@@ -1122,6 +1190,8 @@
     }
 
     const formData = new FormData(event.currentTarget);
+    const thesisImageInput = $("#thesis-image");
+    const thesisImageFile = thesisImageInput.files?.[0] || null;
     const payload = {
       user_id: state.session.user.id,
       client_request_id: crypto.randomUUID(),
@@ -1144,9 +1214,30 @@
       errorNode.hidden = false;
       return;
     }
+    const imageError = validateImageFile(thesisImageFile);
+    if (imageError) {
+      errorNode.textContent = imageError;
+      errorNode.hidden = false;
+      return;
+    }
 
     const publishButton = $("#publish-setup");
     publishButton.disabled = true;
+    let uploadedPath = null;
+    if (thesisImageFile) {
+      publishButton.querySelector("span").textContent = "Uploading chart…";
+      try {
+        uploadedPath = await uploadLedgerImage(thesisImageFile, "setups");
+        payload.thesis = serializeAttachmentText(payload.thesis || "", uploadedPath, 1200);
+      } catch (error) {
+        if (uploadedPath) await removeLedgerImage(uploadedPath);
+        publishButton.disabled = false;
+        publishButton.querySelector("span").textContent = "Publish setup";
+        errorNode.textContent = error.message || "The thesis image could not be uploaded.";
+        errorNode.hidden = false;
+        return;
+      }
+    }
     publishButton.querySelector("span").textContent = payload.trigger_type === "MARKET" ? "Checking live quote…" : "Publishing…";
     const result = payload.trigger_type === "MARKET"
       ? await submitVerifiedMarketSetup(payload)
@@ -1156,6 +1247,7 @@
     publishButton.querySelector("span").textContent = "Publish setup";
 
     if (error) {
+      if (uploadedPath) await removeLedgerImage(uploadedPath);
       errorNode.textContent = error.message;
       errorNode.hidden = false;
       return;
@@ -1164,6 +1256,7 @@
     $("#submit-dialog").close();
     event.currentTarget.reset();
     $("#thesis-count").textContent = "0";
+    clearAttachmentPreview(thesisImageInput, $("#thesis-image-preview"));
     updateRiskPreview();
     if (marketValidation) {
       showToast("Market setup active", `${payload.ticker} was verified at ${formatPrice(marketValidation.verifiedEntry)} via ${labelize(marketValidation.source)}.`);
@@ -1499,6 +1592,88 @@
   function formatFileSize(bytes) {
     if (!Number.isFinite(Number(bytes))) return "—";
     return `${formatNumber(Number(bytes) / 1048576, 2)} MB`;
+  }
+
+  function validateImageFile(file) {
+    if (!file) return null;
+    if (!imageMimeTypes.has(file.type)) return "Use a JPG, PNG, or WEBP image.";
+    if (file.size > maxImageBytes) return "The image must be 2 MB or smaller.";
+    return null;
+  }
+
+  function parseAttachmentText(value) {
+    const storedText = String(value || "");
+    const match = storedText.match(attachmentMarkerPattern);
+    if (!match) return { text: storedText, path: null };
+    return { text: storedText.slice(0, match.index).trimEnd(), path: match[1] };
+  }
+
+  function serializeAttachmentText(value, objectPath, maxLength) {
+    const text = String(value || "").trim();
+    if (!objectPath) return text;
+    const storedText = `${text ? `${text}\n` : ""}[ledger-image:${objectPath}]`;
+    if (storedText.length > maxLength) {
+      throw new Error(`Shorten the text so the image can fit in the ${maxLength}-character public record.`);
+    }
+    return storedText;
+  }
+
+  function updateAttachmentPreview(input, preview) {
+    const file = input.files?.[0] || null;
+    const error = validateImageFile(file);
+    if (!file || error) {
+      clearAttachmentPreview(input, preview);
+      if (error) showToast("Image not accepted", error, true);
+      return;
+    }
+    const previousUrl = preview.dataset.objectUrl;
+    if (previousUrl) URL.revokeObjectURL(previousUrl);
+    const objectUrl = URL.createObjectURL(file);
+    preview.dataset.objectUrl = objectUrl;
+    $("img", preview).src = objectUrl;
+    $("[data-attachment-name]", preview).textContent = file.name;
+    $("[data-attachment-size]", preview).textContent = formatFileSize(file.size);
+    preview.hidden = false;
+  }
+
+  function clearAttachmentPreview(input, preview) {
+    const objectUrl = preview?.dataset.objectUrl;
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+    if (input) input.value = "";
+    if (preview) {
+      delete preview.dataset.objectUrl;
+      const image = $("img", preview);
+      if (image) image.removeAttribute("src");
+      preview.hidden = true;
+    }
+  }
+
+  function imageExtension(file) {
+    return file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
+  }
+
+  async function uploadLedgerImage(file, scope) {
+    const error = validateImageFile(file);
+    if (error) throw new Error(error);
+    if (!state.session?.user || !state.supabase) throw new Error("Sign in before uploading an image.");
+    const objectPath = `${state.session.user.id}/ledger-media/${scope}/${crypto.randomUUID()}.${imageExtension(file)}`;
+    const { error: uploadError } = await state.supabase.storage.from(mediaBucket).upload(objectPath, file, {
+      cacheControl: "3600",
+      contentType: file.type,
+      upsert: false
+    });
+    if (uploadError) throw uploadError;
+    return objectPath;
+  }
+
+  async function removeLedgerImage(objectPath) {
+    if (!objectPath || !state.supabase) return;
+    await state.supabase.storage.from(mediaBucket).remove([objectPath]);
+  }
+
+  function publicMediaUrl(objectPath) {
+    if (!objectPath || !state.supabase) return "";
+    return state.supabase.storage.from(mediaBucket).getPublicUrl(objectPath).data.publicUrl;
   }
 
   function labelize(value) {

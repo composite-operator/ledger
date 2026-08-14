@@ -70,17 +70,8 @@ body {
   line-height: 1.5;
 }
 
-html.overlay-open {
-  overflow: hidden;
-  overscroll-behavior: none;
-}
-
+html.overlay-open,
 body.overlay-open {
-  position: fixed;
-  top: calc(var(--overlay-scroll-y, 0px) * -1);
-  right: 0;
-  left: 0;
-  width: 100%;
   overflow: hidden;
   overscroll-behavior: none;
 }
@@ -520,6 +511,34 @@ img.operator-avatar { object-fit: cover; }
 .comment-composer button { min-height: 32px; padding: 0 10px; }
 .comment-composer button:disabled { cursor: wait; opacity: .6; }
 .comment-sign-in { width: 100%; margin-top: 12px; padding: 10px; }
+.comment-compose-body { display: grid; min-width: 0; gap: 8px; }
+.comment-attachment-actions { display: flex; align-items: center; gap: 9px; }
+.comment-image-picker { display: inline-flex; align-items: center; cursor: pointer; }
+.comment-image-picker span { padding: 5px 7px; border: 1px solid var(--line-strong); border-radius: 6px; color: var(--cyan); font-family: var(--mono); font-size: 6px; }
+.comment-image-picker:hover span { border-color: rgba(88,230,255,.38); background: var(--cyan-soft); }
+.comment-attachment-actions > small { color: var(--faint); font-family: var(--mono); font-size: 6px; }
+.comment-image { display: block; width: fit-content; max-width: min(100%, 620px); margin-top: 9px; overflow: hidden; border: 1px solid var(--line-strong); border-radius: 9px; background: var(--bg); }
+.comment-image img { display: block; width: auto; max-width: 100%; max-height: 420px; object-fit: contain; }
+
+.attachment-input { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; }
+.attachment-upload { margin-top: 12px; }
+.attachment-picker { display: grid; grid-template-columns: 28px 1fr; align-items: center; gap: 3px 10px; padding: 12px; border: 1px dashed var(--line-strong); border-radius: 9px; background: rgba(88,230,255,.025); cursor: pointer; }
+.attachment-picker > span { grid-row: 1 / 3; display: grid; place-items: center; width: 28px; height: 28px; border: 1px solid rgba(88,230,255,.2); border-radius: 7px; color: var(--cyan); font-size: 16px; }
+.attachment-picker b { color: var(--text); font-family: var(--mono); font-size: 8px; }
+.attachment-picker small { color: var(--faint); font-size: 7px; }
+.attachment-picker:hover { border-color: rgba(88,230,255,.38); background: var(--cyan-soft); }
+.attachment-preview { display: grid; grid-template-columns: 64px minmax(0,1fr) auto; align-items: center; gap: 11px; margin-top: 8px; padding: 8px; border: 1px solid var(--line-strong); border-radius: 9px; background: rgba(255,255,255,.02); }
+.attachment-preview[hidden] { display: none; }
+.attachment-preview img { width: 64px; height: 48px; border-radius: 6px; object-fit: cover; }
+.attachment-preview > div { display: grid; min-width: 0; }
+.attachment-preview b { overflow: hidden; color: var(--text); font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.attachment-preview small { color: var(--faint); font-family: var(--mono); font-size: 6px; }
+.attachment-preview button,
+.comment-composer .attachment-preview button { min-height: 0; padding: 5px 6px; border: 0; background: transparent; color: var(--red); font-family: var(--mono); font-size: 6px; }
+.comment-attachment-preview { margin: 0; }
+.setup-thesis-image { position: relative; display: block; width: fit-content; max-width: 100%; margin-top: 10px; overflow: hidden; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--bg); }
+.setup-thesis-image img { display: block; width: auto; max-width: 100%; max-height: 480px; object-fit: contain; }
+.setup-thesis-image span { position: absolute; right: 8px; bottom: 8px; padding: 5px 7px; border: 1px solid rgba(255,255,255,.16); border-radius: 5px; background: rgba(3,5,8,.78); color: #f4f6f8; font-family: var(--mono); font-size: 6px; backdrop-filter: blur(8px); }
 
 .bias-gauge { padding: 12px 0 16px; }
 .gauge-labels { display: flex; justify-content: space-between; color: var(--faint); font-family: var(--mono); font-size: 6px; }
@@ -926,6 +945,10 @@ dialog::backdrop { background: rgba(1,2,4,.78); backdrop-filter: blur(12px); }
 :root[data-theme="light"] .setup-discussion.is-open { background: linear-gradient(180deg, rgba(88, 117, 0, 0.055), rgba(241, 245, 249, 0.92) 45%); }
 :root[data-theme="light"] .discussion-body { border-top-color: rgba(15, 23, 42, 0.08); }
 :root[data-theme="light"] .comment-composer { background: rgba(15, 23, 42, 0.025); }
+:root[data-theme="light"] .attachment-picker,
+:root[data-theme="light"] .attachment-preview { background: #f8fafc; }
+:root[data-theme="light"] .comment-image,
+:root[data-theme="light"] .setup-thesis-image { background: #eef1f5; }
 :root[data-theme="light"] .site-footer { background: rgba(255, 255, 255, 0.75); }
 
 :root[data-theme="light"] dialog::backdrop { background: rgba(30, 41, 59, 0.36); }
@@ -1050,6 +1073,10 @@ dialog::backdrop { background: rgba(1,2,4,.78); backdrop-filter: blur(12px); }
   .discussion-heading small { max-width: 100px; text-align: right; }
   .comment-composer { grid-template-columns: 30px 1fr; }
   .comment-composer button { grid-column: 2; }
+  .comment-composer .attachment-preview button { grid-column: auto; }
+  .comment-attachment-actions { align-items: flex-start; flex-direction: column; gap: 5px; }
+  .attachment-preview { grid-template-columns: 54px minmax(0,1fr) auto; }
+  .attachment-preview img { width: 54px; height: 44px; }
   .footer-links { flex-wrap: wrap; }
   .submit-card { padding: 25px 18px 0; }
   .submit-header { display: block; }

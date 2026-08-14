@@ -28,6 +28,7 @@ The repository starts in an explicit preview mode. Preview mode shows only a ver
 - Structured setup form with live risk/reward checks
 - Server-verified MARKET activation with a ±0.5% reference-price tolerance
 - Collapsible public discussions with authenticated comments and starred OP replies
+- Optional JPG, PNG, or WEBP chart attachments on original theses and comments
 - Shareable setup links and a most-discussed feed sort
 - Immutable entry, stop, target, and thesis fields after publication
 - Supabase migration with row-level security
@@ -115,6 +116,7 @@ The metric contract preserves the current 14-column leaderboard. See [`docs/ARCH
 - MARKET submissions use an authenticated Edge Function. It verifies Yahoo Finance first, uses Google Finance only as a fallback, snaps entry to the verified quote, and activates the setup immediately when the submitted reference is within ±0.5%.
 - Setup-book distance uses a publishable-key Edge Function with request-size and per-minute limits. A 50% entry sanity gate suppresses ambiguous symbols instead of showing a misleading price.
 - Avatar files live in the public `avatars` bucket. Storage policies limit upload and replacement to the authenticated owner folder, while public reads support profile, leaderboard, header, and discussion images.
+- Thesis and discussion images reuse the public `avatars` bucket under each authenticated owner's protected folder. Attachment references are retained inside the immutable thesis or comment record. The bucket accepts JPG, PNG, and WEBP images up to 2 MB.
 - Private Google workbook tabs remain outside the public application.
 
 ## License
