@@ -931,9 +931,11 @@ dialog::backdrop { background: rgba(1,2,4,.78); backdrop-filter: blur(12px); }
 .risk-visual { position: relative; display: flex; align-items: center; justify-content: center; gap: 2px; }
 .risk-visual::before { content: ""; position: absolute; left: 12%; right: 12%; top: 50%; height: 1px; background: rgba(255,255,255,.08); }
 .risk-visual i { z-index: 1; height: 5px; }
-.risk-visual i:first-child { width: 22%; background: var(--red); opacity: .7; }
-.risk-visual i:nth-child(2) { width: 40%; background: var(--green); opacity: .7; }
-.risk-visual span { z-index: 2; padding: 3px 4px; border: 1px solid var(--line); border-radius: 4px; background: #0b0d13; }
+.risk-visual i:first-child { order: 1; width: 22%; background: var(--red); opacity: .7; }
+.risk-visual i:nth-child(2) { order: 3; width: 40%; background: var(--green); opacity: .7; }
+.risk-visual span { z-index: 2; order: 2; padding: 3px 4px; border: 1px solid var(--line); border-radius: 4px; background: #0b0d13; }
+.risk-preview[data-direction="SHORT"] .risk-visual i:first-child { order: 3; }
+.risk-preview[data-direction="SHORT"] .risk-visual i:nth-child(2) { order: 1; }
 .thesis-field { position: relative; }
 .thesis-field > small { position: absolute; right: 9px; bottom: 7px; color: var(--faint); font-family: var(--mono); font-size: 6px; }
 .form-error { margin: 0 0 12px; padding: 10px 12px; border: 1px solid rgba(255,102,95,.2); border-radius: 8px; background: rgba(255,102,95,.06); color: #ff9994; font-size: 8px; }
