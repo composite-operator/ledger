@@ -2661,7 +2661,6 @@
   function renderNetworkChart() {
     if (!window.Chart || !$("#network-chart")) return;
     const lightTheme = document.documentElement.dataset.theme === "light";
-    const readableMode = document.documentElement.dataset.readable === "true";
     const buckets = [0, 0, 0, 0, 0, 0, 0];
     state.setups.forEach((setup) => {
       const age = Math.floor((Date.now() - new Date(setup.submitted_at).getTime()) / 86400000);
@@ -2678,9 +2677,9 @@
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { display: false }, tooltip: { displayColors: false, backgroundColor: lightTheme ? "#ffffff" : "#12151d", titleColor: lightTheme ? "#111827" : "#f4f6f8", bodyColor: lightTheme ? "#4b5563" : "#f4f6f8", borderColor: lightTheme ? "rgba(15,23,42,.16)" : "rgba(255,255,255,.1)", borderWidth: 1, titleFont: { family: "DM Mono", size: readableMode ? 12 : 8 }, bodyFont: { family: "DM Mono", size: readableMode ? 12 : 8 } } },
+        plugins: { legend: { display: false }, tooltip: { displayColors: false, backgroundColor: lightTheme ? "#ffffff" : "#12151d", titleColor: lightTheme ? "#111827" : "#f4f6f8", bodyColor: lightTheme ? "#374151" : "#f4f6f8", borderColor: lightTheme ? "rgba(15,23,42,.24)" : "rgba(255,255,255,.2)", borderWidth: 1, titleFont: { family: "DM Mono", size: 11 }, bodyFont: { family: "DM Mono", size: 11 } } },
         scales: {
-          x: { grid: { display: false }, border: { display: false }, ticks: { color: lightTheme ? "#4b5563" : (readableMode ? "#a3acbd" : "#5d6371"), font: { family: "DM Mono", size: readableMode ? 11 : 7 } } },
+          x: { grid: { display: false }, border: { display: false }, ticks: { color: lightTheme ? "#4b5563" : "#a3acbd", font: { family: "DM Mono", size: 10 } } },
           y: { display: false, beginAtZero: true }
         }
       }
