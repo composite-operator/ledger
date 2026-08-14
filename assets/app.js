@@ -22,7 +22,8 @@
     notify_followed_setup_hot: true,
     notify_followed_setup_entry: true,
     notify_followed_setup_targets: true,
-    notify_followed_setup_stops: true
+    notify_followed_setup_stops: true,
+    notify_wins: true
   };
 
   const previewLeaders = [
@@ -40,6 +41,36 @@
     resolved: { title: "Resolved setups", kicker: "OUTCOME BOOK", description: "Closed public records with the original plan, result, and full discussion intact." },
     followed: { title: "Followed setups", kicker: "PERSONAL WATCHLIST", description: "The individual setups you follow, with lifecycle alerts from Hot through final outcome." }
   };
+  const victoryVariants = [
+    {
+      slug: "frog-king",
+      art: "assets/victory/frog-king.webp",
+      eyebrow: "LILYPAD ALPHA CONFIRMED",
+      headline: "BAGS SECURED.",
+      line: "The frog reviewed the risk map and found it acceptable."
+    },
+    {
+      slug: "winning-son",
+      art: "assets/victory/winning-son.webp",
+      eyebrow: "PATERNAL DUE DILIGENCE",
+      headline: "ARE YA WINNING, SON?",
+      line: "For one verified public record, the answer is yes."
+    },
+    {
+      slug: "wojak-chad",
+      art: "assets/victory/wojak-chad.webp",
+      eyebrow: "RISK-ADJUSTED CHARACTER ARC",
+      headline: "THE CHART CHANGED HIM.",
+      line: "From entry anxiety to immutable jawline in one closed trade."
+    },
+    {
+      slug: "chud-terminal",
+      art: "assets/victory/chud-terminal.webp",
+      eyebrow: "BASEMENT DESK / PRIME EXECUTION",
+      headline: "HE CANNOT KEEP GETTING AWAY WITH THIS.",
+      line: "The room failed inspection. The setup did not."
+    }
+  ];
 
   const state = {
     supabase: null,
@@ -71,6 +102,7 @@
     notificationPreferences: { ...defaultNotificationPreferences },
     notificationsAvailable: true,
     notificationChannel: null,
+    victorySetupId: null,
     quoteRefreshActive: false,
     quoteRefreshTimer: null,
     quoteLastRequestedAt: 0,
@@ -175,6 +207,7 @@
     const submitDialog = $("#submit-dialog");
     const methodDialog = $("#method-dialog");
     const symbolGuideDialog = $("#symbol-guide-dialog");
+    const victoryDialog = $("#victory-dialog");
 
     $("#account-button").addEventListener("click", async () => {
       if (state.session?.user) {
@@ -196,6 +229,18 @@
     $$('[data-close-method]').forEach((button) => button.addEventListener("click", () => methodDialog.close()));
     $$('[data-open-symbol-guide]').forEach((button) => button.addEventListener("click", () => symbolGuideDialog.showModal()));
     $$('[data-close-symbol-guide]').forEach((button) => button.addEventListener("click", () => symbolGuideDialog.close()));
+    $("[data-close-victory]").addEventListener("click", () => victoryDialog.close());
+    $("[data-share-victory]").addEventListener("click", () => {
+      const setup = state.setups.find((item) => String(item.id) === String(state.victorySetupId));
+      if (setup) void shareVictorySetup(setup);
+    });
+    victoryDialog.addEventListener("close", () => {
+      state.victorySetupId = null;
+      const nextUrl = new URL(location.href);
+      if (!nextUrl.searchParams.has("victory")) return;
+      nextUrl.searchParams.delete("victory");
+      history.replaceState(null, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
+    });
     $$('[data-copy-symbol]').forEach((button) => button.addEventListener("click", async () => {
       const symbol = button.dataset.copySymbol;
       const tickerInput = $("#ticker");
@@ -213,7 +258,7 @@
     });
     $("#credential-sign-up").addEventListener("click", () => authenticateWithPassword("signup"));
 
-    const dialogs = [authDialog, submitDialog, methodDialog, symbolGuideDialog, $("#command-dialog"), $("#profile-dialog")];
+    const dialogs = [authDialog, submitDialog, methodDialog, symbolGuideDialog, victoryDialog, $("#command-dialog"), $("#profile-dialog")];
     let overlayScrollY = 0;
     let overlayScrollLocked = false;
     const syncOverlayScrollLock = () => {
@@ -952,6 +997,7 @@
         ${notificationSetting("notify_followed_setup_entry", "FOLLOWED SETUP ENTRY", "Alert when an individually followed setup reaches entry.", preferences.notify_followed_setup_entry)}
         ${notificationSetting("notify_followed_setup_targets", "FOLLOWED SETUP TARGETS", "Alert separately when T1, T2, or T3 is recorded.", preferences.notify_followed_setup_targets)}
         ${notificationSetting("notify_followed_setup_stops", "FOLLOWED SETUP STOP-OUT", "Alert when the published stop is recorded.", preferences.notify_followed_setup_stops)}
+        ${notificationSetting("notify_wins", "VICTORY CARDS", "Alert when your setup, a followed setup, or a followed operator closes green.", preferences.notify_wins)}
         <p class="profile-form-status" data-notification-settings-status></p>
         <button type="submit">SAVE NOTIFICATIONS <span>→</span></button>
       </form>
@@ -980,7 +1026,8 @@
       notify_followed_setup_hot: data.has("notify_followed_setup_hot"),
       notify_followed_setup_entry: data.has("notify_followed_setup_entry"),
       notify_followed_setup_targets: data.has("notify_followed_setup_targets"),
-      notify_followed_setup_stops: data.has("notify_followed_setup_stops")
+      notify_followed_setup_stops: data.has("notify_followed_setup_stops"),
+      notify_wins: data.has("notify_wins")
     };
     button.disabled = true;
     button.textContent = "SAVING...";
@@ -1009,7 +1056,8 @@
       notify_followed_setup_hot: Boolean(merged.notify_followed_setup_hot),
       notify_followed_setup_entry: Boolean(merged.notify_followed_setup_entry),
       notify_followed_setup_targets: Boolean(merged.notify_followed_setup_targets),
-      notify_followed_setup_stops: Boolean(merged.notify_followed_setup_stops)
+      notify_followed_setup_stops: Boolean(merged.notify_followed_setup_stops),
+      notify_wins: Boolean(merged.notify_wins)
     };
     let { data, error } = await state.supabase
       .from("notification_preferences")
@@ -1336,6 +1384,10 @@
     $$("[data-comment-handle]", grid).forEach((button) => button.addEventListener("click", () => openProfileByHandle(button.dataset.commentHandle)));
     $$("[data-delete-comment]", grid).forEach((button) => button.addEventListener("click", () => softDeleteComment(button.dataset.setupId, button.dataset.deleteComment)));
     $$("[data-share-setup]", grid).forEach((button) => button.addEventListener("click", () => shareSetup(button.dataset.shareSetup)));
+    $$("[data-open-victory]", grid).forEach((button) => button.addEventListener("click", () => {
+      const setup = state.setups.find((item) => String(item.id) === String(button.dataset.openVictory));
+      if (setup) openVictoryCard(setup);
+    }));
     $$("[data-follow-setup]", grid).forEach((button) => button.addEventListener("click", () => {
       const setup = state.setups.find((item) => String(item.id) === String(button.dataset.followSetup));
       if (setup) void toggleSetupFollow(setup);
@@ -1352,6 +1404,8 @@
     const setupId = String(setup.id);
     const commentsOpen = state.expandedComments.has(setupId);
     const isFollowed = state.followedSetupIds.has(setupId);
+    const victory = isWinningSetup(setup);
+    const victoryVariant = victory ? victoryVariantFor(setup) : null;
     return `<article class="setup-card is-${setup.direction.toLowerCase()}${commentsOpen ? " has-open-comments" : ""}${isFollowed ? " is-followed" : ""}" id="setup-${escapeAttr(setupId)}">
       <div class="setup-card-top">
         <div class="ticker-lockup"><div class="ticker-icon">${escapeHtml(setup.ticker.slice(0, 4))}</div><div class="ticker-copy"><b>${escapeHtml(setup.ticker)}</b><span>${escapeHtml(setup.direction)} · ${escapeHtml(labelize(setup.horizon || "SWING"))}</span></div></div>
@@ -1366,6 +1420,10 @@
         <div><span>OP AVG R</span><b class="${metricClass(operator.avg_r)}">${formatR(operator.avg_r)}</b></div>
         <div><span>OP WIN / HISTORY</span><b>${formatPercent(operator.win_rate)} <small>${formatInteger(operator.triggered_setups)}T</small></b></div>
       </div>
+      ${victory ? `<button class="setup-victory-teaser" type="button" data-open-victory="${escapeAttr(setupId)}">
+        <span><i>✦</i><small>VERIFIED WIN / ${escapeHtml(victoryVariant.eyebrow)}</small><b>${escapeHtml(victoryVariant.headline)}</b></span>
+        <strong>${formatR(setup.r_result ?? setup.score)}</strong><em>OPEN VICTORY CARD ↗</em>
+      </button>` : ""}
       <p class="setup-thesis">${escapeHtml(setup.thesis || "No public thesis was added to this setup.")}</p>
       ${setup.thesis_image_path ? `<a class="setup-thesis-image" href="${escapeAttr(publicMediaUrl(setup.thesis_image_path))}" target="_blank" rel="noopener noreferrer"><img src="${escapeAttr(publicMediaUrl(setup.thesis_image_path))}" loading="lazy" alt="Original ${escapeAttr(setup.ticker)} thesis chart"><span>ORIGINAL THESIS IMAGE ↗</span></a>` : ""}
       <div class="setup-card-foot">
@@ -1826,6 +1884,138 @@
     showToast("Comment removed", "The public thread now shows a removal marker.");
   }
 
+  function isWinningSetup(setup) {
+    const result = Number(setup?.r_result ?? setup?.score);
+    const finalStatus = String(setup?.final_status || "").toUpperCase();
+    const losingOutcome = ["STOPPED", "CANCELLED", "EXPIRED"].includes(finalStatus);
+    return normalizeState(setup?.status) === "resolved" && Number.isFinite(result) && result > 0 && !losingOutcome;
+  }
+
+  function victoryVariantFor(setup) {
+    const finalStatus = String(setup.final_status || "").toUpperCase();
+    if (finalStatus === "T3") return victoryVariants[0];
+    if (finalStatus === "T2") return victoryVariants[2];
+    const hash = String(setup.id || setup.ticker || "victory").split("").reduce((total, character) => ((total * 31) + character.charCodeAt(0)) >>> 0, 0);
+    return victoryVariants[hash % victoryVariants.length];
+  }
+
+  function victoryTargetPrice(setup) {
+    const finalStatus = String(setup.final_status || "").toUpperCase();
+    if (finalStatus === "T3") return setup.t3 ?? setup.t2 ?? setup.t1;
+    if (finalStatus === "T2") return setup.t2 ?? setup.t1;
+    return setup.t1;
+  }
+
+  function victoryRecordUrl(setup) {
+    const url = new URL(config.siteUrl || location.href);
+    url.search = "";
+    url.searchParams.set("setup", setup.id);
+    url.hash = "setups";
+    return url.toString();
+  }
+
+  function victoryShareUrl(setup) {
+    const url = new URL(config.siteUrl || location.href);
+    url.search = "";
+    url.searchParams.set("victory", setup.id);
+    url.hash = "setups";
+    return url.toString();
+  }
+
+  function victoryElapsed(setup) {
+    const start = new Date(setup.triggered_at || setup.submitted_at).getTime();
+    const end = new Date(setup.archived_at || setup.updated_at || Date.now()).getTime();
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) return "VERIFIED";
+    const minutes = Math.max(1, Math.round((end - start) / 60000));
+    if (minutes < 60) return `${minutes}M`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 48) return `${hours}H ${minutes % 60}M`;
+    return `${Math.floor(hours / 24)}D ${hours % 24}H`;
+  }
+
+  function victoryCardHtml(setup) {
+    const variant = victoryVariantFor(setup);
+    const operator = operatorHistory(setup);
+    const finalStatus = labelize(setup.final_status || setup.status || "WIN");
+    const result = setup.r_result ?? setup.score;
+    const outcomePercent = setup.pct_from_fill == null ? "TARGET VERIFIED" : `${formatSignedPercent(Number(setup.pct_from_fill))} FROM FILL`;
+    const recordUrl = victoryRecordUrl(setup);
+    return `<article class="victory-card victory-${escapeAttr(variant.slug)}">
+      <img class="victory-art" src="${escapeAttr(variant.art)}" alt="" loading="eager">
+      <div class="victory-noise" aria-hidden="true"></div>
+      <header class="victory-card-header">
+        <a class="victory-brand" href="${escapeAttr(config.siteUrl || location.href)}" target="_blank" rel="noopener noreferrer" aria-label="Open Composite Operator Ledger">
+          <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
+          <span><b>COMPOSITE</b><small>OPERATOR / LEDGER</small></span>
+        </a>
+        <span class="victory-verified"><i></i> VERIFIED PUBLIC OUTCOME</span>
+      </header>
+      <section class="victory-copy">
+        <span>${escapeHtml(variant.eyebrow)}</span>
+        <h2>${escapeHtml(variant.headline)}</h2>
+        <p>${escapeHtml(variant.line)}</p>
+      </section>
+      <section class="victory-result">
+        <div class="victory-instrument"><span>MARKET / DIRECTION</span><strong>${escapeHtml(setup.ticker)}</strong><small>${escapeHtml(setup.direction)} · ${escapeHtml(labelize(setup.horizon || "SWING"))}</small></div>
+        <div class="victory-r"><span>REALIZED RESULT</span><strong>${formatR(result)}</strong><small>${escapeHtml(outcomePercent)}</small></div>
+      </section>
+      <section class="victory-trade-stats" aria-label="Winning trade statistics">
+        <div><span>OUTCOME</span><b>${escapeHtml(finalStatus)}</b></div>
+        <div><span>ENTRY</span><b>${formatPrice(setup.entry)}</b></div>
+        <div><span>WINNING TARGET</span><b>${formatPrice(victoryTargetPrice(setup))}</b></div>
+        <div><span>TIME IN PLAY</span><b>${escapeHtml(victoryElapsed(setup))}</b></div>
+      </section>
+      <section class="victory-operator-stats" aria-label="Operator history at close">
+        <div><span>OPERATOR</span><b>@${escapeHtml(setup.handle)}</b></div>
+        <div><span>WIN RATE</span><b>${formatPercent(operator.win_rate)}</b></div>
+        <div><span>AVG R</span><b>${formatR(operator.avg_r)}</b></div>
+        <div><span>TRIGGERED</span><b>${formatInteger(operator.triggered_setups)}</b></div>
+      </section>
+      <footer class="victory-card-footer">
+        <a href="${escapeAttr(recordUrl)}" target="_blank" rel="noopener noreferrer">OPEN THE RECEIPT ↗</a>
+        <span>CLOSED ${formatDate(setup.archived_at || setup.updated_at)} · ID ${escapeHtml(String(setup.id).slice(0, 8).toUpperCase())}</span>
+      </footer>
+    </article>`;
+  }
+
+  function openVictoryCard(setup, pushHistory = true) {
+    if (!isWinningSetup(setup)) {
+      showToast("Victory card unavailable", "This setup does not have a positive closed result.", true);
+      return;
+    }
+    const dialog = $("#victory-dialog");
+    state.victorySetupId = String(setup.id);
+    $("#victory-card-host").innerHTML = victoryCardHtml(setup);
+    $("[data-open-victory-record]").href = victoryRecordUrl(setup);
+    if (pushHistory) {
+      const nextUrl = new URL(location.href);
+      nextUrl.searchParams.delete("setup");
+      nextUrl.searchParams.set("victory", setup.id);
+      nextUrl.hash = "setups";
+      history.pushState(null, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
+    }
+    if (!dialog.open) dialog.showModal();
+  }
+
+  async function shareVictorySetup(setup) {
+    const url = victoryShareUrl(setup);
+    const text = `${setup.ticker} closed ${formatR(setup.r_result ?? setup.score)} by @${setup.handle}. Verified on Composite Operator Ledger.`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: `${setup.ticker} victory card`, text, url });
+        return;
+      } catch (error) {
+        if (error?.name === "AbortError") return;
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(`${text}\n${url}`);
+      showToast("Victory link copied", "The branded result card is ready to share.");
+    } catch (_error) {
+      showToast("Copy blocked", url, true);
+    }
+  }
+
   async function shareSetup(setupId) {
     const url = new URL(config.siteUrl || location.href);
     url.searchParams.set("setup", setupId);
@@ -1839,8 +2029,35 @@
   }
 
   async function activateSharedSetup() {
-    const setupId = new URLSearchParams(location.search).get("setup");
-    if (!setupId || !state.setups.some((setup) => String(setup.id) === setupId)) return;
+    const params = new URLSearchParams(location.search);
+    const victoryId = params.get("victory");
+    if (victoryId) {
+      let victorySetup = state.setups.find((setup) => String(setup.id) === victoryId);
+      if (!victorySetup && state.supabase) {
+        const { data } = await state.supabase.from("setups_public").select("*").eq("id", victoryId).maybeSingle();
+        if (data) {
+          victorySetup = normalizeSetup(data);
+          state.setups.unshift(victorySetup);
+        }
+      }
+      if (victorySetup && isWinningSetup(victorySetup)) {
+        openSetupBook("resolved", false);
+        openVictoryCard(victorySetup, false);
+        requestAnimationFrame(() => document.getElementById(`setup-${victoryId}`)?.scrollIntoView({ behavior: "smooth", block: "start" }));
+      }
+      return;
+    }
+    const setupId = params.get("setup");
+    if (!setupId) return;
+    let sharedSetup = state.setups.find((setup) => String(setup.id) === setupId);
+    if (!sharedSetup && state.supabase) {
+      const { data } = await state.supabase.from("setups_public").select("*").eq("id", setupId).maybeSingle();
+      if (data) {
+        sharedSetup = normalizeSetup(data);
+        state.setups.unshift(sharedSetup);
+      }
+    }
+    if (!sharedSetup) return;
     state.expandedComments.add(setupId);
     openSetupBook("all", false);
     await loadSetupComments(setupId);
@@ -2265,11 +2482,13 @@
     if (notification.notification_type === "SETUP_T2") return `${ticker} hit T2`;
     if (notification.notification_type === "SETUP_T3") return `${ticker} hit T3`;
     if (notification.notification_type === "SETUP_STOPPED") return `${ticker} hit its published stop`;
+    if (notification.notification_type === "VICTORY") return `${ticker} closed ${formatR(notification.r_result ?? notification.score)}`;
     return `${actor} published ${ticker}`;
   }
 
   function notificationDetail(notification) {
     const labels = {
+      VICTORY: "VERIFIED WIN / OPEN VICTORY CARD",
       COMMENT: "COMMENT",
       REPLY: "REPLY TO YOUR COMMENT",
       MENTION: "HANDLE MENTION",
@@ -2297,6 +2516,7 @@
     if (type === "SETUP_T2") return "2";
     if (type === "SETUP_T3") return "3";
     if (type === "SETUP_STOPPED") return "S";
+    if (type === "VICTORY") return "V";
     return "N";
   }
 
@@ -2352,6 +2572,12 @@
     }
     if (!setup) return;
 
+    if (notification.notification_type === "VICTORY" && isWinningSetup(setup)) {
+      openSetupBook("resolved", false);
+      requestAnimationFrame(() => openVictoryCard(setup));
+      return;
+    }
+
     const setupId = String(setup.id);
     const commentNotification = ["COMMENT", "REPLY", "MENTION"].includes(notification.notification_type);
     if (commentNotification) state.expandedComments.add(setupId);
@@ -2396,7 +2622,17 @@
   }
 
   function applyLocationRoute() {
-    const book = new URLSearchParams(location.search).get("book");
+    const params = new URLSearchParams(location.search);
+    const book = params.get("book");
+    const victoryId = params.get("victory");
+    if (victoryId) {
+      openSetupBook("resolved", false);
+      const victorySetup = state.setups.find((setup) => String(setup.id) === victoryId);
+      if (victorySetup && isWinningSetup(victorySetup)) openVictoryCard(victorySetup, false);
+      return;
+    }
+    const victoryDialog = $("#victory-dialog");
+    if (victoryDialog?.open) victoryDialog.close();
     if (location.hash === "#setups" || setupBooks[book]) {
       openSetupBook(book || "all", false);
       return;
