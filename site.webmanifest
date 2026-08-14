@@ -1,0 +1,16 @@
+{
+  "name": "Composite Operator Ledger",
+  "short_name": "Ledger",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#06070b",
+  "theme_color": "#06070b",
+  "icons": [
+    {
+      "src": "assets/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

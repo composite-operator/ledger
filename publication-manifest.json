@@ -1,0 +1,70 @@
+{
+  "files": [
+    {
+      "path": ".nojekyll",
+      "sha256": "7eb70257593da06f682a3ddda54a9d260d4fc514f645237f5ca74b08f8da61a6"
+    },
+    {
+      "path": "assets/app.js",
+      "sha256": "23fdf8aba8553e08bb9023d51754f9436ea7c6ec23be6b1c754eef5b2eb51c6f"
+    },
+    {
+      "path": "assets/icon.svg",
+      "sha256": "2fcfe317968e34044cce5f3ce58e503177c925f7fe768e90aecad01826ad0ed6"
+    },
+    {
+      "path": "assets/loss/account-crater.webp",
+      "sha256": "52a89bc03aa9fcdd2c778651b06a3b41959607d506f20a82a65a612d74a0e85b"
+    },
+    {
+      "path": "assets/loss/burning-bag.webp",
+      "sha256": "beb2fd21478e67c9b91f1955383d4655b3a60c9cbdba143b6161d96522577a7e"
+    },
+    {
+      "path": "assets/loss/risk-audit.webp",
+      "sha256": "619cb087253ca518dc9797efe96fdbea58e992f92479701913b3c3bfa384fc8f"
+    },
+    {
+      "path": "assets/loss/wojak-meltdown.webp",
+      "sha256": "77125b6e50bce44c4c49abe52ea97b8c20ca4e59f9b599d285b164f221578711"
+    },
+    {
+      "path": "assets/runtime-config.example.js",
+      "sha256": "1740f77ab817dafa1bf839ff8833d0afc4674a79be89305ac1e3a246f6ee29d1"
+    },
+    {
+      "path": "assets/runtime-config.js",
+      "sha256": "6772c86a0b802389715750a2ff7d212ce1e82c3695403a4f90d6e704eb5600d1"
+    },
+    {
+      "path": "assets/styles.css",
+      "sha256": "5dd6aa8f8789f616c146199b49ccf59d43b1491fb17cca05a70103c8ba60e82c"
+    },
+    {
+      "path": "assets/victory/chud-terminal.webp",
+      "sha256": "13e61cf2e263f8176451c713924690b6560a33608733454481df7c965c88f4b7"
+    },
+    {
+      "path": "assets/victory/frog-king.webp",
+      "sha256": "c91e11fdabeca67d81f48bdc8093fb56ef3ce32cdd7645be876d2c1aad4f043f"
+    },
+    {
+      "path": "assets/victory/winning-son.webp",
+      "sha256": "a09033e9bfa4a17ad00cf704e1d09f04465db573111e684d54651c42bf631098"
+    },
+    {
+      "path": "assets/victory/wojak-chad.webp",
+      "sha256": "8aa2a33da616c7eaa427debecfe0d70a2b6a272b299fee6e735b1cfd4f4c5b7c"
+    },
+    {
+      "path": "index.html",
+      "sha256": "2e0d2d6b1bf6001c92feea64b9d416ce77dc40591c7b53d14765f247bfb0c6f0"
+    },
+    {
+      "path": "site.webmanifest",
+      "sha256": "762bb3fe9462e7c31256096b14ec7398ef743918268e9bbb821656a1c3e804f2"
+    }
+  ],
+  "profile": "ledger",
+  "schema_version": 1
+}

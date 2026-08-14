@@ -1,0 +1,665 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" id="theme-color-meta" content="#06070b">
+  <meta name="description" content="Composite Operator Ledger — public setup tracking, transparent outcomes, and an operator leaderboard.">
+  <title>Ledger — Composite Operator</title>
+  <script>document.documentElement.dataset.theme="dark";document.documentElement.dataset.readable="false";try{document.documentElement.dataset.theme=localStorage.getItem("ledger-theme")==="light"?"light":"dark";document.documentElement.dataset.readable=localStorage.getItem("ledger-readable")==="true"?"true":"false"}catch(_error){}</script>
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="site.webmanifest">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/styles.css?v=__LEDGER_BUILD__">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
+  <script src="assets/runtime-config.js?v=__LEDGER_BUILD__" defer></script>
+  <script src="assets/app.js?v=__LEDGER_BUILD__" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+
+  <div class="ambient-grid" aria-hidden="true"></div>
+  <div class="ambient-glow ambient-glow-a" aria-hidden="true"></div>
+  <div class="ambient-glow ambient-glow-b" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <a class="brand" href="https://ximxesabortion.github.io/ledger/" aria-label="Composite Operator Ledger home">
+      <span class="brand-mark" aria-hidden="true">
+        <span></span><span></span><span></span>
+      </span>
+      <span class="brand-copy">
+        <strong>COMPOSITE</strong>
+        <small>OPERATOR / LEDGER</small>
+      </span>
+    </a>
+
+    <nav class="primary-nav" aria-label="Ledger sections">
+      <button class="nav-item is-active" data-view-target="overview" type="button">Overview</button>
+      <button class="nav-item" data-view-target="leaderboard" type="button">Leaderboard</button>
+      <button class="nav-item" data-view-target="setups" type="button">Live setups</button>
+    </nav>
+
+    <button class="command-trigger" id="command-trigger" type="button" aria-label="Search operators and setups">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.35-4.35m2.35-5.65a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z"/></svg>
+      <span>Search operators or tickers</span>
+      <kbd>/</kbd>
+    </button>
+
+    <div class="topbar-actions">
+      <button class="symbol-guide-trigger" type="button" data-open-symbol-guide aria-label="Open ticker style guide">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h6a3 3 0 0 1 3 3V20a3.5 3.5 0 0 0-3.5-3.5H4Zm16 0h-6a3 3 0 0 0-3 3V20a3.5 3.5 0 0 1 3.5-3.5H20Z"/></svg>
+        <span>SYMBOL GUIDE</span>
+      </button>
+      <div class="network-state" id="network-state" title="Application data status">
+        <span class="pulse-dot"></span>
+        <span id="network-state-label">Preview network</span>
+      </div>
+      <button class="icon-button readable-button" id="readable-toggle" type="button" aria-label="Enable readable mode" aria-pressed="false" title="Enable readable mode">
+        <span aria-hidden="true">Aa</span>
+      </button>
+      <button class="icon-button theme-button" id="theme-toggle" type="button" aria-label="Switch to light mode" title="Switch to light mode">
+        <svg class="theme-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg>
+        <svg class="theme-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.91-.1-1.35A7 7 0 0 1 12 3Z"/></svg>
+      </button>
+      <div class="notification-center" id="notification-center" hidden>
+        <button class="icon-button notification-button" id="notification-button" type="button" aria-label="Open notifications" aria-expanded="false" aria-controls="notification-popover">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>
+          <span class="notification-badge" id="notification-badge" hidden>0</span>
+        </button>
+        <section class="notification-popover" id="notification-popover" aria-label="Notifications" hidden>
+          <header class="notification-header">
+            <div><span>ALERT NETWORK</span><h2>Notifications</h2></div>
+            <button id="notification-settings" type="button">SETTINGS</button>
+          </header>
+          <div class="notification-controls">
+            <button id="notification-mute" type="button">MUTE</button>
+            <button id="notification-read-all" type="button">MARK READ</button>
+            <button id="notification-sweep" type="button">SWEEP</button>
+          </div>
+          <div class="notification-muted-state" id="notification-muted-state" hidden>ALERT DELIVERY MUTED</div>
+          <div class="notification-list" id="notification-list"></div>
+        </section>
+      </div>
+      <button class="account-button" id="account-button" type="button">
+        <span class="account-avatar" id="account-avatar">CO</span>
+        <span id="account-label">Sign in</span>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="market-rail" aria-label="Ledger activity summary">
+    <div class="rail-label"><span class="pulse-dot"></span>LEDGER LIVE</div>
+    <div class="rail-track" id="market-rail-track">
+      <a href="?book=queued#setups" data-open-book="queued"><b>QUEUED</b> <i id="rail-queued">3</i></a>
+      <a href="?book=hot#setups" data-open-book="hot"><b>HOT</b> <i id="rail-hot">0</i></a>
+      <a href="?book=near#setups" data-open-book="near"><b>NEAR</b> <i id="rail-near">0</i></a>
+      <a href="?book=active#setups" data-open-book="active"><b>ACTIVE</b> <i id="rail-active">0</i></a>
+      <a href="?book=resolved#setups" data-open-book="resolved"><b>RESOLVED</b> <i id="rail-resolved">2</i></a>
+      <a href="#leaderboard" data-view-target="leaderboard"><b>OPERATORS</b> <i id="rail-operators">1</i></a>
+      <span class="rail-copy">
+        <b>TRANSPARENT OUTCOMES</b>
+        <span class="rail-copy-detail">
+          <span class="rail-copy-full">EVERY SETUP SCORED AGAINST ITS ORIGINAL ENTRY, STOP, AND TARGETS</span>
+          <span class="rail-copy-compact">ORIGINAL ENTRY · STOP · TARGETS</span>
+        </span>
+      </span>
+    </div>
+  </div>
+
+  <main id="main-content">
+    <section class="app-view is-active" data-view="overview">
+      <div class="overview-grid">
+        <section class="hero-panel glass-panel">
+          <div class="panel-kicker">
+            <span class="signal-bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+            PUBLIC PERFORMANCE NETWORK
+          </div>
+          <h1>Every call.<br><span>Tracked in public.</span></h1>
+          <p class="hero-copy">A credibility layer for market operators. Publish a setup before it triggers, track the full path, and let resolved outcomes build your record.</p>
+          <div class="hero-actions">
+            <button class="button button-primary" data-open-submit type="button">
+              <span>Submit a setup</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 14 0m-6-6 6 6-6 6"/></svg>
+            </button>
+            <button class="button button-ghost" data-view-target="leaderboard" type="button">Explore rankings</button>
+          </div>
+          <div class="hero-proof">
+            <div><span>01</span><p><b>Authenticate</b><small>Ledger account</small></p></div>
+            <div><span>02</span><p><b>Publish</b><small>Entry + invalidation</small></p></div>
+            <div><span>03</span><p><b>Resolve</b><small>Immutable score</small></p></div>
+          </div>
+        </section>
+
+        <section class="score-orbit glass-panel" aria-label="Network score preview">
+          <div class="orbit-header">
+            <div>
+              <span class="eyebrow">NETWORK SIGNAL</span>
+              <h2>Conviction flow</h2>
+            </div>
+            <span class="live-chip"><i></i> LIVE</span>
+          </div>
+          <div class="orbital-visual" aria-hidden="true">
+            <div class="orbit orbit-one"><span></span></div>
+            <div class="orbit orbit-two"><span></span></div>
+            <div class="orbit orbit-three"><span></span></div>
+            <div class="orbital-core">
+              <small>OPEN SIGNALS</small>
+              <strong id="hero-open-signals">0</strong>
+              <span>public calls</span>
+            </div>
+          </div>
+          <div class="mini-terminal">
+            <div><span>STATUS</span><b class="positive">PREVIEW READY</b></div>
+            <div><span>SCORING</span><b>R-MULTIPLE</b></div>
+            <div><span>IDENTITY</span><b id="network-identity-state">SETUP REQUIRED</b></div>
+          </div>
+        </section>
+      </div>
+
+      <section class="metric-strip" aria-label="Ledger metrics">
+        <article class="metric-card">
+          <span class="metric-index">01 / NETWORK</span>
+          <div class="metric-value"><strong data-metric="operators">1</strong><small>operators</small></div>
+          <p>Verified public profiles</p>
+          <div class="micro-bars" aria-hidden="true"><i style="--h:28%"></i><i style="--h:38%"></i><i style="--h:46%"></i><i style="--h:60%"></i><i style="--h:72%"></i><i style="--h:92%"></i></div>
+        </article>
+        <article class="metric-card">
+          <span class="metric-index">02 / SIGNALS</span>
+          <div class="metric-value"><strong data-metric="setups">2</strong><small>total</small></div>
+          <p>Timestamped trade ideas</p>
+          <svg class="sparkline" viewBox="0 0 160 42" preserveAspectRatio="none" aria-hidden="true"><path d="M0 35 20 30 35 33 52 20 68 25 84 14 102 18 118 8 136 13 160 3"/></svg>
+        </article>
+        <article class="metric-card">
+          <span class="metric-index">03 / RESOLUTION</span>
+          <div class="metric-value"><strong data-metric="resolved">2</strong><small>closed</small></div>
+          <p>Scored final outcomes</p>
+          <div class="metric-ring" style="--value:40"><span>40%</span></div>
+        </article>
+        <article class="metric-card accent-card">
+          <span class="metric-index">04 / INTEGRITY</span>
+          <div class="metric-value"><strong id="integrity-status">—</strong><small id="integrity-detail">standby</small></div>
+          <p id="integrity-description">Verifies public reads and account ownership</p>
+          <div class="hash-line">AUTH / DATABASE <span id="integrity-network-state">PENDING</span></div>
+        </article>
+      </section>
+
+      <section class="content-grid">
+        <article class="leaderboard-panel glass-panel">
+          <header class="section-header">
+            <div>
+              <span class="eyebrow">RANKING ENGINE / GOAT SCORE</span>
+              <h2>Operator leaderboard</h2>
+            </div>
+            <button class="text-button" data-view-target="leaderboard" type="button">Full board <span>↗</span></button>
+          </header>
+          <div class="compact-leaderboard" id="compact-leaderboard"></div>
+        </article>
+
+        <article class="activity-panel glass-panel">
+          <header class="section-header">
+            <div>
+              <span class="eyebrow">TIME-ORDERED / PUBLIC</span>
+              <h2>Signal stream</h2>
+            </div>
+            <div class="live-chip"><i></i> INGEST</div>
+          </header>
+          <div class="activity-stream" id="activity-stream"></div>
+        </article>
+      </section>
+
+      <section class="manifesto-panel glass-panel">
+        <div class="manifesto-number">// 001</div>
+        <div>
+          <span class="eyebrow">THE OPERATING RULE</span>
+          <h2>Receipts over reputation.</h2>
+          <p>The ledger records the idea before the market decides. Entries, stops, targets, timestamps, and final outcomes remain attached to the operator record.</p>
+        </div>
+        <div class="manifesto-stats">
+          <div><b>T–0</b><span>Published first</span></div>
+          <div><b>1R</b><span>Normalized risk</span></div>
+          <div><b>∞</b><span>Searchable history</span></div>
+        </div>
+      </section>
+    </section>
+
+    <section class="app-view" data-view="leaderboard">
+      <header class="page-heading">
+        <div>
+          <span class="eyebrow">GLOBAL OPERATOR INDEX</span>
+          <h1>Leaderboard</h1>
+          <p>Credibility-weighted rankings from resolved, timestamped setups.</p>
+        </div>
+        <button class="button button-primary" data-open-submit type="button">Submit a setup</button>
+      </header>
+
+      <div class="ranking-controls glass-panel">
+        <div class="mode-tabs" role="tablist" aria-label="Leaderboard ranking mode">
+          <button class="is-active" data-rank-mode="goat" type="button" role="tab">GOAT score</button>
+          <button data-rank-mode="last30" type="button" role="tab">Last 30 days</button>
+          <button data-rank-mode="score" type="button" role="tab">Total score</button>
+          <button data-rank-mode="win" type="button" role="tab">Win rate</button>
+        </div>
+        <label class="inline-search">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.35-4.35m2.35-5.65a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z"/></svg>
+          <span class="sr-only">Filter operators</span>
+          <input id="leaderboard-search" type="search" placeholder="Filter operators…" autocomplete="off">
+        </label>
+      </div>
+
+      <section class="ranking-stage">
+        <div class="ranking-podium" id="ranking-podium"></div>
+        <div class="ranking-table-shell glass-panel">
+          <table class="ranking-table">
+            <thead>
+              <tr>
+                <th scope="col">Rank / Operator</th>
+                <th scope="col">GOAT</th>
+                <th scope="col">30D score</th>
+                <th scope="col">Win rate</th>
+                <th scope="col">Avg R</th>
+                <th scope="col">Triggered</th>
+                <th scope="col">Total score</th>
+                <th scope="col"><span class="sr-only">Open profile</span></th>
+              </tr>
+            </thead>
+            <tbody id="leaderboard-body"></tbody>
+          </table>
+          <div class="table-empty" id="leaderboard-empty" hidden>No operators match this search.</div>
+          <footer class="table-footer">
+            <span id="leaderboard-count">Showing 0 operators</span>
+            <div class="pagination">
+              <button id="leaderboard-prev" type="button" aria-label="Previous leaderboard page">←</button>
+              <span id="leaderboard-page">01</span>
+              <button id="leaderboard-next" type="button" aria-label="Next leaderboard page">→</button>
+            </div>
+          </footer>
+        </div>
+      </section>
+    </section>
+
+    <section class="app-view" data-view="setups">
+      <header class="page-heading">
+        <div>
+          <span class="eyebrow" id="setup-book-kicker">PUBLIC SETUP BOOK</span>
+          <h1 id="setup-book-title">All setups</h1>
+          <p id="setup-book-description">Every published thesis, from queue to resolved outcome.</p>
+        </div>
+        <button class="button button-primary" data-open-submit type="button">Submit a setup</button>
+      </header>
+
+      <div class="setup-dashboard">
+        <div class="setup-rail" aria-label="Setup filters and network pulse">
+          <aside class="setup-filters glass-panel">
+          <div class="filter-heading">STATE FILTER</div>
+          <div class="vertical-tabs" id="setup-state-tabs">
+            <button class="is-active" data-setup-state="all" type="button"><span>All signals</span><b id="count-all">0</b></button>
+            <button data-setup-state="queued" type="button"><span>Queued</span><b id="count-queued">0</b></button>
+            <button data-setup-state="hot" type="button"><span>Hot</span><b id="count-hot">0</b></button>
+            <button data-setup-state="near" type="button"><span>Near</span><b id="count-near">0</b></button>
+            <button data-setup-state="active" type="button"><span>Active</span><b id="count-active">0</b></button>
+            <button data-setup-state="resolved" type="button"><span>Resolved</span><b id="count-resolved">0</b></button>
+            <button data-setup-state="followed" type="button"><span>★ Followed</span><b id="count-followed">0</b></button>
+          </div>
+          <div class="filter-heading">DIRECTION</div>
+          <div class="segmented-control" id="direction-filter">
+            <button class="is-active" data-direction="all" type="button">All</button>
+            <button data-direction="LONG" type="button">Long</button>
+            <button data-direction="SHORT" type="button">Short</button>
+          </div>
+          <div class="filter-note">
+            <span class="pulse-dot"></span>
+            New submissions appear after validation.
+          </div>
+          </aside>
+
+          <aside class="market-intel glass-panel">
+            <div class="filter-heading">NETWORK PULSE</div>
+            <div class="bias-gauge">
+              <div class="gauge-labels"><span>SHORT</span><b id="long-bias-label">80% LONG</b><span>LONG</span></div>
+              <div class="gauge-track"><i id="long-bias-bar" style="width:80%"></i></div>
+            </div>
+            <div class="chart-shell"><canvas id="network-chart" aria-label="Setup activity over time"></canvas></div>
+            <div class="intel-list">
+              <div><span>Most active horizon</span><b id="top-horizon">SWING</b></div>
+              <div><span>Most used trigger</span><b id="top-trigger">PULLBACK</b></div>
+              <div><span>Median planned R</span><b id="median-r">2.1R</b></div>
+            </div>
+          </aside>
+        </div>
+
+        <section class="setup-feed">
+          <div class="setup-toolbar glass-panel">
+            <label class="inline-search wide-search">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.35-4.35m2.35-5.65a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z"/></svg>
+              <span class="sr-only">Search setups</span>
+              <input id="setup-search" type="search" placeholder="Search ticker, operator, strategy, or thesis…" autocomplete="off">
+            </label>
+            <span class="quote-state" id="quote-refresh-state"><i></i> STORED PRICES</span>
+            <select id="setup-sort" aria-label="Sort setups">
+              <option value="newest">Newest first</option>
+              <option value="oldest">Oldest first</option>
+              <option value="entry-near">Closest to entry</option>
+              <option value="entry-far">Furthest from entry</option>
+              <option value="operator-r">Best operator average R</option>
+              <option value="operator-r-low">Lowest operator average R</option>
+              <option value="operator-win">Best operator win rate</option>
+              <option value="operator-win-low">Lowest operator win rate</option>
+              <option value="planned-r">Highest planned R</option>
+              <option value="planned-r-low">Lowest planned R</option>
+              <option value="score">Highest score</option>
+              <option value="discussed">Most discussed</option>
+              <option value="discussed-low">Least discussed</option>
+            </select>
+            <div class="setup-layout-switcher" role="group" aria-label="Setup display layout">
+              <button class="is-active" type="button" data-setup-layout="panels" aria-pressed="true" aria-controls="setup-card-grid" title="Responsive multi-column setup panels"><i class="is-panels" aria-hidden="true"></i><span>PANELS</span></button>
+              <button type="button" data-setup-layout="linear" aria-pressed="false" aria-controls="setup-card-grid" title="One complete setup per row"><i class="is-linear" aria-hidden="true"></i><span>LINEAR</span></button>
+              <button type="button" data-setup-layout="compact" aria-pressed="false" aria-controls="setup-card-grid" aria-label="At a glance: execution bar and distance from entry" title="Execution bar and distance from entry"><i class="is-compact" aria-hidden="true"></i><span>AT A GLANCE</span></button>
+            </div>
+          </div>
+          <div class="setup-sort-dock glass-panel" aria-label="Sortable setup fields">
+            <span>SORT BOOK</span>
+            <button class="is-active" data-setup-sort-field="newest" data-sort-label="POSTED" type="button" aria-pressed="true">POSTED ↓</button>
+            <button data-setup-sort-field="entry-near" data-sort-label="% FROM ENTRY" type="button" aria-pressed="false">% FROM ENTRY</button>
+            <button data-setup-sort-field="operator-r" data-sort-label="OP AVG R" type="button" aria-pressed="false">OP AVG R</button>
+            <button data-setup-sort-field="operator-win" data-sort-label="OP WIN" type="button" aria-pressed="false">OP WIN</button>
+            <button data-setup-sort-field="planned-r" data-sort-label="PLANNED R" type="button" aria-pressed="false">PLANNED R</button>
+            <button data-setup-sort-field="discussed" data-sort-label="COMMENTS" type="button" aria-pressed="false">COMMENTS</button>
+          </div>
+          <div class="setup-card-grid layout-panels" id="setup-card-grid"></div>
+          <div class="table-empty glass-panel" id="setup-empty" hidden>No current public setups. Historical Sheet records will appear after the live migration.</div>
+        </section>
+
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-brand">
+      <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
+      <div><strong>COMPOSITE OPERATOR</strong><small>Public process. Verifiable outcomes.</small></div>
+    </div>
+    <div class="footer-links">
+      <a href="https://ximxesabortion.github.io/">Hub</a>
+      <a href="https://discord.gg/C3SSKZ26md">Foundry</a>
+      <a href="https://substack.com/@compositeoperator">Substack</a>
+      <button id="open-methodology" type="button">Methodology</button>
+    </div>
+    <p>Research and education only. Nothing here is financial advice.</p>
+  </footer>
+
+  <dialog class="auth-dialog modal-shell" id="auth-dialog">
+    <form class="modal-card auth-card" id="auth-form">
+      <button class="modal-close" type="button" data-close-auth aria-label="Close sign in">×</button>
+      <span class="eyebrow">LEDGER ACCOUNT / $0 ACCESS</span>
+      <h2>Enter the Ledger</h2>
+      <p>Sign in with your private email and password. New accounts receive an editable public handle for the Ledger.</p>
+      <div class="auth-setup-notice" id="auth-setup-notice">
+        <b>FREE BACKEND CONNECTION REQUIRED</b>
+        <span>Create the free Supabase project and add its public connection values. Google, X, and a custom domain are not required.</span>
+      </div>
+      <div class="credential-fields">
+        <label><span>PRIVATE EMAIL</span><input id="auth-email" name="email" type="email" autocomplete="username" inputmode="email" required placeholder="you@example.com"></label>
+        <label><span>PASSWORD</span><input id="auth-password" name="password" type="password" minlength="8" autocomplete="current-password" required placeholder="8+ characters"></label>
+      </div>
+      <div class="credential-actions">
+        <button class="publish-button" id="credential-sign-in" type="submit">Sign in <span>→</span></button>
+        <button class="secondary-auth-button" id="credential-sign-up" type="button">Create free account</button>
+      </div>
+      <div class="auth-inline-status" id="auth-inline-status" aria-live="polite"></div>
+      <div class="auth-footnote"><span class="shield-icon">◇</span> Passwords are hashed by the auth service and never stored in this repository.</div>
+    </form>
+  </dialog>
+
+  <dialog class="submit-dialog modal-shell" id="submit-dialog">
+    <form class="modal-card submit-card" id="setup-form" novalidate>
+      <button class="modal-close" type="button" data-close-submit aria-label="Close submission form">×</button>
+      <div class="submit-header">
+        <div>
+          <span class="eyebrow">NEW PUBLIC RECORD</span>
+          <h2>Submit a setup</h2>
+          <p>The initial entry, stop, targets, and thesis are retained with the outcome.</p>
+        </div>
+        <div class="form-progress" aria-label="Submission progress"><i class="is-active"></i><i></i><i></i></div>
+      </div>
+
+      <div class="form-alert" id="form-auth-alert">
+        <span class="pulse-dot"></span>
+        <p><b>Sign in required</b><small>Enter your Ledger account before publishing a setup.</small></p>
+        <button type="button" data-open-auth>Sign in</button>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-label"><span>01</span> MARKET IDEA</div>
+        <div class="field-grid field-grid-primary">
+          <label class="field ticker-field">
+            <span>Ticker <b>*</b></span>
+            <div class="field-control field-control-prefix"><i>$</i><input name="ticker" id="ticker" type="text" required maxlength="16" placeholder="SPY" autocomplete="off" spellcheck="false"></div>
+            <small class="ticker-field-hint">BTC and ETH resolve to USD pairs. <button type="button" data-open-symbol-guide>View symbol guide</button></small>
+          </label>
+          <fieldset class="field direction-field">
+            <legend>Direction <b>*</b></legend>
+            <div class="direction-switch">
+              <input id="direction-long" name="direction" type="radio" value="LONG" checked>
+              <label for="direction-long">↗ LONG</label>
+              <input id="direction-short" name="direction" type="radio" value="SHORT">
+              <label for="direction-short">↘ SHORT</label>
+            </div>
+          </fieldset>
+          <label class="field">
+            <span>Time horizon</span>
+            <select name="horizon" id="horizon">
+              <option value="SWING">Swing (default)</option>
+              <option value="DAY_TRADE">Day trade</option>
+              <option value="POSITION">Position</option>
+              <option value="LONG_TERM">Long term</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Strategy</span>
+            <select name="strategy" id="strategy">
+              <option value="">Select strategy</option>
+              <option>Breakout</option>
+              <option>Pullback</option>
+              <option>Reversal</option>
+              <option>Range Breakout</option>
+              <option>Range Reversion</option>
+              <option>Trend Continuation</option>
+              <option>News / Catalyst</option>
+              <option>Other</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-label"><span>02</span> EXECUTION MAP</div>
+        <fieldset class="trigger-selector">
+          <legend>Entry trigger <b>*</b></legend>
+          <label><input type="radio" name="trigger_type" value="BREACH" checked><span><i>↗</i><b>Breach</b><small>Crosses entry</small></span></label>
+          <label><input type="radio" name="trigger_type" value="PULLBACK"><span><i>↘</i><b>Pullback</b><small>Returns to entry</small></span></label>
+          <label><input type="radio" name="trigger_type" value="MARKET"><span><i>◆</i><b>Market</b><small>Yahoo verified · ±0.5%</small></span></label>
+        </fieldset>
+
+        <div class="price-map">
+          <label class="field">
+            <span>Entry <b>*</b></span>
+            <div class="field-control field-control-prefix"><i>$</i><input name="entry" id="entry" type="number" min="0" step="0.01" inputmode="decimal" required placeholder="0.00"></div>
+          </label>
+          <label class="field risk-field">
+            <span>Stop loss <b>*</b></span>
+            <div class="field-control field-control-prefix"><i>$</i><input name="stop" id="stop" type="number" min="0" step="0.01" inputmode="decimal" required placeholder="0.00"></div>
+          </label>
+          <label class="field target-field">
+            <span>T1 <b>*</b></span>
+            <div class="field-control field-control-prefix"><i>$</i><input name="t1" id="t1" type="number" min="0" step="0.01" inputmode="decimal" required placeholder="0.00"></div>
+          </label>
+          <label class="field">
+            <span>T2</span>
+            <div class="field-control field-control-prefix"><i>$</i><input name="t2" id="t2" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Optional"></div>
+          </label>
+          <label class="field">
+            <span>T3</span>
+            <div class="field-control field-control-prefix"><i>$</i><input name="t3" id="t3" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Optional"></div>
+          </label>
+        </div>
+
+        <div class="risk-preview" id="risk-preview">
+          <div><span>RISK / UNIT</span><b id="risk-value">—</b></div>
+          <div><span>T1 REWARD</span><b id="reward-value">—</b></div>
+          <div><span>PLANNED R</span><b id="planned-r-value">—</b></div>
+          <div class="risk-visual"><i id="risk-visual-loss"></i><i id="risk-visual-gain"></i><span>ENTRY</span></div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-label"><span>03</span> THESIS</div>
+        <label class="field thesis-field">
+          <span>Notes / thesis</span>
+          <textarea name="thesis" id="thesis" rows="4" maxlength="1200" placeholder="What is the setup, what confirms it, and what would make you wrong?"></textarea>
+          <small><span id="thesis-count">0</span> / 1200</small>
+        </label>
+        <div class="attachment-upload setup-attachment-upload">
+          <label class="attachment-picker" for="thesis-image" tabindex="0">
+            <span>＋</span><b>ATTACH OR CTRL+V ORIGINAL CHART</b><small>Click to browse or paste · JPG, PNG, or WEBP · 2 MB maximum</small>
+          </label>
+          <input class="attachment-input" name="thesis_image" id="thesis-image" type="file" accept="image/jpeg,image/png,image/webp">
+          <div class="attachment-preview" id="thesis-image-preview" hidden>
+            <img alt="Selected original thesis chart preview">
+            <div><b data-attachment-name></b><small data-attachment-size></small></div>
+            <button type="button" data-remove-thesis-image aria-label="Remove selected chart image">REMOVE</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-error" id="form-error" role="alert" hidden></div>
+      <footer class="submit-footer">
+        <div class="immutability-note"><span>◇</span><p><b>Public record</b><small>Core risk fields lock after submission.</small></p></div>
+        <button class="button button-primary publish-button" id="publish-setup" type="submit">
+          <span>Publish setup</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 14 0m-6-6 6 6-6 6"/></svg>
+        </button>
+      </footer>
+    </form>
+  </dialog>
+
+  <dialog class="command-dialog modal-shell" id="command-dialog">
+    <div class="command-card">
+      <div class="command-input-wrap">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.35-4.35m2.35-5.65a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z"/></svg>
+        <input id="command-input" type="search" placeholder="Search operators, tickers, or jump to a view…" autocomplete="off">
+        <kbd>ESC</kbd>
+      </div>
+      <div class="command-results" id="command-results"></div>
+      <div class="command-hints"><span>↑↓ Navigate</span><span>↵ Open</span><span>/ Search</span></div>
+    </div>
+  </dialog>
+
+  <dialog class="profile-dialog modal-shell" id="profile-dialog" aria-label="Operator profile">
+    <div class="profile-drawer" id="profile-drawer"></div>
+  </dialog>
+
+  <dialog class="victory-dialog modal-shell" id="outcome-dialog" aria-label="Verified setup outcome card">
+    <div class="victory-modal-card">
+      <button class="modal-close victory-close" type="button" data-close-outcome aria-label="Close outcome card">×</button>
+      <div id="outcome-card-host"></div>
+      <div class="victory-actions">
+        <button type="button" data-share-outcome>SHARE OUTCOME <span>↗</span></button>
+        <a href="#" data-open-outcome-record>OPEN PUBLIC RECORD <span>→</span></a>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog class="method-dialog modal-shell" id="method-dialog">
+    <div class="modal-card method-card">
+      <button class="modal-close" type="button" data-close-method aria-label="Close methodology">×</button>
+      <span class="eyebrow">SCORING CONTRACT</span>
+      <h2>How the Ledger ranks operators</h2>
+      <div class="method-grid">
+        <div><span>01</span><h3>Resolved records only</h3><p>Leaderboard metrics use locked archived setups. Open ideas do not improve a rank.</p></div>
+        <div><span>02</span><h3>Risk-normalized outcomes</h3><p>Stops and targets translate each setup into comparable R multiples.</p></div>
+        <div><span>03</span><h3>Sample weighting</h3><p>GOAT score starts after three triggered setups and reaches full weight at twenty.</p></div>
+        <div><span>04</span><h3>Outlier control</h3><p>Average R is capped at ±5 inside the GOAT score so one result cannot dominate.</p></div>
+      </div>
+      <code>GOAT = (70% × capped Avg R + 30% × Win Rate) × sample weight</code>
+    </div>
+  </dialog>
+
+  <dialog class="symbol-guide-dialog modal-shell" id="symbol-guide-dialog">
+    <div class="modal-card symbol-guide-card">
+      <button class="modal-close" type="button" data-close-symbol-guide aria-label="Close ticker style guide">×</button>
+      <header class="symbol-guide-head">
+        <span class="eyebrow">MARKET DATA CONTRACT</span>
+        <h2>Ticker style guide</h2>
+        <p>Use these symbols to get the intended Yahoo Finance instrument. Crypto uses its matching CoinGecko market as the backup; other assets use Google Finance. Classification follows the current top 100 market-cap assets.</p>
+      </header>
+
+      <section class="symbol-guide-rules" aria-label="Crypto symbol rules">
+        <div><i>AUTO</i><b>BTC → BTC-USD</b><span>Bare top-100 crypto symbols default to their USD pair.</span></div>
+        <div><i>AUTO</i><b>ETHUSD → ETH-USD</b><span>Compact USD pairs are accepted and normalized.</span></div>
+        <div><i>EXACT</i><b>BTC-USD</b><span>The canonical pair is retained as entered.</span></div>
+      </section>
+
+      <div class="symbol-guide-note">
+        <span>IMPORTANT</span>
+        <p>A bare symbol that matches a current top-100 crypto asset resolves as crypto, even when an exchange-traded product uses the same ticker.</p>
+      </div>
+
+      <section class="symbol-guide-section">
+        <div class="symbol-guide-section-head"><span>01</span><div><h3>Metals</h3><p>Continuous front-month futures</p></div></div>
+        <div class="symbol-guide-grid">
+          <button type="button" data-copy-symbol="GC=F"><b>GC=F</b><span>Gold</span></button>
+          <button type="button" data-copy-symbol="SI=F"><b>SI=F</b><span>Silver</span></button>
+          <button type="button" data-copy-symbol="HG=F"><b>HG=F</b><span>Copper</span></button>
+          <button type="button" data-copy-symbol="PL=F"><b>PL=F</b><span>Platinum</span></button>
+          <button type="button" data-copy-symbol="PA=F"><b>PA=F</b><span>Palladium</span></button>
+        </div>
+      </section>
+
+      <section class="symbol-guide-section">
+        <div class="symbol-guide-section-head"><span>02</span><div><h3>Energy</h3><p>Continuous front-month futures</p></div></div>
+        <div class="symbol-guide-grid">
+          <button type="button" data-copy-symbol="CL=F"><b>CL=F</b><span>WTI crude</span></button>
+          <button type="button" data-copy-symbol="BZ=F"><b>BZ=F</b><span>Brent crude</span></button>
+          <button type="button" data-copy-symbol="NG=F"><b>NG=F</b><span>Natural gas</span></button>
+          <button type="button" data-copy-symbol="RB=F"><b>RB=F</b><span>RBOB gasoline</span></button>
+          <button type="button" data-copy-symbol="HO=F"><b>HO=F</b><span>Heating oil</span></button>
+        </div>
+      </section>
+
+      <section class="symbol-guide-section">
+        <div class="symbol-guide-section-head"><span>03</span><div><h3>Agriculture and livestock</h3><p>Continuous front-month futures</p></div></div>
+        <div class="symbol-guide-grid">
+          <button type="button" data-copy-symbol="ZC=F"><b>ZC=F</b><span>Corn</span></button>
+          <button type="button" data-copy-symbol="ZW=F"><b>ZW=F</b><span>Wheat</span></button>
+          <button type="button" data-copy-symbol="ZS=F"><b>ZS=F</b><span>Soybeans</span></button>
+          <button type="button" data-copy-symbol="KC=F"><b>KC=F</b><span>Coffee</span></button>
+          <button type="button" data-copy-symbol="SB=F"><b>SB=F</b><span>Sugar</span></button>
+          <button type="button" data-copy-symbol="CC=F"><b>CC=F</b><span>Cocoa</span></button>
+          <button type="button" data-copy-symbol="CT=F"><b>CT=F</b><span>Cotton</span></button>
+          <button type="button" data-copy-symbol="LE=F"><b>LE=F</b><span>Live cattle</span></button>
+          <button type="button" data-copy-symbol="HE=F"><b>HE=F</b><span>Lean hogs</span></button>
+          <button type="button" data-copy-symbol="LBR=F"><b>LBR=F</b><span>Lumber</span></button>
+        </div>
+      </section>
+
+      <section class="symbol-guide-section symbol-guide-examples">
+        <div class="symbol-guide-section-head"><span>04</span><div><h3>Other exact formats</h3><p>Click any symbol to copy it</p></div></div>
+        <div class="symbol-guide-grid">
+          <button type="button" data-copy-symbol="^GSPC"><b>^GSPC</b><span>S&amp;P 500 index</span></button>
+          <button type="button" data-copy-symbol="^IXIC"><b>^IXIC</b><span>Nasdaq Composite</span></button>
+          <button type="button" data-copy-symbol="EURUSD=X"><b>EURUSD=X</b><span>Euro / US dollar</span></button>
+          <button type="button" data-copy-symbol="JPY=X"><b>JPY=X</b><span>US dollar / yen</span></button>
+          <button type="button" data-copy-symbol="BTC-USD"><b>BTC-USD</b><span>Bitcoin / US dollar</span></button>
+        </div>
+      </section>
+
+      <footer class="symbol-guide-foot">Futures symbols show rolling contracts. Their quoted price can change when the active contract rolls.</footer>
+    </div>
+  </dialog>
+
+  <div class="toast-region" id="toast-region" aria-live="polite" aria-atomic="true"></div>
+</body>
+</html>

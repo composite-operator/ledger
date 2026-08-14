@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Composite Operator Ledger">
+  <rect width="64" height="64" rx="15" fill="#090b10"/>
+  <rect x="10.5" y="10.5" width="43" height="43" rx="11" fill="#10141b" stroke="#c8ff2e" stroke-opacity=".35"/>
+  <path d="M20 39V31h6v8zm9 0V20h6v19zm9 0V26h6v13z" fill="#c8ff2e"/>
+  <path d="M18 44h28" stroke="#58e6ff" stroke-width="2" stroke-linecap="round" opacity=".75"/>
+</svg>
