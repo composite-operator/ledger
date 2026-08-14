@@ -80,8 +80,8 @@ If the live backend is unavailable, the interface shows an empty state. It does 
 17. Run [`supabase/migrations/202608140003_unified_public_identity.sql`](supabase/migrations/202608140003_unified_public_identity.sql) to synchronize the legacy display-name column to the canonical handle and prevent future drift.
 18. Run [`supabase/migrations/202608140004_lifecycle_coaching_prototype.sql`](supabase/migrations/202608140004_lifecycle_coaching_prototype.sql) to activate GOAT lifecycle automation, scoring, and the five-minute expiry job.
 19. In **Authentication → URL Configuration**, set:
-   - Site URL: `https://ximxesabortion.github.io/ledger/`
-   - Redirect URL: `https://ximxesabortion.github.io/ledger/`
+   - Site URL: `https://composite-operator.github.io/ledger/`
+   - Redirect URL: `https://composite-operator.github.io/ledger/`
 
 20. In **Authentication → Sign In / Providers → Email**, keep Email enabled.
 21. For the $0 MVP, turn **Confirm email** off. This avoids relying on a paid production mail service. Add verified-email delivery later if the product needs email ownership proof or password-reset email.
@@ -96,7 +96,7 @@ Copy the project URL and publishable key from **Supabase → Project Settings �
 window.LEDGER_CONFIG = Object.freeze({
   supabaseUrl: "https://YOUR_PROJECT_REF.supabase.co",
   supabasePublishableKey: "sb_publishable_REPLACE_ME",
-  siteUrl: "https://ximxesabortion.github.io/ledger/",
+  siteUrl: "https://composite-operator.github.io/ledger/",
   demoMode: false
 });
 ```

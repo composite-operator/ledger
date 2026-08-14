@@ -41,7 +41,7 @@ Store the service role key in Apps Script Properties. Never place it in a sheet 
 
 After a successful parallel period:
 
-1. Replace public Google Form links with `https://ximxesabortion.github.io/ledger/`.
+1. Replace public Google Form links with `https://composite-operator.github.io/ledger/`.
 2. Keep the private workbook as the operator console.
 3. Disable new Google Form responses.
 4. Preserve the Intake tab as historical evidence.
