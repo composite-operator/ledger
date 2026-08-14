@@ -6,6 +6,7 @@
   const mediaBucket = "avatars";
   const imageMimeTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
   const maxImageBytes = 2 * 1024 * 1024;
+  const pastedAttachmentFiles = new WeakMap();
   const attachmentMarkerPattern = /(?:\r?\n)?\[ledger-image:([0-9a-f-]{36}\/ledger-media\/(?:setups|comments)\/[0-9a-f-]{36}\.(?:jpg|png|webp))\]$/i;
   const defaultNotificationPreferences = {
     notifications_muted: false,
@@ -1076,8 +1077,19 @@
     }));
     $$("[data-toggle-comments]", grid).forEach((button) => button.addEventListener("click", () => toggleSetupComments(button.dataset.toggleComments)));
     $$("[data-comment-auth]", grid).forEach((button) => button.addEventListener("click", () => $("#auth-dialog").showModal()));
-    $$("[data-comment-form]", grid).forEach((form) => form.addEventListener("submit", submitComment));
-    $$("[data-comment-image]", grid).forEach((input) => input.addEventListener("change", () => updateAttachmentPreview(input, $(".attachment-preview", input.closest("form")))));
+    $$("[data-comment-form]", grid).forEach((form) => {
+      form.addEventListener("submit", submitComment);
+      form.addEventListener("paste", (event) => handleAttachmentPaste(
+        event,
+        $("[data-comment-image]", form),
+        $(".attachment-preview", form),
+        "comment"
+      ));
+    });
+    $$("[data-comment-image]", grid).forEach((input) => input.addEventListener("change", () => {
+      pastedAttachmentFiles.delete(input);
+      updateAttachmentPreview(input, $(".attachment-preview", input.closest("form")));
+    }));
     $$("[data-remove-comment-image]", grid).forEach((button) => button.addEventListener("click", () => {
       const form = button.closest("form");
       clearAttachmentPreview($("[data-comment-image]", form), $(".attachment-preview", form));
@@ -1142,10 +1154,10 @@
     const composer = state.session?.user ? `<form class="comment-composer" data-comment-form="${escapeAttr(setupId)}">
       <span class="comment-avatar">${avatarContent(state.profile?.avatar_url, state.profile?.handle || state.session.user.email)}</span>
       <div class="comment-compose-body">
-        <label><span class="sr-only">Comment on ${escapeHtml(setup.ticker)}</span><textarea name="comment" maxlength="600" placeholder="Add signal, context, or a question…"></textarea></label>
+        <label><span class="sr-only">Comment on ${escapeHtml(setup.ticker)}</span><textarea name="comment" maxlength="600" placeholder="Add signal, context, or a question… Paste a chart with Ctrl+V."></textarea></label>
         <div class="comment-attachment-actions">
-          <label class="comment-image-picker"><input class="attachment-input" name="comment_image" type="file" accept="image/jpeg,image/png,image/webp" data-comment-image><span>▧ ATTACH IMAGE</span></label>
-          <small>JPG, PNG, or WEBP · 2 MB maximum</small>
+          <label class="comment-image-picker" tabindex="0"><input class="attachment-input" name="comment_image" type="file" accept="image/jpeg,image/png,image/webp" data-comment-image><span>▧ ATTACH / PASTE</span></label>
+          <small>CTRL+V · JPG, PNG, or WEBP · 2 MB maximum</small>
         </div>
         <div class="attachment-preview comment-attachment-preview" hidden>
           <img alt="Selected comment image preview">
@@ -1222,7 +1234,7 @@
     const textarea = $("textarea", form);
     const body = textarea.value.trim();
     const imageInput = $("[data-comment-image]", form);
-    const imageFile = imageInput.files?.[0] || null;
+    const imageFile = selectedAttachmentFile(imageInput);
     if (!state.session?.user || !state.supabase) {
       $("#auth-dialog").showModal();
       return;
@@ -1390,8 +1402,12 @@
     ["entry", "stop", "t1"].forEach((id) => $(`#${id}`).addEventListener("input", updateRiskPreview));
     $$('input[name="direction"]').forEach((input) => input.addEventListener("change", updateRiskPreview));
     $("#thesis").addEventListener("input", (event) => { $("#thesis-count").textContent = event.target.value.length; });
-    $("#thesis-image").addEventListener("change", (event) => updateAttachmentPreview(event.currentTarget, $("#thesis-image-preview")));
+    $("#thesis-image").addEventListener("change", (event) => {
+      pastedAttachmentFiles.delete(event.currentTarget);
+      updateAttachmentPreview(event.currentTarget, $("#thesis-image-preview"));
+    });
     $("[data-remove-thesis-image]").addEventListener("click", () => clearAttachmentPreview($("#thesis-image"), $("#thesis-image-preview")));
+    form.addEventListener("paste", (event) => handleAttachmentPaste(event, $("#thesis-image"), $("#thesis-image-preview"), "thesis"));
     form.addEventListener("submit", submitSetup);
     updateRiskPreview();
     updateFormAuthState();
@@ -1432,7 +1448,7 @@
 
     const formData = new FormData(event.currentTarget);
     const thesisImageInput = $("#thesis-image");
-    const thesisImageFile = thesisImageInput.files?.[0] || null;
+    const thesisImageFile = selectedAttachmentFile(thesisImageInput);
     const payload = {
       user_id: state.session.user.id,
       client_request_id: crypto.randomUUID(),
@@ -2030,6 +2046,54 @@
     return null;
   }
 
+  function selectedAttachmentFile(input) {
+    return pastedAttachmentFiles.get(input) || input?.files?.[0] || null;
+  }
+
+  function clipboardImageFile(event) {
+    const clipboard = event.clipboardData;
+    if (!clipboard) return null;
+    const imageItem = Array.from(clipboard.items || []).find((item) => item.kind === "file" && item.type.startsWith("image/"));
+    return imageItem?.getAsFile() || Array.from(clipboard.files || []).find((file) => file.type.startsWith("image/")) || null;
+  }
+
+  function namedClipboardImage(file) {
+    const extension = imageExtension(file);
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    return new File([file], `clipboard-${stamp}.${extension}`, {
+      type: file.type,
+      lastModified: Date.now()
+    });
+  }
+
+  function handleAttachmentPaste(event, input, preview, scope) {
+    const clipboardFile = clipboardImageFile(event);
+    if (!clipboardFile || !input || !preview) return false;
+    event.preventDefault();
+    const file = namedClipboardImage(clipboardFile);
+    const error = validateImageFile(file);
+    if (error) {
+      showToast("Pasted image not accepted", error, true);
+      return true;
+    }
+
+    pastedAttachmentFiles.set(input, file);
+    try {
+      const transfer = new DataTransfer();
+      transfer.items.add(file);
+      input.files = transfer.files;
+    } catch (_error) {
+      // The WeakMap retains the pasted File when a browser blocks FileList assignment.
+    }
+    updateAttachmentPreview(input, preview);
+    window.requestAnimationFrame(() => preview.scrollIntoView({ behavior: "smooth", block: "nearest" }));
+    const target = input.closest(".attachment-upload, .comment-compose-body");
+    target?.classList.add("has-pasted-image");
+    window.setTimeout(() => target?.classList.remove("has-pasted-image"), 900);
+    showToast("Image pasted", `The clipboard image is attached to this ${scope}.`);
+    return true;
+  }
+
   function parseAttachmentText(value) {
     const storedText = String(value || "");
     const match = storedText.match(attachmentMarkerPattern);
@@ -2048,7 +2112,7 @@
   }
 
   function updateAttachmentPreview(input, preview) {
-    const file = input.files?.[0] || null;
+    const file = selectedAttachmentFile(input);
     const error = validateImageFile(file);
     if (!file || error) {
       clearAttachmentPreview(input, preview);
@@ -2068,11 +2132,18 @@
   function clearAttachmentPreview(input, preview) {
     const objectUrl = preview?.dataset.objectUrl;
     if (objectUrl) URL.revokeObjectURL(objectUrl);
-    if (input) input.value = "";
+    if (input) {
+      pastedAttachmentFiles.delete(input);
+      input.value = "";
+    }
     if (preview) {
       delete preview.dataset.objectUrl;
       const image = $("img", preview);
       if (image) image.removeAttribute("src");
+      const name = $("[data-attachment-name]", preview);
+      const size = $("[data-attachment-size]", preview);
+      if (name) name.textContent = "";
+      if (size) size.textContent = "";
       preview.hidden = true;
     }
   }

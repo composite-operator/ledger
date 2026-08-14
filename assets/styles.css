@@ -553,6 +553,8 @@ img.operator-avatar { object-fit: cover; }
 .comment-image-picker { display: inline-flex; align-items: center; cursor: pointer; }
 .comment-image-picker span { padding: 5px 7px; border: 1px solid var(--line-strong); border-radius: 6px; color: var(--cyan); font-family: var(--mono); font-size: 6px; }
 .comment-image-picker:hover span { border-color: rgba(88,230,255,.38); background: var(--cyan-soft); }
+.comment-image-picker:focus-visible { outline: none; }
+.comment-image-picker:focus-visible span { border-color: rgba(200,255,46,.5); box-shadow: 0 0 0 3px rgba(200,255,46,.08); }
 .comment-attachment-actions > small { color: var(--faint); font-family: var(--mono); font-size: 6px; }
 .comment-image { display: block; width: fit-content; max-width: min(100%, 620px); margin-top: 9px; overflow: hidden; border: 1px solid var(--line-strong); border-radius: 9px; background: var(--bg); }
 .comment-image img { display: block; width: auto; max-width: 100%; max-height: 420px; object-fit: contain; }
@@ -564,6 +566,9 @@ img.operator-avatar { object-fit: cover; }
 .attachment-picker b { color: var(--text); font-family: var(--mono); font-size: 8px; }
 .attachment-picker small { color: var(--faint); font-size: 7px; }
 .attachment-picker:hover { border-color: rgba(88,230,255,.38); background: var(--cyan-soft); }
+.attachment-picker:focus-visible { outline: none; border-color: rgba(200,255,46,.5); box-shadow: 0 0 0 3px rgba(200,255,46,.08); }
+.attachment-upload.has-pasted-image .attachment-picker,
+.comment-compose-body.has-pasted-image .comment-image-picker span { border-color: var(--green); background: rgba(64,237,160,.09); color: var(--green); box-shadow: 0 0 18px rgba(64,237,160,.1); }
 .attachment-preview { display: grid; grid-template-columns: 64px minmax(0,1fr) auto; align-items: center; gap: 11px; margin-top: 8px; padding: 8px; border: 1px solid var(--line-strong); border-radius: 9px; background: rgba(255,255,255,.02); }
 .attachment-preview[hidden] { display: none; }
 .attachment-preview img { width: 64px; height: 48px; border-radius: 6px; object-fit: cover; }

@@ -12,11 +12,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/styles.css?v=11">
+  <link rel="stylesheet" href="assets/styles.css?v=12">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
   <script src="assets/runtime-config.js?v=3" defer></script>
-  <script src="assets/app.js?v=13" defer></script>
+  <script src="assets/app.js?v=14" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to content</a>
@@ -502,8 +502,8 @@
           <small><span id="thesis-count">0</span> / 1200</small>
         </label>
         <div class="attachment-upload setup-attachment-upload">
-          <label class="attachment-picker" for="thesis-image">
-            <span>＋</span><b>ATTACH ORIGINAL CHART</b><small>Optional · JPG, PNG, or WEBP · 2 MB maximum</small>
+          <label class="attachment-picker" for="thesis-image" tabindex="0">
+            <span>＋</span><b>ATTACH OR CTRL+V ORIGINAL CHART</b><small>Click to browse or paste · JPG, PNG, or WEBP · 2 MB maximum</small>
           </label>
           <input class="attachment-input" name="thesis_image" id="thesis-image" type="file" accept="image/jpeg,image/png,image/webp">
           <div class="attachment-preview" id="thesis-image-preview" hidden>

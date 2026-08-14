@@ -30,7 +30,7 @@ The repository starts in an explicit preview mode. Preview mode shows only a ver
 - Structured setup form with live risk/reward checks
 - Server-verified MARKET activation with a ±0.5% reference-price tolerance
 - Collapsible public discussions with authenticated comments and starred OP replies
-- Optional JPG, PNG, or WEBP chart attachments on original theses and comments
+- Optional JPG, PNG, or WEBP chart attachments on original theses and comments, with direct `Ctrl+V` clipboard paste
 - Operator follows with private, newest-first alerts for new setups, comments, and entry activation
 - Notification mute, mark-read, sweep, and per-channel account settings
 - Shareable setup links and a most-discussed feed sort
