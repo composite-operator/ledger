@@ -46,7 +46,7 @@
     },
     {
       "path": "assets/styles.css",
-      "sha256": "801d90f8781c1ee350be03f8085a43b7915760fcdad664e17cb7a047bb05466b"
+      "sha256": "44971b14ff665fa84788223b0dc7893e444e76a008cca264b660a83a881a5162"
     },
     {
       "path": "assets/victory/chud-terminal.webp",
@@ -66,7 +66,7 @@
     },
     {
       "path": "index.html",
-      "sha256": "213552b82129c105f51fc3439ceb7e9c2d9d2e3a0786d4605e212ff17a2acbe6"
+      "sha256": "52ee4fe517809afe031a911d5ab00cc29ffd84e45ea09df9513278a3d750fb21"
     },
     {
       "path": "site.webmanifest",
