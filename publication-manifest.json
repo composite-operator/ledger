@@ -10,15 +10,19 @@
     },
     {
       "path": "assets/app.js",
-      "sha256": "715d9bdaf2812932e63fe15e4441c671102b4d9f6b8b2c9dd494d1fe1b8ad082"
+      "sha256": "fa524cdd7863be1c4838aa5620088609d13d3f5179a03007ef4a07bf03988e7c"
     },
     {
       "path": "assets/brand-mark.svg",
-      "sha256": "87ad9bc02a5f9ce4fd71cab0ac7c181d80c76c6df01a53069e933918df2eae3a"
+      "sha256": "e555b179b04bb22da6d0075a4fff436fd1bdce88f418521a436f2453cbb4d37a"
     },
     {
       "path": "assets/icon.svg",
-      "sha256": "646b9d4174d046f17e7c2036b611556eef6ad80b44e783ee55f3bd88c3ab1cfd"
+      "sha256": "4112f42e97bc81916d55c640b3749ac59f666f2a558479c8c252e40b7d7cc95f"
+    },
+    {
+      "path": "assets/legal.css",
+      "sha256": "18382767d7379916159599c999f4a7579b9a3fbf9a1541b590e0979f942bf00e"
     },
     {
       "path": "assets/lifecycle-engine.js",
@@ -54,15 +58,15 @@
     },
     {
       "path": "assets/runtime-config.example.js",
-      "sha256": "d1c708f0afbb7766924e4088f2e1050a0c0098d29cbee1e13b5245b0c3c7f9f4"
+      "sha256": "ebbe347c9731425cb8cdedf07ba0fa45771514d58aed3ace4271aefbb3a9e52e"
     },
     {
       "path": "assets/runtime-config.js",
-      "sha256": "6fbacdd142f6fbcb08fb52787acddca8f315a3be5cbedd67537c45b91c7d4a12"
+      "sha256": "2c58981b0f25495db51f35047684c416a882ac15984e31d752185bc61f6782cc"
     },
     {
       "path": "assets/styles.css",
-      "sha256": "5288a079333776d138b1121f8e750a872ba60a5a1348a15ca6eccb90955caf77"
+      "sha256": "986418719f589eaef617edb021f54eab7058f530ef6bd2b9b706a46a0891f899"
     },
     {
       "path": "assets/victory/chud-terminal.webp",
@@ -82,11 +86,15 @@
     },
     {
       "path": "index.html",
-      "sha256": "1b87a438a7d163f89aa028a97abbbfc1d1afa7bb1368c77282213e3b9d9b23b7"
+      "sha256": "00129e7ca630ab74c6b5aa2c2e324b2c8495c29fdfe85adafaa21c7b0c84a3c3"
+    },
+    {
+      "path": "legal.html",
+      "sha256": "9c253d286280f44403c813a78cf4451c1365233e766850d47feffbe7536fe112"
     },
     {
       "path": "site.webmanifest",
-      "sha256": "6173876b3ea4104e2417cd460f4015576bfeac881b67ec3c62dab45b295840ea"
+      "sha256": "e9928d2409a9f3188052d194f86cd86a4c9b6f51fcff82b71577d9261ff1c8f7"
     }
   ],
   "profile": "ledger",

@@ -2,6 +2,7 @@
   "use strict";
 
   const config = window.LEDGER_CONFIG || {};
+  const legalVersion = "2026-08-14";
   const liveConfigPresent = Boolean(config.supabaseUrl && config.supabasePublishableKey && config.demoMode !== true);
   const mediaBucket = "avatars";
   const imageMimeTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
@@ -712,10 +713,12 @@
     }
     const email = $("#auth-email").value.trim();
     const password = $("#auth-password").value;
+    const acceptedLegalTerms = $("#auth-terms-consent").checked;
 
     $("#auth-inline-status").classList.remove("is-error", "is-success");
     if (!email || !email.includes("@")) return setAuthStatus("Enter a valid email address.", true);
     if (password.length < 8) return setAuthStatus("Use a password with at least 8 characters.", true);
+    if (mode === "signup" && !acceptedLegalTerms) return setAuthStatus("Confirm that you are at least 18 and accept the Terms and Privacy Notice before creating an account.", true);
 
     setAuthBusy(true);
     setAuthStatus(mode === "signup" ? "Creating your Ledger account…" : "Signing in…");
@@ -723,7 +726,14 @@
       if (mode === "signup") {
         const { data, error } = await state.supabase.auth.signUp({
           email,
-          password
+          password,
+          options: {
+            data: {
+              legal_version: legalVersion,
+              legal_accepted_at: new Date().toISOString(),
+              age_18_confirmed: true
+            }
+          }
         });
         if (error) throw error;
         if (data.session) {
@@ -919,7 +929,7 @@
     let profileSetups = state.setups.filter((setup) => String(setup.user_id) === String(leader.id) || setup.handle === leader.handle);
     if (state.live && state.supabase && leader.id) {
       const [profileResult, setupsResult, metricsResult, socialResult] = await Promise.all([
-        state.supabase.from("profiles").select("id, handle, display_name, avatar_url, bio, created_at").eq("id", leader.id).maybeSingle(),
+        state.supabase.from("profiles").select("id, handle, display_name, avatar_url, bio, is_public, created_at").eq("id", leader.id).maybeSingle(),
         state.supabase.from("setups_public").select("*").eq("user_id", leader.id).order("submitted_at", { ascending: false }).limit(100),
         state.supabase.rpc("leaderboard_page", { p_sort: "goat", p_search: leader.handle || "", p_limit: 5, p_offset: 0 }),
         state.supabase.rpc("operator_social_summary", { p_profile_id: leader.id })
@@ -953,7 +963,7 @@
     <div class="profile-head">
       <div class="profile-avatar-row"><div class="profile-avatar-large">${profileAvatar(detailedLeader)}</div><div class="profile-identity-block"><h2>@${escapeHtml(detailedLeader.handle)}</h2>${isOwnProfile ? profileEditor(detailedLeader) : ""}</div></div>
       <p class="profile-bio">${escapeHtml(detailedLeader.bio || "No bio yet.")}</p>
-      <div class="profile-badges"><span>LEDGER ACCOUNT</span><span>PUBLIC RECORD</span><span>JOINED ${escapeHtml(formatMonthYear(detailedLeader.created_at))}</span><span>${detailedLeader.triggered_setups || 0} TRIGGERED</span><span>${formatInteger(detailedLeader.follower_count)} FOLLOWERS</span><span>${formatInteger(detailedLeader.following_count)} FOLLOWING</span></div>
+      <div class="profile-badges"><span>LEDGER ACCOUNT</span><span>${detailedLeader.is_public === false ? "PRIVATE / HIDDEN" : "PUBLIC RECORD"}</span><span>JOINED ${escapeHtml(formatMonthYear(detailedLeader.created_at))}</span><span>${detailedLeader.triggered_setups || 0} TRIGGERED</span><span>${formatInteger(detailedLeader.follower_count)} FOLLOWERS</span><span>${formatInteger(detailedLeader.following_count)} FOLLOWING</span></div>
       ${isOwnProfile
         ? '<button class="profile-signout" type="button" data-sign-out>Sign out</button>'
         : `<button class="profile-follow-button${isFollowing ? " is-following" : ""}" type="button" data-follow-profile="${escapeAttr(detailedLeader.id)}">${state.session?.user ? (isFollowing ? "FOLLOWING" : "FOLLOW OPERATOR") : "SIGN IN TO FOLLOW"}</button>`}
@@ -1029,6 +1039,12 @@
         <label><span>PROFILE PICTURE</span><input name="avatar" type="file" accept="image/jpeg,image/png,image/webp"><small data-avatar-file>JPG, PNG, or WEBP · 2 MB maximum</small></label>
         <label><span>PUBLIC HANDLE</span><span class="profile-handle-control"><i aria-hidden="true">@</i><input name="handle" type="text" minlength="3" maxlength="30" pattern="[a-z0-9][a-z0-9_-]{2,29}" autocomplete="off" autocapitalize="none" spellcheck="false" required value="${escapeAttr(profile.handle)}"></span><small data-profile-handle-status>3–30 lowercase letters, numbers, underscores, or hyphens. Handles are unique.</small></label>
         <label><span>BIO</span><textarea name="bio" maxlength="600" rows="5" placeholder="What do you trade? What is your process?">${escapeHtml(profile.bio || "")}</textarea></label>
+        <label class="notification-setting-row profile-visibility-setting">
+          <span><b>PUBLIC PROFILE AND RECORDS</b><small>Turn this off to hide your profile, setups, and comments from normal public views. Ledger data remains stored until a valid deletion or retention action is completed.</small></span>
+          <input type="checkbox" name="is_public" ${profile.is_public !== false ? "checked" : ""}>
+          <i aria-hidden="true"></i>
+        </label>
+        <p class="profile-privacy-copy">Your sign-in email stays private. Your enabled profile and published activity are public. <a href="legal.html#privacy" target="_blank" rel="noopener">Privacy controls and rights ↗</a></p>
         <p class="profile-form-status" data-profile-status></p>
         <button type="submit">SAVE PROFILE <span>→</span></button>
       </form>
@@ -1290,6 +1306,7 @@
     const formData = new FormData(form);
     const handle = normalizeProfileHandle(formData.get("handle"));
     const bio = String(formData.get("bio") || "").trim();
+    const isPublic = formData.has("is_public");
     const avatarFile = $("input[name='avatar']", form).files?.[0] || null;
     if (!validProfileHandle(handle)) return setProfileFormStatus(status, "Handle: use 3–30 lowercase letters, numbers, underscores, or hyphens.", true);
     if (bio.length > 600) return setProfileFormStatus(status, "Bio must be 600 characters or fewer.", true);
@@ -1326,14 +1343,14 @@
 
       const { data, error } = await state.supabase
         .from("profiles")
-        .update({ handle, bio, avatar_url: avatarUrl })
+        .update({ handle, bio, avatar_url: avatarUrl, is_public: isPublic })
         .eq("id", state.session.user.id)
         .select("*")
         .single();
       if (error) throw error;
       applyProfileUpdate(data);
       renderAll();
-      showToast("Profile updated", `@${data.handle}, your public profile is live.`);
+      showToast("Profile updated", data.is_public ? `@${data.handle}, your public profile is live.` : `@${data.handle}, your profile and records are hidden from normal public views.`);
       await openProfile({ ...leader, ...data });
     } catch (error) {
       button.disabled = false;
@@ -1372,6 +1389,12 @@
       comment.display_name = profile.handle;
       comment.avatar_url = profile.avatar_url;
     }));
+    if (profile.is_public === false) {
+      const notCurrentProfile = (item) => String(item.id) !== String(profile.id);
+      state.leaders = state.leaders.filter(notCurrentProfile);
+      state.compactLeaders = state.compactLeaders.filter(notCurrentProfile);
+      state.podiumLeaders = state.podiumLeaders.filter(notCurrentProfile);
+    }
   }
 
   async function signOut() {
@@ -1891,6 +1914,7 @@
           <div><b data-attachment-name></b><small data-attachment-size></small></div>
           <button type="button" data-remove-comment-image aria-label="Remove selected comment image">REMOVE</button>
         </div>
+        <small class="comment-public-notice">PUBLIC THREAD · Do not post personal, confidential, or inside information. <a href="legal.html#rules" target="_blank" rel="noopener">Rules ↗</a></small>
       </div>
       <button type="submit">POST COMMENT <span>→</span></button>
     </form>` : `<button class="comment-sign-in" type="button" data-comment-auth>Sign in to join the discussion <span>→</span></button>`;

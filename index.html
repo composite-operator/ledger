@@ -390,6 +390,9 @@
     <div class="footer-links">
       <a href="https://composite-operator.github.io/">Hub</a>
       <button id="open-methodology" type="button">Methodology</button>
+      <a href="legal.html#terms">Terms</a>
+      <a href="legal.html#privacy">Privacy</a>
+      <a href="legal.html#rules">Rules</a>
     </div>
     <p>Research and education only. Nothing here is financial advice.</p>
   </footer>
@@ -408,6 +411,10 @@
         <label><span>PRIVATE EMAIL</span><input id="auth-email" name="email" type="email" autocomplete="username" inputmode="email" required placeholder="you@example.com"></label>
         <label><span>PASSWORD</span><input id="auth-password" name="password" type="password" minlength="8" autocomplete="current-password" required placeholder="8+ characters"></label>
       </div>
+      <label class="auth-legal-consent" id="auth-legal-consent">
+        <input id="auth-terms-consent" type="checkbox">
+        <span>I am at least 18 and, when I create an account, I agree to the <a href="legal.html#terms" target="_blank" rel="noopener">Terms</a> and acknowledge the <a href="legal.html#privacy" target="_blank" rel="noopener">Privacy Notice</a>. I understand that profiles, setups, comments, and uploaded charts are public.</span>
+      </label>
       <div class="credential-actions">
         <button class="publish-button" id="credential-sign-in" type="submit">Sign in <span>→</span></button>
         <button class="secondary-auth-button" id="credential-sign-up" type="button">Create free account</button>
@@ -575,6 +582,7 @@
       </div>
 
       <div class="form-error" id="form-error" role="alert" hidden></div>
+      <p class="public-record-consent">Publishing creates a public record under the <a href="legal.html#terms" target="_blank" rel="noopener">Terms and public-record rules</a>. Do not include private, confidential, or inside information.</p>
       <footer class="submit-footer">
         <div class="immutability-note"><span>◇</span><p><b>Public record</b><small>Core risk fields lock after submission.</small></p></div>
         <button class="button button-primary publish-button" id="publish-setup" type="submit">

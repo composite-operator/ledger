@@ -799,6 +799,7 @@ img.operator-avatar { object-fit: cover; }
 .footer-links a, .footer-links button { display: inline-flex; min-height: 38px; align-items: center; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255,255,255,.018); color: var(--text); cursor: pointer; font-size: 12px; font-weight: 700; }
 .footer-links a:hover, .footer-links button:hover { border-color: rgba(200,255,46,.34); background: var(--acid-soft); color: var(--acid); }
 .site-footer > p { margin: 0; color: var(--faint); font-size: 7px; }
+.site-footer .footer-links { flex-wrap: wrap; }
 
 dialog { padding: 0; border: 0; background: transparent; color: var(--text); }
 dialog::backdrop { background: rgba(1,2,4,.78); backdrop-filter: blur(12px); }
@@ -899,6 +900,10 @@ dialog::backdrop { background: rgba(1,2,4,.78); backdrop-filter: blur(12px); }
 .oauth-button small { margin-top: 2px; color: var(--faint); font-size: 8px; }
 .oauth-button i { color: var(--faint); font-style: normal; }
 .auth-footnote { display: flex; align-items: center; gap: 8px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--faint); font-size: 7px; }
+.auth-legal-consent { display: grid; grid-template-columns: 20px minmax(0,1fr); gap: 10px; align-items: start; margin-top: 16px; padding: 13px; border: 1px solid var(--line-strong); border-radius: 9px; background: rgba(255,255,255,.025); color: var(--text); font-size: 10px; line-height: 1.55; }
+.auth-legal-consent input { width: 18px; height: 18px; margin: 1px 0 0; accent-color: var(--acid); }
+.auth-legal-consent a, .public-record-consent a, .profile-privacy-copy a, .comment-public-notice a { color: var(--acid); text-underline-offset: 3px; }
+.public-record-consent { margin: 14px 0 0; padding: 11px 14px; border: 1px solid rgba(255,189,74,.28); border-radius: 9px; background: rgba(255,189,74,.06); color: var(--text); font-size: 11px; line-height: 1.55; }
 .shield-icon { color: var(--acid); }
 
 .submit-dialog { width: min(100% - 24px, 1050px); }
@@ -1037,6 +1042,8 @@ dialog::backdrop { background: rgba(1,2,4,.78); backdrop-filter: blur(12px); }
 .profile-editor input[type="file"] { padding: 7px; color: var(--muted); font-family: var(--mono); font-size: 7px; }
 .profile-editor input[type="file"]::file-selector-button { margin-right: 9px; padding: 6px 8px; border: 1px solid var(--line-strong); border-radius: 6px; background: rgba(255,255,255,.04); color: var(--text); cursor: pointer; font-family: var(--mono); font-size: 6px; }
 .profile-editor label small, .profile-form-status { margin: 0; color: var(--faint); font-family: var(--mono); font-size: 6px; }
+.profile-editor .profile-visibility-setting { margin-top: 4px; }
+.profile-privacy-copy { margin: 0; color: var(--drawer-muted); font-size: 10px; line-height: 1.55; }
 .profile-form-status.is-error { color: var(--red); }
 .profile-editor form > button { min-height: 36px; border: 0; border-radius: 8px; background: var(--acid); color: #0a0d04; cursor: pointer; font-family: var(--mono); font-size: 7px; font-weight: 700; }
 .profile-editor form > button:disabled { cursor: wait; opacity: .65; }
@@ -1051,6 +1058,7 @@ dialog::backdrop { background: rgba(1,2,4,.78); backdrop-filter: blur(12px); }
 .profile-editor .notification-setting-row input:checked + i { border-color: rgba(200,255,46,.4); background: rgba(200,255,46,.14); }
 .profile-editor .notification-setting-row input:checked + i::after { left: 21px; background: var(--acid); box-shadow: 0 0 9px rgba(200,255,46,.35); }
 .profile-editor .notification-setting-row input:focus-visible + i { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.comment-public-notice { display: block; margin-top: 7px; color: var(--text); font-size: 10px; line-height: 1.45; }
 .profile-section-title { margin: 24px 0 10px; color: var(--faint); font-family: var(--mono); font-size: 7px; letter-spacing: .08em; }
 .profile-records { display: grid; gap: 6px; }
 .profile-record { display: grid; grid-template-columns: 42px 1fr auto; gap: 10px; align-items: center; padding: 10px; border: 1px solid var(--line); border-radius: 8px; }
@@ -1301,6 +1309,7 @@ dialog::backdrop { background: rgba(1,2,4,.78); backdrop-filter: blur(12px); }
 .credential-fields input { font-size: 14px; }
 .secondary-auth-button { font-size: 11px; }
 .auth-inline-status, .auth-footnote { font-size: 10px; }
+.auth-legal-consent { font-size: 12px; }
 
 .submit-dialog { width: min(100% - 24px, 1180px); }
 .submit-header h2 { font-size: 34px; }
