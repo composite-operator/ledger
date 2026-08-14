@@ -534,6 +534,11 @@ img.operator-avatar { object-fit: cover; }
 .setup-card-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 13px; padding-top: 11px; border-top: 1px solid var(--line); color: var(--faint); font-family: var(--mono); font-size: 6px; }
 .setup-card-foot button { border: 0; background: transparent; color: var(--acid); cursor: pointer; font-family: inherit; font-size: inherit; }
 .setup-card-foot > div { display: flex; gap: 12px; }
+.setup-card-foot .setup-card-byline { align-items: baseline; gap: 8px; min-width: 0; }
+.setup-card-byline > span { overflow: hidden; color: var(--faint); font-size: 6px; text-overflow: ellipsis; white-space: nowrap; }
+.setup-card-foot .setup-operator-handle { flex: 0 0 auto; padding: 0; color: var(--text); font-size: 11px; font-weight: 800; letter-spacing: -.03em; line-height: 1.2; }
+.setup-card-foot .setup-operator-handle:hover { color: var(--acid); }
+.setup-card-foot .setup-operator-handle:focus-visible { border-radius: 3px; outline: 2px solid var(--acid); outline-offset: 3px; }
 .setup-card-foot .setup-follow-button { padding: 4px 6px; border: 1px solid rgba(200,255,46,.22); border-radius: 5px; background: rgba(200,255,46,.045); }
 .setup-card-foot .setup-follow-button.is-following { background: var(--acid); color: #0a0d04; }
 .setup-card-foot .setup-follow-button:disabled { cursor: wait; opacity: .6; }

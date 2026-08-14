@@ -1427,7 +1427,10 @@
       <p class="setup-thesis">${escapeHtml(setup.thesis || "No public thesis was added to this setup.")}</p>
       ${setup.thesis_image_path ? `<a class="setup-thesis-image" href="${escapeAttr(publicMediaUrl(setup.thesis_image_path))}" target="_blank" rel="noopener noreferrer"><img src="${escapeAttr(publicMediaUrl(setup.thesis_image_path))}" loading="lazy" alt="Original ${escapeAttr(setup.ticker)} thesis chart"><span>ORIGINAL THESIS IMAGE ↗</span></a>` : ""}
       <div class="setup-card-foot">
-        <span>@${escapeHtml(setup.handle)} · POSTED ${formatDate(setup.submitted_at)} · ${formatRelative(setup.submitted_at)}</span>
+        <div class="setup-card-byline">
+          <button class="setup-operator-handle" type="button" data-open-setup-profile="${escapeAttr(setup.user_id)}" data-handle="${escapeAttr(setup.handle)}" aria-label="Open @${escapeAttr(setup.handle)} profile">@${escapeHtml(setup.handle)}</button>
+          <span>POSTED ${formatDate(setup.submitted_at)} · ${formatRelative(setup.submitted_at)}</span>
+        </div>
         <div><button class="setup-follow-button${isFollowed ? " is-following" : ""}" type="button" data-follow-setup="${escapeAttr(setupId)}" aria-pressed="${isFollowed}">${state.session?.user ? (isFollowed ? "FOLLOWING ✓" : "FOLLOW SETUP +") : "SIGN IN TO FOLLOW"}</button><button type="button" data-share-setup="${escapeAttr(setupId)}">SHARE ↗</button><button type="button" data-open-setup-profile="${escapeAttr(setup.user_id)}" data-handle="${escapeAttr(setup.handle)}">VIEW OPERATOR ↗</button></div>
       </div>
       ${setupComments(setup)}
