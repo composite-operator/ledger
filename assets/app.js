@@ -13,6 +13,7 @@
   const mentionLookupState = new WeakMap();
   const mentionSearchCache = new Map();
   const mentionQueryLimit = 8;
+  const setupLayoutOptions = new Set(["panels", "linear", "compact"]);
   const attachmentMarkerPattern = /(?:\r?\n)?\[ledger-image:([0-9a-f-]{36}\/ledger-media\/(?:setups|comments)\/[0-9a-f-]{36}\.(?:jpg|png|webp))\]$/i;
   const defaultNotificationPreferences = {
     notifications_muted: false,
@@ -121,6 +122,7 @@
     setupDirection: "all",
     setupSearch: "",
     setupSort: "newest",
+    setupLayout: readStoredSetupLayout(),
     commentsBySetup: new Map(),
     commentErrors: new Map(),
     commentsLoading: new Set(),
@@ -1338,11 +1340,32 @@
       syncSetupSortUI();
       renderSetups();
     }));
+    $$('[data-setup-layout]').forEach((button) => button.addEventListener("click", () => setSetupLayout(button.dataset.setupLayout)));
+    syncSetupLayoutUI();
   }
 
   function syncSetupSortUI() {
     $("#setup-sort").value = state.setupSort;
     $$('[data-setup-sort-field]').forEach((button) => button.classList.toggle("is-active", button.dataset.setupSortField === state.setupSort));
+  }
+
+  function setSetupLayout(layout) {
+    if (!setupLayoutOptions.has(layout)) return;
+    state.setupLayout = layout;
+    try { localStorage.setItem("ledger-setup-layout", layout); } catch (_error) { /* Storage can be disabled. */ }
+    syncSetupLayoutUI();
+  }
+
+  function syncSetupLayoutUI() {
+    const grid = $("#setup-card-grid");
+    if (grid) {
+      setupLayoutOptions.forEach((layout) => grid.classList.toggle(`layout-${layout}`, layout === state.setupLayout));
+    }
+    $$('[data-setup-layout]').forEach((button) => {
+      const active = button.dataset.setupLayout === state.setupLayout;
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-pressed", String(active));
+    });
   }
 
   function filteredSetups() {
@@ -1380,6 +1403,7 @@
   function renderSetups() {
     syncSetupBookUI();
     syncSetupSortUI();
+    syncSetupLayoutUI();
     const rows = filteredSetups();
     const grid = $("#setup-card-grid");
     grid.innerHTML = rows.map(setupCard).join("");
@@ -2901,6 +2925,15 @@
     $("#theme-toggle").addEventListener("click", toggleTheme);
     applyLocationRoute();
     window.addEventListener("popstate", applyLocationRoute);
+  }
+
+  function readStoredSetupLayout() {
+    try {
+      const saved = localStorage.getItem("ledger-setup-layout");
+      return setupLayoutOptions.has(saved) ? saved : "panels";
+    } catch (_error) {
+      return "panels";
+    }
   }
 
   function initTheme() {
