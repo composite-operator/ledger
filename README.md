@@ -88,7 +88,7 @@ The Supabase publishable key is safe in a browser application when row-level sec
 
 ### 3. Enable GitHub Pages
 
-In **Repository Settings → Pages**, select **GitHub Actions** as the source. A push to `main` then runs [`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml).
+In **Repository Settings → Pages**, select **GitHub Actions** as the source. A push to `main` then runs [`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml). The workflow injects the current Git commit ID into local CSS, configuration, and JavaScript URLs so a browser cannot combine files from different Ledger releases.
 
 ## Local preview
 
