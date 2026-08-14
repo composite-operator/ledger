@@ -403,7 +403,9 @@ img.operator-avatar { object-fit: cover; }
 .activity-item.is-clickable:hover { transform: translateX(3px); }
 .activity-item.is-clickable:hover .activity-copy b { color: var(--acid); }
 .activity-item.is-clickable:focus-visible { outline: 2px solid var(--cyan); outline-offset: 4px; border-radius: 5px; }
-.activity-node { z-index: 1; display: grid; place-items: center; width: 25px; height: 25px; border: 1px solid var(--line-strong); border-radius: 7px; background: #0d1017; color: var(--cyan); font-family: var(--mono); font-size: 7px; }
+.activity-node { z-index: 1; display: grid; place-items: center; width: 25px; height: 25px; border: 1px solid var(--line-strong); border-radius: 7px; background: #0d1017; font-family: var(--mono); font-size: 15px; font-weight: 700; line-height: 1; }
+.activity-node.is-long { color: var(--green); }
+.activity-node.is-short { color: var(--red); }
 .activity-copy { display: grid; }
 .activity-copy b { font-size: 9px; }
 .activity-copy span { margin-top: 2px; color: var(--muted); font-size: 8px; line-height: 1.5; }

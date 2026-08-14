@@ -2087,7 +2087,7 @@
     const items = state.setups.slice().sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at)).slice(0, 7);
     const stream = $("#activity-stream");
     stream.innerHTML = items.length ? items.map((setup) => `<div class="activity-item is-clickable" role="link" tabindex="0" data-activity-setup="${escapeAttr(setup.id)}" data-activity-book="${escapeAttr(normalizeState(setup.status))}" aria-label="Open ${escapeAttr(setup.ticker)} setup by ${escapeAttr(setup.handle)}">
-      <div class="activity-node">${setup.direction === "LONG" ? "↗" : "↘"}</div>
+      <div class="activity-node ${setup.direction === "LONG" ? "is-long" : "is-short"}" aria-hidden="true">${setup.direction === "LONG" ? "↗" : "↘"}</div>
       <div class="activity-copy"><b>@${escapeHtml(setup.handle)} published ${escapeHtml(setup.ticker)}</b><span>${escapeHtml(setup.direction)} ${escapeHtml(labelize(setup.trigger_type))} at ${formatPrice(setup.entry)} · ${escapeHtml(setup.strategy || "Uncategorized")}</span></div>
       <time><span>${formatRelative(setup.submitted_at)}</span><b>OPEN ↗</b></time>
     </div>`).join("") : '<div class="activity-empty"><b>No current public signals</b><span>The stream is ready for the first operator submission.</span></div>';
