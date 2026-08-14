@@ -382,8 +382,6 @@
     </div>
     <div class="footer-links">
       <a href="https://ximxesabortion.github.io/">Hub</a>
-      <a href="https://discord.gg/C3SSKZ26md">Foundry</a>
-      <a href="https://substack.com/@compositeoperator">Substack</a>
       <button id="open-methodology" type="button">Methodology</button>
     </div>
     <p>Research and education only. Nothing here is financial advice.</p>
@@ -610,14 +608,20 @@
     <div class="modal-card method-card">
       <button class="modal-close" type="button" data-close-method aria-label="Close methodology">×</button>
       <span class="eyebrow">SCORING CONTRACT</span>
-      <h2>How the Ledger ranks operators</h2>
+      <h2>How GOAT 2.0 ranks operators</h2>
       <div class="method-grid">
-        <div><span>01</span><h3>Resolved records only</h3><p>Leaderboard metrics use locked archived setups. Open ideas do not improve a rank.</p></div>
-        <div><span>02</span><h3>Risk-normalized outcomes</h3><p>Stops and targets translate each setup into comparable R multiples.</p></div>
-        <div><span>03</span><h3>Sample qualification</h3><p>GOAT stays NQ until three triggered setups resolve. Evidence reaches full weight at twenty.</p></div>
-        <div><span>04</span><h3>Outlier control</h3><p>Each trade contributes between -1R and +5R to GOAT. Full uncapped R remains in total score.</p></div>
+        <div><span>01</span><h3>Immutable original plan</h3><p>Entry, stop, targets, thesis, and time horizon lock at publication. Later management never rewrites the original record.</p></div>
+        <div><span>02</span><h3>Lifecycle discipline</h3><p>Pending entries expire on an explicit horizon-based clock. A valid expiry or pre-entry cancellation applies a 0.10 discipline debit; technical voids are excluded.</p></div>
+        <div><span>03</span><h3>Tranche-weighted outcomes</h3><p>T1, T2, and T3 score by their declared allocations and exit R. Full exit at T1 and scale-out plans remain directly comparable.</p></div>
+        <div><span>04</span><h3>Evidence qualification</h3><p>GOAT stays NQ until three triggered setups resolve. Evidence weight grows with the sample and reaches full weight at twenty.</p></div>
+        <div><span>05</span><h3>Outlier control</h3><p>Each resolved trade contributes between -1R and +5R to GOAT. Full uncapped Trade R remains visible in total score.</p></div>
+        <div><span>06</span><h3>Coaching, not execution</h3><p>Review prompts can suggest a prospective Ledger stop. Only the author can revise it; the original stop stays visible and no broker action is claimed.</p></div>
       </div>
-      <code>GOAT = 100 × (75% × Edge + 25% × Consistency) × Evidence</code>
+      <div class="method-formulas" aria-label="GOAT 2.0 formulas">
+        <code>Trade R = Σ (allocation × exit R)</code>
+        <code>Net Edge R = (Σ clamped Trade R − discipline debits) ÷ triggered resolved trades</code>
+        <code>GOAT = 100 × (75% × Edge + 25% × Consistency) × Evidence</code>
+      </div>
     </div>
   </dialog>
 

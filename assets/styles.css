@@ -796,9 +796,9 @@ img.operator-avatar { object-fit: cover; }
 .footer-brand > div { display: grid; }
 .footer-brand strong { font-size: 9px; letter-spacing: .13em; }
 .footer-brand small { color: var(--faint); font-size: 7px; }
-.footer-links { display: flex; justify-content: center; gap: 20px; }
-.footer-links a, .footer-links button { border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 8px; }
-.footer-links a:hover, .footer-links button:hover { color: var(--acid); }
+.footer-links { display: flex; justify-content: center; gap: 12px; }
+.footer-links a, .footer-links button { display: inline-flex; min-height: 38px; align-items: center; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255,255,255,.018); color: var(--text); cursor: pointer; font-size: 12px; font-weight: 700; }
+.footer-links a:hover, .footer-links button:hover { border-color: rgba(200,255,46,.34); background: var(--acid-soft); color: var(--acid); }
 .site-footer > p { margin: 0; color: var(--faint); font-size: 7px; }
 
 dialog { padding: 0; border: 0; background: transparent; color: var(--text); }
@@ -1169,15 +1169,16 @@ dialog::backdrop { background: rgba(1,2,4,.78); backdrop-filter: blur(12px); }
   20%, 72% { border-color: rgba(200,255,46,.72); box-shadow: 0 0 0 3px rgba(200,255,46,.09), 0 20px 60px rgba(0,0,0,.3); }
 }
 
-.method-dialog { width: min(100% - 24px, 720px); }
-.method-card { padding: 34px; }
+.method-dialog { width: min(100% - 24px, 860px); }
+.method-card { max-height: calc(100vh - 30px); overflow-y: auto; padding: 34px; }
 .method-card h2 { margin: 7px 0 22px; font-size: 28px; letter-spacing: -.05em; }
 .method-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 9px; }
 .method-grid > div { padding: 15px; border: 1px solid var(--line); border-radius: 10px; background: rgba(255,255,255,.014); }
 .method-grid span { color: var(--acid); font-family: var(--mono); font-size: 7px; }
 .method-grid h3 { margin: 8px 0 5px; font-size: 11px; }
 .method-grid p { margin: 0; color: var(--muted); font-size: 8px; line-height: 1.55; }
-.method-card code { display: block; margin-top: 15px; padding: 13px; border: 1px solid rgba(200,255,46,.14); border-radius: 8px; background: rgba(200,255,46,.04); color: var(--acid); font-family: var(--mono); font-size: 8px; text-align: center; }
+.method-formulas { display: grid; gap: 7px; margin-top: 15px; }
+.method-card code { display: block; padding: 11px 13px; border: 1px solid rgba(200,255,46,.14); border-radius: 8px; background: rgba(200,255,46,.04); color: var(--acid); font-family: var(--mono); font-size: 8px; line-height: 1.45; text-align: center; white-space: normal; }
 
 .symbol-guide-dialog { width: min(100% - 24px, 980px); }
 .symbol-guide-card { max-height: calc(100vh - 30px); overflow-y: auto; overscroll-behavior: contain; padding: 38px 40px 32px; background:
