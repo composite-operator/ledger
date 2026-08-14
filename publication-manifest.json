@@ -1,6 +1,10 @@
 {
   "files": [
     {
+      "path": ".github/workflows/deploy-pages.yml",
+      "sha256": "51d920177a6f73487e432170745583f32bf1b6ba047c7f3d97aa1c77d6b63bf5"
+    },
+    {
       "path": ".nojekyll",
       "sha256": "7eb70257593da06f682a3ddda54a9d260d4fc514f645237f5ca74b08f8da61a6"
     },
