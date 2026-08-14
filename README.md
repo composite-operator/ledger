@@ -25,8 +25,9 @@ The repository starts in an explicit preview mode. Preview mode shows only a ver
 - Queue, Hot, Near, Active, and Resolved setup states
 - Permanent setup-book URLs for every state and the operator index
 - Sortable setup fields for posted date, entry distance, planned R, operator history, score, and comments
+- Adaptive setup-book rail with state filters and Network Pulse stacked outside the setup feed
 - Direction-aware execution maps with SL, entry, current price, TP1-TP3, R multiples, and accessible hover or keyboard explanations
-- Persistent Panels, Linear, and Compact setup-book layouts for responsive comparison, full-record reading, or rapid scanning
+- Persistent Panels, Linear, and Compact setup-book layouts for responsive comparison, full-record reading, or rapid price scanning without chart or thesis bulk
 - Live Yahoo Finance quotes with Google Finance fallback for setup-to-entry distance
 - Shared demand-driven quote cache with visible-tab refresh and automatic closed-symbol cleanup
 - Top-100 crypto normalization from bare symbols such as `BTC` and `ETH` to canonical USD pairs
