@@ -28,7 +28,7 @@ const weighted = engine.calculateTradeR({
 close(weighted, 1);
 
 assert.equal(engine.scoreSetup({ status: "EXPIRED" }).score, -0.1);
-assert.equal(engine.scoreSetup({ status: "CANCELLED" }).score, -0.15);
+assert.equal(engine.scoreSetup({ status: "CANCELLED" }).score, -0.1);
 assert.equal(engine.scoreSetup({ status: "TECHNICAL_VOID" }).included, false);
 
 const t1Protected = engine.scoreSetup({
@@ -51,8 +51,19 @@ assert.equal(goat.profitableCount, 1);
 assert.equal(goat.expiryCount, 1);
 assert.equal(goat.cancelCount, 1);
 assert.equal(goat.voidCount, 1);
-close(goat.netEdgeR, 0.375);
+close(goat.netEdgeR, 0.4);
 close(goat.evidenceWeight, 0.1);
+assert.equal(goat.qualified, false);
+assert.equal(goat.goatScore, null);
+assert.ok(Number.isFinite(goat.provisionalGoatScore));
+
+const qualifiedGoat = engine.goatV2([
+  { status: "RESOLVED", triggered_at: "2026-08-01T00:00:00.000Z", resolved_at: "2026-08-02T00:00:00.000Z", r_result: 1 },
+  { status: "RESOLVED", triggered_at: "2026-08-03T00:00:00.000Z", resolved_at: "2026-08-04T00:00:00.000Z", r_result: 1 },
+  { status: "RESOLVED", triggered_at: "2026-08-05T00:00:00.000Z", resolved_at: "2026-08-06T00:00:00.000Z", r_result: 1 }
+]);
+assert.equal(qualifiedGoat.qualified, true);
+assert.ok(Number.isFinite(qualifiedGoat.goatScore));
 
 assert.equal(engine.lifecycleState({ status: "QUEUED", entry_expires_at: "2026-08-13T00:00:00.000Z" }, "2026-08-14T00:00:00.000Z").state, "ENTRY_EXPIRED");
 assert.equal(engine.lifecycleState({ status: "ACTIVE", triggered_at: "2026-08-10T00:00:00.000Z", review_due_at: "2026-08-13T00:00:00.000Z" }, "2026-08-14T00:00:00.000Z").state, "REVIEW_DUE");
@@ -62,16 +73,4 @@ assert.equal(engine.validateStopRevision({ direction: "LONG", currentLedgerStop:
 assert.equal(engine.validateStopRevision({ direction: "SHORT", currentLedgerStop: 110, proposedStop: 100, currentPrice: 90 }).valid, true);
 assert.equal(engine.validateStopRevision({ direction: "SHORT", currentLedgerStop: 110, proposedStop: 115, currentPrice: 90 }).valid, false);
 
-require("../assets/lifecycle-fixtures.js");
-const fixtures = globalThis.LEDGER_LIFECYCLE_FIXTURES.build("2026-08-14T12:00:00.000Z");
-assert.equal(fixtures.setups.length, 16);
-assert.equal(fixtures.leaders.length, 4);
-assert.equal(fixtures.summary.entryExpired, 1);
-assert.equal(fixtures.summary.reviewDue, 1);
-assert.equal(fixtures.summary.technicalVoids, 1);
-close(fixtures.setups.find((setup) => setup.id === "sim-007").r_result, 1);
-close(fixtures.setups.find((setup) => setup.id === "sim-016").r_result, 6.4);
-assert.equal(engine.scoreSetup(fixtures.setups.find((setup) => setup.id === "sim-016")).goatR, 5);
-assert.equal(engine.coachingSuggestion(fixtures.setups.find((setup) => setup.id === "sim-009")).suggestedStop, 4200);
-
-console.log("Lifecycle engine and fictional matrix: 31 assertions passed.");
+console.log("GOAT 2.0 lifecycle engine assertions passed.");

@@ -59,6 +59,11 @@ type SetupPayload = {
   t3?: number | null;
   strategy?: string | null;
   thesis?: string | null;
+  entry_expires_at?: string | null;
+  management_style?: string | null;
+  t1_allocation?: number;
+  t2_allocation?: number;
+  t3_allocation?: number;
 };
 
 function json(body: unknown, status = 200) {
@@ -407,6 +412,11 @@ Deno.serve(async (request) => {
       t3: payload.t3 ?? null,
       strategy: String(payload.strategy || "").trim() || null,
       thesis: String(payload.thesis || "").trim() || null,
+      entry_expires_at: payload.entry_expires_at ?? null,
+      management_style: payload.management_style ?? "SCALE_PROTECT",
+      t1_allocation: payload.t1_allocation ?? 1,
+      t2_allocation: payload.t2_allocation ?? 0,
+      t3_allocation: payload.t3_allocation ?? 0,
       status: "ACTIVE",
       current_price: roundPrice(quote.price),
       price_source: quote.source,

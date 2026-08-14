@@ -1,8 +1,8 @@
 # Composite Operator Ledger
 
-## Isolated lifecycle prototype
+## GOAT 2.0 lifecycle
 
-The `codex/lifecycle-coaching-prototype` branch contains a local-only lifecycle, coaching, tranche-scoring, and GOAT v2 evaluation build with 16 fictional records. It does not modify the live Ledger unless it is reviewed and merged. See [Lifecycle + Coaching Prototype](docs/LIFECYCLE_COACHING_PROTOTYPE.md).
+New Ledger records use explicit entry windows, horizon-based review cadence, allocation-weighted target outcomes, prospective public stop coaching, and the GOAT 2.0 ranking formula. See [GOAT 2.0 Lifecycle + Coaching Contract](docs/LIFECYCLE_COACHING_PROTOTYPE.md).
 
 A public setup tracker and operator leaderboard for the Composite Operator Hub.
 
@@ -15,7 +15,7 @@ The site is designed for GitHub Pages. Supabase supplies the parts that a static
 - indexed leaderboard metrics
 - paginated search and profile views
 
-The repository starts in an explicit preview mode. Preview mode shows only a verified snapshot from the current Ledger source Sheet. It does not invent operators, setups, or performance metrics while credentials and live records are unavailable.
+If the live backend is unavailable, the interface shows an empty state. It does not invent operators, setups, or performance metrics.
 
 ## What ships
 
@@ -40,6 +40,11 @@ The repository starts in an explicit preview mode. Preview mode shows only a ver
 - Top-100 crypto normalization from bare symbols such as `BTC` and `ETH` to canonical USD pairs
 - Topbar ticker style guide with copyable commodity, index, foreign-exchange, and crypto symbols
 - Structured setup form with live risk/reward checks
+- Explicit horizon-bounded entry expiry and post-entry review cadence
+- Full-T1, scale-and-protect, or custom target allocation plans
+- Quote-driven Near, Hot, entry, target, stop, and resolution transitions
+- GOAT 2.0 scoring with NQ qualification until three triggered records resolve
+- Author-only prospective Ledger stop revisions and review coaching
 - Server-verified MARKET activation with a ±0.5% reference-price tolerance
 - Collapsible public discussions with authenticated comments and starred OP replies
 - Optional JPG, PNG, or WEBP chart attachments on original theses and comments, with direct `Ctrl+V` clipboard paste
@@ -73,12 +78,13 @@ The repository starts in an explicit preview mode. Preview mode shows only a ver
 15. Run [`supabase/migrations/202608140001_loss_cards.sql`](supabase/migrations/202608140001_loss_cards.sql) to add loss-card alerts and the separate loss-notification preference.
 16. Run [`supabase/migrations/202608140002_profile_handles.sql`](supabase/migrations/202608140002_profile_handles.sql) to let authenticated owners change their unique public handle.
 17. Run [`supabase/migrations/202608140003_unified_public_identity.sql`](supabase/migrations/202608140003_unified_public_identity.sql) to synchronize the legacy display-name column to the canonical handle and prevent future drift.
-18. In **Authentication → URL Configuration**, set:
+18. Run [`supabase/migrations/202608140004_lifecycle_coaching_prototype.sql`](supabase/migrations/202608140004_lifecycle_coaching_prototype.sql) to activate GOAT 2.0 lifecycle automation, scoring, and the five-minute expiry job.
+19. In **Authentication → URL Configuration**, set:
    - Site URL: `https://ximxesabortion.github.io/ledger/`
    - Redirect URL: `https://ximxesabortion.github.io/ledger/`
 
-19. In **Authentication → Sign In / Providers → Email**, keep Email enabled.
-20. For the $0 MVP, turn **Confirm email** off. This avoids relying on a paid production mail service. Add verified-email delivery later if the product needs email ownership proof or password-reset email.
+20. In **Authentication → Sign In / Providers → Email**, keep Email enabled.
+21. For the $0 MVP, turn **Confirm email** off. This avoids relying on a paid production mail service. Add verified-email delivery later if the product needs email ownership proof or password-reset email.
 
 Google and X are optional future identity links. They are not required for Ledger accounts.
 

@@ -138,7 +138,7 @@
       return { kind: "expiry", tradeR: null, goatR: 0, score: -0.1, included: true, reason: "Entry window expired before trigger" };
     }
     if (["CANCELLED", "CANCELED"].includes(status) && !setup?.triggered_at) {
-      return { kind: "cancel", tradeR: null, goatR: 0, score: -0.15, included: true, reason: "Operator canceled a valid pending idea" };
+      return { kind: "cancel", tradeR: null, goatR: 0, score: -0.1, included: true, reason: "Operator canceled a valid pending idea" };
     }
     const resolved = ["STOPPED", "CLOSED", "RESOLVED", "T3_HIT"].includes(status) || Boolean(setup?.resolved_at);
     if (!resolved || !setup?.triggered_at) return { kind: "open", tradeR: null, goatR: 0, score: 0, included: false, reason: "Open record" };
@@ -162,16 +162,19 @@
     const profitableCount = trades.filter((item) => item.tradeR > 0).length;
     const triggeredResolved = trades.length;
     const sumGoatR = trades.reduce((total, item) => total + item.goatR, 0);
-    const disciplineDebits = expiryCount * 0.1 + cancelCount * 0.15;
+    const disciplineDebits = expiryCount * 0.1 + cancelCount * 0.1;
     const netEdgeR = triggeredResolved ? (sumGoatR - disciplineDebits) / triggeredResolved : 0;
     const adjustedWinRate = (profitableCount + 2) / (triggeredResolved + 4);
     const edgeComponent = clamp(netEdgeR / 2, -1, 1);
     const consistencyComponent = adjustedWinRate * 2 - 1;
     const evidenceWeight = Math.min(1, triggeredResolved / 20);
-    const goatScore = 100 * (0.75 * edgeComponent + 0.25 * consistencyComponent) * evidenceWeight;
+    const provisionalGoatScore = 100 * (0.75 * edgeComponent + 0.25 * consistencyComponent) * evidenceWeight;
+    const qualified = triggeredResolved >= 3;
     return {
-      version: "GOAT_V2_PROTOTYPE",
-      goatScore,
+      version: "GOAT_V2",
+      qualified,
+      goatScore: qualified ? provisionalGoatScore : null,
+      provisionalGoatScore,
       netEdgeR,
       adjustedWinRate,
       evidenceWeight,

@@ -17,7 +17,6 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
   <script src="assets/runtime-config.js?v=__LEDGER_BUILD__" defer></script>
   <script src="assets/lifecycle-engine.js?v=__LEDGER_BUILD__" defer></script>
-  <script src="assets/lifecycle-fixtures.js?v=__LEDGER_BUILD__" defer></script>
   <script src="assets/app.js?v=__LEDGER_BUILD__" defer></script>
 </head>
 <body>
@@ -99,7 +98,13 @@
       <a href="?book=active#setups" data-open-book="active"><b>ACTIVE</b> <i id="rail-active">0</i></a>
       <a href="?book=resolved#setups" data-open-book="resolved"><b>RESOLVED</b> <i id="rail-resolved">2</i></a>
       <a href="#leaderboard" data-view-target="leaderboard"><b>OPERATORS</b> <i id="rail-operators">1</i></a>
-      <span class="rail-copy"><b>TRANSPARENT OUTCOMES</b><span>EVERY SETUP SCORED AGAINST ITS ORIGINAL ENTRY, STOP, AND TARGETS</span></span>
+      <span class="rail-copy">
+        <b>TRANSPARENT OUTCOMES</b>
+        <span class="rail-copy-detail">
+          <span class="rail-copy-full">EVERY SETUP SCORED AGAINST ITS ORIGINAL ENTRY, STOP, AND TARGETS</span>
+          <span class="rail-copy-compact">ORIGINAL ENTRY · STOP · TARGETS</span>
+        </span>
+      </span>
     </div>
   </div>
 
@@ -283,27 +288,6 @@
         </div>
         <button class="button button-primary" data-open-submit type="button">Submit a setup</button>
       </header>
-
-      <section class="prototype-lab glass-panel" id="lifecycle-prototype-lab" hidden aria-labelledby="prototype-lab-title">
-        <header>
-          <div>
-            <span class="eyebrow">ISOLATED SIMULATION TREE / FICTIONAL DATA</span>
-            <h2 id="prototype-lab-title">Lifecycle + coaching evaluation lab</h2>
-            <p>Test expiry, review cadence, prospective stop revisions, tranche outcomes, and GOAT v2 without touching the live Ledger.</p>
-          </div>
-          <span class="prototype-safety-chip">MAIN UNCHANGED</span>
-        </header>
-        <div class="prototype-metrics" id="prototype-metrics"></div>
-        <div class="prototype-scoreboard" id="prototype-scoreboard"></div>
-        <details class="prototype-method">
-          <summary>GOAT v2 test formula and lifecycle rules <span>OPEN +</span></summary>
-          <div>
-            <p><b>Resolved trade:</b> target tranches are allocation-weighted in R. GOAT evidence caps one trade at -1R to +5R, while the full result remains in total score.</p>
-            <p><b>Untriggered expiry:</b> -0.10 discipline debit. <b>Operator cancellation:</b> -0.15. <b>Technical void:</b> excluded.</p>
-            <p><b>Active records:</b> no age decay. Entry expiry ends at trigger and becomes a horizon-based review cadence. Coaching can suggest a stop revision, but cannot claim a broker action.</p>
-          </div>
-        </details>
-      </section>
 
       <div class="setup-dashboard">
         <div class="setup-rail" aria-label="Setup filters and network pulse">
@@ -537,23 +521,23 @@
         <div class="price-map">
           <label class="field">
             <span>Entry <b>*</b></span>
-            <div class="field-control field-control-prefix"><i>$</i><input name="entry" id="entry" type="number" min="0.000001" step="any" required placeholder="0.00"></div>
+            <div class="field-control field-control-prefix"><i>$</i><input name="entry" id="entry" type="number" min="0" step="0.01" inputmode="decimal" required placeholder="0.00"></div>
           </label>
           <label class="field risk-field">
             <span>Stop loss <b>*</b></span>
-            <div class="field-control field-control-prefix"><i>$</i><input name="stop" id="stop" type="number" min="0.000001" step="any" required placeholder="0.00"></div>
+            <div class="field-control field-control-prefix"><i>$</i><input name="stop" id="stop" type="number" min="0" step="0.01" inputmode="decimal" required placeholder="0.00"></div>
           </label>
           <label class="field target-field">
             <span>T1 <b>*</b></span>
-            <div class="field-control field-control-prefix"><i>$</i><input name="t1" id="t1" type="number" min="0.000001" step="any" required placeholder="0.00"></div>
+            <div class="field-control field-control-prefix"><i>$</i><input name="t1" id="t1" type="number" min="0" step="0.01" inputmode="decimal" required placeholder="0.00"></div>
           </label>
           <label class="field">
             <span>T2</span>
-            <div class="field-control field-control-prefix"><i>$</i><input name="t2" id="t2" type="number" min="0.000001" step="any" placeholder="Optional"></div>
+            <div class="field-control field-control-prefix"><i>$</i><input name="t2" id="t2" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Optional"></div>
           </label>
           <label class="field">
             <span>T3</span>
-            <div class="field-control field-control-prefix"><i>$</i><input name="t3" id="t3" type="number" min="0.000001" step="any" placeholder="Optional"></div>
+            <div class="field-control field-control-prefix"><i>$</i><input name="t3" id="t3" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Optional"></div>
           </label>
         </div>
 
@@ -630,10 +614,10 @@
       <div class="method-grid">
         <div><span>01</span><h3>Resolved records only</h3><p>Leaderboard metrics use locked archived setups. Open ideas do not improve a rank.</p></div>
         <div><span>02</span><h3>Risk-normalized outcomes</h3><p>Stops and targets translate each setup into comparable R multiples.</p></div>
-        <div><span>03</span><h3>Sample weighting</h3><p>GOAT score starts after three triggered setups and reaches full weight at twenty.</p></div>
-        <div><span>04</span><h3>Outlier control</h3><p>Average R is capped at ±5 inside the GOAT score so one result cannot dominate.</p></div>
+        <div><span>03</span><h3>Sample qualification</h3><p>GOAT stays NQ until three triggered setups resolve. Evidence reaches full weight at twenty.</p></div>
+        <div><span>04</span><h3>Outlier control</h3><p>Each trade contributes between -1R and +5R to GOAT. Full uncapped R remains in total score.</p></div>
       </div>
-      <code>GOAT = (70% × capped Avg R + 30% × Win Rate) × sample weight</code>
+      <code>GOAT = 100 × (75% × Edge + 25% × Consistency) × Evidence</code>
     </div>
   </dialog>
 

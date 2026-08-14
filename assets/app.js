@@ -2,11 +2,7 @@
   "use strict";
 
   const config = window.LEDGER_CONFIG || {};
-  const lifecyclePrototypeMode = new URLSearchParams(location.search).get("prototype") === "lifecycle";
-  const lifecyclePrototype = lifecyclePrototypeMode && window.LEDGER_LIFECYCLE_FIXTURES
-    ? window.LEDGER_LIFECYCLE_FIXTURES.build()
-    : null;
-  const liveConfigPresent = Boolean(!lifecyclePrototypeMode && config.supabaseUrl && config.supabasePublishableKey && config.demoMode !== true);
+  const liveConfigPresent = Boolean(config.supabaseUrl && config.supabasePublishableKey && config.demoMode !== true);
   const mediaBucket = "avatars";
   const imageMimeTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
   const maxImageBytes = 2 * 1024 * 1024;
@@ -46,15 +42,6 @@
     notify_losses: true
   };
 
-  const fallbackPreviewLeaders = [
-    { id: "sheet-000000001", handle: "daft", display_name: "daft", total_setups: 2, triggered_setups: 2, stopped_setups: 2, t1_hits: 0, t2_hits: 0, t3_hits: 0, win_rate: 0, avg_r: -1, total_score: -2, goat_score: null, last_30d_score: 0, bio: "Verified Ledger operator from the current source sheet." }
-  ];
-
-  const previewLeaders = lifecyclePrototype?.leaders || fallbackPreviewLeaders;
-  const previewSetups = lifecyclePrototype?.setups || [];
-  const previewStats = lifecyclePrototype
-    ? { setups: previewSetups.length, resolved: previewSetups.filter((setup) => ["STOPPED", "CLOSED", "RESOLVED", "T3_HIT", "EXPIRED", "CANCELLED", "TECHNICAL_VOID"].includes(setup.status)).length }
-    : { setups: 2, resolved: 2 };
   const setupBooks = {
     all: { title: "All setups", kicker: "PUBLIC SETUP BOOK", description: "Every published thesis, from queue to resolved outcome." },
     queued: { title: "Queued setups", kicker: "PRE-EXECUTION BOOK", description: "Ideas waiting for their entry. Review the plan and discuss it before execution." },
@@ -130,11 +117,11 @@
     session: null,
     profile: null,
     live: false,
-    leaders: previewLeaders.slice(),
-    compactLeaders: previewLeaders.slice(0, 5),
-    podiumLeaders: previewLeaders.slice(0, 3),
-    rankTotal: previewLeaders.length,
-    setups: previewSetups.slice(),
+    leaders: [],
+    compactLeaders: [],
+    podiumLeaders: [],
+    rankTotal: 0,
+    setups: [],
     rankMode: "goat",
     rankSearch: "",
     rankPage: 1,
@@ -187,14 +174,6 @@
 
     if (liveConfigPresent && window.supabase?.createClient) {
       await connectLiveData();
-    } else if (lifecyclePrototypeMode) {
-      setNetworkState("Fictional lifecycle lab", true);
-      const railLabel = $(".rail-label");
-      if (railLabel) railLabel.innerHTML = '<span class="pulse-dot"></span>SIMULATION';
-      const quoteState = $("#quote-refresh-state");
-      if (quoteState) quoteState.innerHTML = "<i></i> FICTIONAL PRICES";
-      openSetupBook("all", false);
-      document.title = "Lifecycle Lab — Composite Operator Ledger";
     } else {
       setNetworkState("Backend setup required", true);
     }
@@ -234,9 +213,7 @@
     renderSetups();
     $$(".app-view").forEach((view) => view.classList.toggle("is-active", view.dataset.view === "setups"));
     $$(".nav-item").forEach((button) => button.classList.toggle("is-active", button.dataset.viewTarget === "setups"));
-    document.title = lifecyclePrototypeMode
-      ? `${setupBooks[book].title} · Lifecycle Lab — Composite Operator Ledger`
-      : book === "all" ? "Ledger — Composite Operator" : `${setupBooks[book].title} — Composite Operator Ledger`;
+    document.title = book === "all" ? "Ledger — Composite Operator" : `${setupBooks[book].title} — Composite Operator Ledger`;
     const nextUrl = new URL(location.href);
     nextUrl.searchParams.set("book", book);
     nextUrl.hash = "setups";
@@ -578,9 +555,12 @@
         setup.quote_asset_class = quote.assetClass || null;
         hydratedTickers.add(setup.ticker);
       });
+      await syncQuoteDrivenSetups([...hydratedTickers]);
       const quoteCount = hydratedTickers.size;
       setQuoteState(`${quoteCount} LIVE QUOTE${quoteCount === 1 ? "" : "S"}`, "is-live");
       renderSetups();
+      renderActivity();
+      renderMetrics();
     } catch (error) {
       console.warn("Setup-book quote refresh failed", error);
       setQuoteState("STORED PRICES", "");
@@ -1599,8 +1579,8 @@
       const setup = state.setups.find((item) => String(item.id) === String(button.dataset.followSetup));
       if (setup) void toggleSetupFollow(setup);
     }));
-    $$("[data-prototype-stop]", grid).forEach((button) => button.addEventListener("click", () => applyPrototypeStopRevision(button.dataset.prototypeStop)));
-    $$("[data-prototype-review]", grid).forEach((button) => button.addEventListener("click", () => completePrototypeReview(button.dataset.prototypeReview)));
+    $$("[data-lifecycle-stop]", grid).forEach((button) => button.addEventListener("click", () => void reviseLedgerStop(button.dataset.lifecycleStop)));
+    $$("[data-lifecycle-review]", grid).forEach((button) => button.addEventListener("click", () => void recordSetupReview(button.dataset.lifecycleReview)));
     renderSetupCounts();
     renderNetworkIntel();
   }
@@ -1653,28 +1633,53 @@
   }
 
   function setupLifecyclePanel(setup) {
-    if (!lifecyclePrototypeMode || !window.LedgerLifecycle) return "";
+    if (!window.LedgerLifecycle || !setup.scoring_version) return "";
     const lifecycle = window.LedgerLifecycle.lifecycleState(setup);
     const coach = window.LedgerLifecycle.coachingSuggestion(setup);
     const score = window.LedgerLifecycle.scoreSetup(setup);
+    const isOwner = state.session?.user?.id && String(state.session.user.id) === String(setup.user_id);
     const activeClock = setup.triggered_at ? setup.review_due_at : setup.entry_expires_at;
     const clockLabel = setup.triggered_at ? "NEXT REVIEW" : "ENTRY EXPIRES";
     const ledgerStop = setup.ledger_stop ?? setup.stop;
     const scoreText = score.kind === "trade" ? `${formatNumber(score.tradeR, 2)}R` : score.kind === "expiry" || score.kind === "cancel" ? `${formatNumber(score.score, 2)}` : score.kind === "void" ? "EXCLUDED" : "OPEN";
     return `<section class="lifecycle-strip is-${escapeAttr(lifecycle.tone)}">
-      <div class="lifecycle-scenario"><span>FICTIONAL TEST CASE</span><b>${escapeHtml(setup.scenario_label || "Lifecycle evaluation")}</b></div>
+      <div class="lifecycle-scenario"><span>LIFECYCLE</span><b>${escapeHtml(lifecycle.label)}</b></div>
       <div><span>${clockLabel}</span><b>${activeClock ? escapeHtml(formatRelative(activeClock)) : "NOT SET"}</b></div>
       <div><span>LEDGER STOP</span><b>${formatPrice(ledgerStop)} <small>ORIG ${formatPrice(setup.stop)}</small></b></div>
       <div><span>GOAT V2 STATE</span><b>${escapeHtml(scoreText)}</b></div>
-      <strong>${escapeHtml(lifecycle.label)}</strong>
-      ${coach ? `<aside class="coach-prompt"><div><span>${escapeHtml(coach.title)}</span><p>${escapeHtml(coach.message)}</p></div><button type="button" ${coach.kind === "PROTECT" ? `data-prototype-stop="${escapeAttr(setup.id)}"` : `data-prototype-review="${escapeAttr(setup.id)}"`}>${escapeHtml(coach.action)}</button></aside>` : ""}
+      <strong>${escapeHtml(setup.scoring_version === "GOAT_V2" ? "GOAT V2" : "LEGACY")}</strong>
+      ${coach ? `<aside class="coach-prompt"><div><span>${escapeHtml(coach.title)}</span><p>${escapeHtml(coach.message)}</p></div>${isOwner ? `<button type="button" ${coach.kind === "PROTECT" ? `data-lifecycle-stop="${escapeAttr(setup.id)}"` : `data-lifecycle-review="${escapeAttr(setup.id)}"`}>${escapeHtml(coach.action)}</button>` : "<small>AUTHOR ACTION</small>"}</aside>` : ""}
     </section>`;
   }
 
-  function applyPrototypeStopRevision(setupId) {
+  async function syncQuoteDrivenSetups(tickers) {
+    if (!state.supabase || !tickers.length) return;
+    const { data, error } = await state.supabase
+      .from("setups_public")
+      .select("*")
+      .in("ticker", tickers);
+    if (error) {
+      console.warn("Quote-driven lifecycle refresh failed", error);
+      return;
+    }
+    const refreshed = new Map((data || []).map((row) => [String(row.id), normalizeSetup(row)]));
+    state.setups = state.setups.map((setup) => {
+      const next = refreshed.get(String(setup.id));
+      if (!next) return setup;
+      return {
+        ...next,
+        live_quote_source: setup.live_quote_source,
+        live_quote_at: setup.live_quote_at,
+        quote_symbol: setup.quote_symbol,
+        quote_asset_class: setup.quote_asset_class
+      };
+    });
+  }
+
+  async function reviseLedgerStop(setupId) {
     const setup = state.setups.find((item) => String(item.id) === String(setupId));
     const coach = setup && window.LedgerLifecycle.coachingSuggestion(setup);
-    if (!setup || coach?.suggestedStop == null) return;
+    if (!setup || coach?.suggestedStop == null || !state.supabase || !state.session?.user) return;
     const validation = window.LedgerLifecycle.validateStopRevision({
       direction: setup.direction,
       currentLedgerStop: setup.ledger_stop ?? setup.stop,
@@ -1688,18 +1693,26 @@
       return;
     }
     const previous = setup.ledger_stop ?? setup.stop;
+    const { error } = await state.supabase.rpc("revise_ledger_stop", { p_setup_public_id: setup.id, p_proposed_stop: coach.suggestedStop });
+    if (error) {
+      showToast("Revision blocked", error.message, true);
+      return;
+    }
     setup.ledger_stop = coach.suggestedStop;
-    setup.management_events = [...(setup.management_events || []), { type: "LEDGER_STOP_REVISED", from: previous, to: coach.suggestedStop, effective_at: new Date().toISOString() }];
     renderSetups();
     showToast("Public Ledger stop revised", `${setup.ticker}: ${formatPrice(previous)} to ${formatPrice(coach.suggestedStop)}. No broker action is claimed.`);
   }
 
-  function completePrototypeReview(setupId) {
+  async function recordSetupReview(setupId) {
     const setup = state.setups.find((item) => String(item.id) === String(setupId));
-    if (!setup) return;
+    if (!setup || !state.supabase || !state.session?.user) return;
     const cadence = Number(setup.review_cadence_days || window.LedgerLifecycle.horizonPreset(setup.horizon).reviewCadenceDays);
-    setup.review_due_at = new Date(Date.now() + cadence * 86400000).toISOString();
-    setup.management_events = [...(setup.management_events || []), { type: "THESIS_REVIEWED", effective_at: new Date().toISOString() }];
+    const { data, error } = await state.supabase.rpc("record_setup_review", { p_setup_public_id: setup.id, p_note: null });
+    if (error) {
+      showToast("Review not recorded", error.message, true);
+      return;
+    }
+    setup.review_due_at = data || new Date(Date.now() + cadence * 86400000).toISOString();
     renderSetups();
     showToast("Review recorded", `${setup.ticker} remains active. The next review is due in ${cadence} day${cadence === 1 ? "" : "s"}.`);
   }
@@ -2676,10 +2689,16 @@
 
   function bindSubmissionForm() {
     const form = $("#setup-form");
-    ["entry", "stop", "t1", "t2", "t3"].forEach((id) => $(`#${id}`).addEventListener("input", () => {
-      updateRiskPreview();
-      updateManagementPlan();
-    }));
+    ["entry", "stop", "t1", "t2", "t3"].forEach((id) => {
+      const input = $(`#${id}`);
+      input.addEventListener("input", () => {
+        syncPriceInputStep(input);
+        updateRiskPreview();
+        updateManagementPlan();
+      });
+      input.addEventListener("focus", () => syncPriceInputStep(input));
+      syncPriceInputStep(input);
+    });
     $$('input[name="direction"]').forEach((input) => input.addEventListener("change", updateRiskPreview));
     $("#horizon").addEventListener("change", updateLifecycleDefaults);
     $("#entry-validity-days").addEventListener("change", updateLifecycleExpiry);
@@ -2698,8 +2717,15 @@
     updateFormAuthState();
   }
 
+  function syncPriceInputStep(input) {
+    const rawValue = String(input?.value || "").trim();
+    const fractionalDigits = rawValue.match(/\.(\d+)/)?.[1]?.length || 0;
+    const decimalPlaces = Math.min(6, Math.max(2, fractionalDigits));
+    input.step = decimalPlaces <= 2 ? "0.01" : `0.${"0".repeat(decimalPlaces - 1)}1`;
+  }
+
   function updateFormAuthState() {
-    $("#form-auth-alert").classList.toggle("is-visible", !lifecyclePrototypeMode && !state.session?.user);
+    $("#form-auth-alert").classList.toggle("is-visible", !state.session?.user);
   }
 
   function lifecycleValidityOptions(horizon) {
@@ -2781,7 +2807,7 @@
     event.preventDefault();
     const errorNode = $("#form-error");
     errorNode.hidden = true;
-    if (!lifecyclePrototypeMode && (!state.session?.user || !state.supabase)) {
+    if (!state.session?.user || !state.supabase) {
       errorNode.textContent = "Sign in to your Ledger account before you publish this setup.";
       errorNode.hidden = false;
       $("#auth-dialog").showModal();
@@ -2792,7 +2818,7 @@
     const thesisImageInput = $("#thesis-image");
     const thesisImageFile = selectedAttachmentFile(thesisImageInput);
     const payload = {
-      user_id: state.session?.user?.id || "prototype-op-testpilot",
+      user_id: state.session.user.id,
       client_request_id: crypto.randomUUID(),
       ticker: String(formData.get("ticker") || "").trim().toUpperCase(),
       direction: formData.get("direction"),
@@ -2806,14 +2832,10 @@
       strategy: String(formData.get("strategy") || "").trim() || null,
       thesis: String(formData.get("thesis") || "").trim() || null,
       entry_expires_at: formData.get("entry_expires_at") ? new Date(formData.get("entry_expires_at")).toISOString() : null,
-      review_cadence_days: window.LedgerLifecycle?.horizonPreset(formData.get("horizon") || "SWING").reviewCadenceDays || 7,
-      expected_holding_guide: window.LedgerLifecycle?.horizonPreset(formData.get("horizon") || "SWING").holdingGuide || null,
       management_style: formData.get("management_style") || "SCALE_PROTECT",
       t1_allocation: Number(formData.get("t1_allocation") || 0) / 100,
       t2_allocation: Number(formData.get("t2_allocation") || 0) / 100,
-      t3_allocation: Number(formData.get("t3_allocation") || 0) / 100,
-      ledger_stop: toNumber(formData.get("stop")),
-      scoring_version: "GOAT_V2_PROTOTYPE"
+      t3_allocation: Number(formData.get("t3_allocation") || 0) / 100
     };
 
     const validationError = validateSetup(payload);
@@ -2831,31 +2853,6 @@
     if ((payload.t2 == null && payload.t2_allocation > 0) || (payload.t3 == null && payload.t3_allocation > 0)) {
       errorNode.textContent = "A target allocation requires its matching T2 or T3 price.";
       errorNode.hidden = false;
-      return;
-    }
-    if (lifecyclePrototypeMode) {
-      const simulated = normalizeSetup({
-        ...payload,
-        id: `sim-user-${crypto.randomUUID()}`,
-        handle: "testpilot",
-        status: "QUEUED",
-        submitted_at: new Date().toISOString(),
-        current_price: payload.entry,
-        ledger_stop: payload.stop,
-        comment_count: 0,
-        scenario_label: "Evaluator-created local record",
-        lifecycle: window.LedgerLifecycle.lifecycleState(payload)
-      });
-      state.setups.unshift(simulated);
-      event.currentTarget.reset();
-      $("#thesis-count").textContent = "0";
-      clearAttachmentPreview($("#thesis-image"), $("#thesis-image-preview"));
-      updateLifecycleDefaults();
-      updateRiskPreview();
-      $("#submit-dialog").close();
-      renderAll();
-      openSetupBook("all");
-      showToast("Simulation record added", `${payload.ticker} was added only to this local evaluation session.`);
       return;
     }
     const imageError = validateImageFile(thesisImageFile);
@@ -2899,6 +2896,7 @@
 
     $("#submit-dialog").close();
     event.currentTarget.reset();
+    ["entry", "stop", "t1", "t2", "t3"].forEach((id) => syncPriceInputStep($(`#${id}`)));
     $("#thesis-count").textContent = "0";
     clearAttachmentPreview(thesisImageInput, $("#thesis-image-preview"));
     updateRiskPreview();
@@ -3310,7 +3308,6 @@
     renderCompactLeaderboard();
     renderLeaderboard();
     renderSetups();
-    renderLifecyclePrototypeLab();
     renderActivity();
     renderNetworkChart();
     updateAccountUI();
@@ -3318,31 +3315,10 @@
     updateAuthAvailability();
   }
 
-  function renderLifecyclePrototypeLab() {
-    const lab = $("#lifecycle-prototype-lab");
-    if (!lab) return;
-    lab.hidden = !lifecyclePrototypeMode;
-    if (!lifecyclePrototypeMode || !window.LedgerLifecycle) return;
-    const scored = state.setups.map((setup) => ({ setup, score: window.LedgerLifecycle.scoreSetup(setup), lifecycle: window.LedgerLifecycle.lifecycleState(setup) }));
-    const summary = [
-      ["FICTIONAL RECORDS", state.setups.length, "Every record is clearly marked"],
-      ["SCORED TRADES", scored.filter((item) => item.score.kind === "trade").length, "Tranche-weighted resolutions"],
-      ["ENTRY EXPIRIES", scored.filter((item) => item.score.kind === "expiry").length, "-0.10 discipline debit"],
-      ["REVIEWS DUE", scored.filter((item) => item.lifecycle.state === "REVIEW_DUE").length, "No active score decay"],
-      ["COACH PROMPTS", state.setups.filter((setup) => window.LedgerLifecycle.coachingSuggestion(setup)).length, "Suggestions, not broker claims"],
-      ["TECHNICAL VOIDS", scored.filter((item) => item.score.kind === "void").length, "Visible but excluded"]
-    ];
-    $("#prototype-metrics").innerHTML = summary.map(([label, value, note]) => `<article><span>${label}</span><b>${formatInteger(value)}</b><small>${note}</small></article>`).join("");
-    $("#prototype-scoreboard").innerHTML = `<header><span>GOAT V2 / FICTIONAL OPERATOR COMPARISON</span><small>Evidence weight prevents tiny samples from dominating.</small></header><div>${state.leaders.map((leader, index) => {
-      const goat = leader.goat_v2 || window.LedgerLifecycle.goatV2(state.setups.filter((setup) => setup.user_id === leader.id));
-      return `<article><i>${String(index + 1).padStart(2, "0")}</i><b>@${escapeHtml(leader.handle)}</b><strong>${formatNumber(goat.goatScore, 2)}</strong><span>${formatNumber(goat.netEdgeR, 2)}R NET EDGE</span><small>${goat.triggeredResolved} RESOLVED · ${formatPercent(goat.adjustedWinRate)} SHRUNK WIN · ${formatPercent(goat.evidenceWeight)} EVIDENCE</small></article>`;
-    }).join("")}</div>`;
-  }
-
   function renderMetrics() {
     const operatorCount = state.live ? state.rankTotal : state.leaders.length;
-    const setupCount = state.live || lifecyclePrototypeMode ? state.setups.length : previewStats.setups;
-    const resolvedCount = state.live || lifecyclePrototypeMode ? state.setups.filter((setup) => normalizeState(setup.status) === "resolved").length : previewStats.resolved;
+    const setupCount = state.setups.length;
+    const resolvedCount = state.setups.filter((setup) => normalizeState(setup.status) === "resolved").length;
     const resolutionRate = setupCount > 0 ? Math.round((resolvedCount / setupCount) * 100) : 0;
     $$('[data-metric="operators"]').forEach((node) => node.textContent = formatInteger(operatorCount));
     $$('[data-metric="setups"]').forEach((node) => node.textContent = formatInteger(setupCount));
