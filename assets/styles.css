@@ -867,7 +867,7 @@ dialog::backdrop { background: rgba(1,2,4,.78); backdrop-filter: blur(12px); }
 .victory-modal-card.is-loss .victory-actions button { border-color: rgba(255,102,95,.3); background: rgba(255,102,95,.1); color: #ff665f; }
 
 .auth-dialog { width: min(100% - 24px, 470px); }
-.auth-card { padding: 36px; }
+.auth-card { max-height: calc(100vh - 30px); overflow-y: auto; overscroll-behavior: contain; padding: 36px; }
 .auth-card h2 { margin: 8px 0 8px; font-size: 29px; letter-spacing: -.05em; }
 .auth-card > p { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.6; }
 .auth-setup-notice { display: grid; gap: 5px; margin-top: 18px; padding: 12px 13px; border: 1px solid rgba(255,177,64,.24); border-radius: 10px; background: rgba(255,177,64,.055); }
@@ -902,6 +902,7 @@ dialog::backdrop { background: rgba(1,2,4,.78); backdrop-filter: blur(12px); }
 .auth-footnote { display: flex; align-items: center; gap: 8px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--faint); font-size: 7px; }
 .auth-legal-consent { display: grid; grid-template-columns: 20px minmax(0,1fr); gap: 10px; align-items: start; margin-top: 16px; padding: 13px; border: 1px solid var(--line-strong); border-radius: 9px; background: rgba(255,255,255,.025); color: var(--text); font-size: 10px; line-height: 1.55; }
 .auth-legal-consent input { width: 18px; height: 18px; margin: 1px 0 0; accent-color: var(--acid); }
+.auth-legal-consent span > b { display: block; margin-bottom: 3px; color: var(--acid); font-size: 13px; }
 .auth-legal-consent a, .public-record-consent a, .profile-privacy-copy a, .comment-public-notice a { color: var(--acid); text-underline-offset: 3px; }
 .public-record-consent { margin: 14px 0 0; padding: 11px 14px; border: 1px solid rgba(255,189,74,.28); border-radius: 9px; background: rgba(255,189,74,.06); color: var(--text); font-size: 11px; line-height: 1.55; }
 .shield-icon { color: var(--acid); }
@@ -1310,8 +1311,8 @@ dialog::backdrop { background: rgba(1,2,4,.78); backdrop-filter: blur(12px); }
 .credential-fields label > span { font-size: 10px; }
 .credential-fields input { font-size: 14px; }
 .secondary-auth-button { font-size: 11px; }
-.auth-inline-status, .auth-footnote { font-size: 10px; }
-.auth-legal-consent { font-size: 12px; }
+.auth-inline-status, .auth-footnote { font-size: 12px; }
+.auth-legal-consent { font-size: 15px; line-height: 1.6; }
 
 .submit-dialog { width: min(100% - 24px, 1180px); }
 .submit-header h2 { font-size: 34px; }

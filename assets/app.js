@@ -2,7 +2,7 @@
   "use strict";
 
   const config = window.LEDGER_CONFIG || {};
-  const legalVersion = "2026-08-14";
+  const legalVersion = "2026-08-14.1";
   const liveConfigPresent = Boolean(config.supabaseUrl && config.supabasePublishableKey && config.demoMode !== true);
   const mediaBucket = "avatars";
   const imageMimeTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
@@ -718,7 +718,7 @@
     $("#auth-inline-status").classList.remove("is-error", "is-success");
     if (!email || !email.includes("@")) return setAuthStatus("Enter a valid email address.", true);
     if (password.length < 8) return setAuthStatus("Use a password with at least 8 characters.", true);
-    if (mode === "signup" && !acceptedLegalTerms) return setAuthStatus("Confirm that you are at least 18 and accept the Terms and Privacy Notice before creating an account.", true);
+    if (mode === "signup" && !acceptedLegalTerms) return setAuthStatus("Before creating an account, confirm that you are at least 18, have read and understood the Terms and Privacy Notice, agree to the Terms, and acknowledge the Privacy Notice.", true);
 
     setAuthBusy(true);
     setAuthStatus(mode === "signup" ? "Creating your Ledger account…" : "Signing in…");
@@ -731,6 +731,8 @@
             data: {
               legal_version: legalVersion,
               legal_accepted_at: new Date().toISOString(),
+              legal_understood_confirmed: true,
+              privacy_acknowledged_at: new Date().toISOString(),
               age_18_confirmed: true
             }
           }
