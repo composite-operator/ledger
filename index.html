@@ -100,7 +100,13 @@
       <a href="?book=active#setups" data-open-book="active"><b>ACTIVE</b> <i id="rail-active">0</i></a>
       <a href="?book=resolved#setups" data-open-book="resolved"><b>RESOLVED</b> <i id="rail-resolved">2</i></a>
       <a href="#leaderboard" data-view-target="leaderboard"><b>OPERATORS</b> <i id="rail-operators">1</i></a>
-      <span class="rail-copy"><b>TRANSPARENT OUTCOMES</b><span>EVERY SETUP SCORED AGAINST ITS ORIGINAL ENTRY, STOP, AND TARGETS</span></span>
+      <span class="rail-copy">
+        <b>TRANSPARENT OUTCOMES</b>
+        <span class="rail-copy-detail">
+          <span class="rail-copy-full">EVERY SETUP SCORED AGAINST ITS ORIGINAL ENTRY, STOP, AND TARGETS</span>
+          <span class="rail-copy-compact">ORIGINAL ENTRY · STOP · TARGETS</span>
+        </span>
+      </span>
     </div>
   </div>
 
@@ -481,23 +487,23 @@
         <div class="price-map">
           <label class="field">
             <span>Entry <b>*</b></span>
-            <div class="field-control field-control-prefix"><i>$</i><input name="entry" id="entry" type="number" min="0.000001" step="any" required placeholder="0.00"></div>
+            <div class="field-control field-control-prefix"><i>$</i><input name="entry" id="entry" type="number" min="0" step="0.01" inputmode="decimal" required placeholder="0.00"></div>
           </label>
           <label class="field risk-field">
             <span>Stop loss <b>*</b></span>
-            <div class="field-control field-control-prefix"><i>$</i><input name="stop" id="stop" type="number" min="0.000001" step="any" required placeholder="0.00"></div>
+            <div class="field-control field-control-prefix"><i>$</i><input name="stop" id="stop" type="number" min="0" step="0.01" inputmode="decimal" required placeholder="0.00"></div>
           </label>
           <label class="field target-field">
             <span>T1 <b>*</b></span>
-            <div class="field-control field-control-prefix"><i>$</i><input name="t1" id="t1" type="number" min="0.000001" step="any" required placeholder="0.00"></div>
+            <div class="field-control field-control-prefix"><i>$</i><input name="t1" id="t1" type="number" min="0" step="0.01" inputmode="decimal" required placeholder="0.00"></div>
           </label>
           <label class="field">
             <span>T2</span>
-            <div class="field-control field-control-prefix"><i>$</i><input name="t2" id="t2" type="number" min="0.000001" step="any" placeholder="Optional"></div>
+            <div class="field-control field-control-prefix"><i>$</i><input name="t2" id="t2" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Optional"></div>
           </label>
           <label class="field">
             <span>T3</span>
-            <div class="field-control field-control-prefix"><i>$</i><input name="t3" id="t3" type="number" min="0.000001" step="any" placeholder="Optional"></div>
+            <div class="field-control field-control-prefix"><i>$</i><input name="t3" id="t3" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Optional"></div>
           </label>
         </div>
 

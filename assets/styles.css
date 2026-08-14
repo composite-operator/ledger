@@ -300,7 +300,7 @@ kbd { border: 1px solid var(--line-strong); border-bottom-color: rgba(255,255,25
 
 .market-rail { position: relative; z-index: 20; display: flex; height: 31px; overflow: hidden; border-bottom: 1px solid var(--line); background: #080a0f; font-family: var(--mono); font-size: 8px; letter-spacing: .04em; }
 .rail-label { display: flex; align-items: center; gap: 7px; z-index: 2; padding: 0 24px 0 28px; border-right: 1px solid var(--line); background: #0b0d12; color: var(--text); font-weight: 500; white-space: nowrap; }
-.rail-track { display: flex; align-items: center; gap: 0; min-width: max-content; }
+.rail-track { display: flex; flex: 1 1 auto; align-items: center; gap: 0; min-width: 0; overflow: hidden; }
 .rail-track > span, .rail-track > a { align-self: stretch; display: flex; align-items: center; padding: 0 19px; border-right: 1px solid rgba(255,255,255,.045); color: var(--muted); white-space: nowrap; }
 .rail-track > a { font-size: 9px; font-weight: 600; letter-spacing: .055em; text-decoration: none; transition: color .18s ease, background .18s ease; }
 .rail-track > a:hover, .rail-track > a:focus-visible { outline: 0; background: rgba(200,255,46,.055); color: var(--text); }
@@ -308,8 +308,20 @@ kbd { border: 1px solid var(--line-strong); border-bottom-color: rgba(255,255,25
 .rail-track > a b { color: #dce0e9; font-weight: 600; }
 .rail-track i { margin-left: 5px; color: var(--acid); font-style: normal; }
 .rail-track > a i { font-weight: 600; }
-.rail-copy { gap: 14px; color: var(--faint) !important; }
+.rail-copy { gap: 14px; min-width: 0; overflow: hidden; color: var(--faint) !important; }
 .rail-copy b { flex: 0 0 auto; }
+.rail-copy-detail { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rail-copy-compact { display: none; }
+
+@media (max-width: 1700px) {
+  .rail-track > span, .rail-track > a { padding-right: 14px; padding-left: 14px; }
+  .rail-copy-full { display: none; }
+  .rail-copy-compact { display: inline; }
+}
+
+@media (max-width: 1180px) {
+  .rail-copy { display: none !important; }
+}
 
 main { width: min(1920px, calc(100% - 48px)); margin: 0 auto; padding: 34px 0 80px; }
 .app-view { display: none; animation: view-in .35s ease both; }
@@ -1676,7 +1688,7 @@ dialog::backdrop { background: rgba(1,2,4,.78); backdrop-filter: blur(12px); }
   .symbol-guide-trigger { display: flex; }
   .market-rail { height: 29px; }
   .rail-label { padding: 0 12px; }
-  .rail-track { animation: rail-scroll 26s linear infinite; }
+  .rail-track { flex: 0 0 auto; min-width: max-content; overflow: visible; animation: rail-scroll 26s linear infinite; }
   .hero-panel { min-height: 490px; padding: 38px 23px 23px; }
   .hero-panel h1 { font-size: 49px; }
   .hero-copy { font-size: 12px; }

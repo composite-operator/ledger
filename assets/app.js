@@ -2600,7 +2600,15 @@
 
   function bindSubmissionForm() {
     const form = $("#setup-form");
-    ["entry", "stop", "t1"].forEach((id) => $(`#${id}`).addEventListener("input", updateRiskPreview));
+    ["entry", "stop", "t1", "t2", "t3"].forEach((id) => {
+      const input = $(`#${id}`);
+      input.addEventListener("input", () => {
+        syncPriceInputStep(input);
+        updateRiskPreview();
+      });
+      input.addEventListener("focus", () => syncPriceInputStep(input));
+      syncPriceInputStep(input);
+    });
     $$('input[name="direction"]').forEach((input) => input.addEventListener("change", updateRiskPreview));
     $("#thesis").addEventListener("input", (event) => { $("#thesis-count").textContent = event.target.value.length; });
     $("#thesis-image").addEventListener("change", (event) => {
@@ -2612,6 +2620,13 @@
     form.addEventListener("submit", submitSetup);
     updateRiskPreview();
     updateFormAuthState();
+  }
+
+  function syncPriceInputStep(input) {
+    const rawValue = String(input?.value || "").trim();
+    const fractionalDigits = rawValue.match(/\.(\d+)/)?.[1]?.length || 0;
+    const decimalPlaces = Math.min(6, Math.max(2, fractionalDigits));
+    input.step = decimalPlaces <= 2 ? "0.01" : `0.${"0".repeat(decimalPlaces - 1)}1`;
   }
 
   function updateFormAuthState() {
@@ -2713,6 +2728,7 @@
 
     $("#submit-dialog").close();
     event.currentTarget.reset();
+    ["entry", "stop", "t1", "t2", "t3"].forEach((id) => syncPriceInputStep($(`#${id}`)));
     $("#thesis-count").textContent = "0";
     clearAttachmentPreview(thesisImageInput, $("#thesis-image-preview"));
     updateRiskPreview();
