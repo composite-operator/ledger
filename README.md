@@ -1,5 +1,9 @@
 # Composite Operator Ledger
 
+## Isolated lifecycle prototype
+
+The `codex/lifecycle-coaching-prototype` branch contains a local-only lifecycle, coaching, tranche-scoring, and GOAT v2 evaluation build with 16 fictional records. It does not modify the live Ledger unless it is reviewed and merged. See [Lifecycle + Coaching Prototype](docs/LIFECYCLE_COACHING_PROTOTYPE.md).
+
 A public setup tracker and operator leaderboard for the Composite Operator Hub.
 
 The site is designed for GitHub Pages. Supabase supplies the parts that a static host cannot supply:
