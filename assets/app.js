@@ -6,6 +6,9 @@
   const mediaBucket = "avatars";
   const imageMimeTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
   const maxImageBytes = 2 * 1024 * 1024;
+  const quoteRefreshMinimumMs = 45 * 1000;
+  const quoteRefreshJitterMs = 30 * 1000;
+  const quoteResumeMinimumMs = 20 * 1000;
   const pastedAttachmentFiles = new WeakMap();
   const attachmentMarkerPattern = /(?:\r?\n)?\[ledger-image:([0-9a-f-]{36}\/ledger-media\/(?:setups|comments)\/[0-9a-f-]{36}\.(?:jpg|png|webp))\]$/i;
   const defaultNotificationPreferences = {
@@ -66,6 +69,9 @@
     notificationsAvailable: true,
     notificationChannel: null,
     quoteRefreshActive: false,
+    quoteRefreshTimer: null,
+    quoteLastRequestedAt: 0,
+    quoteResumeListenersBound: false,
     chart: null,
     commandItems: [],
     commandToken: 0,
@@ -137,6 +143,7 @@
     history[pushHistory ? "pushState" : "replaceState"](null, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
     renderNetworkChart();
     window.scrollTo({ top: 0, behavior: "smooth" });
+    requestQuoteRefreshIfStale(quoteResumeMinimumMs);
   }
 
   function syncSetupBookUI() {
@@ -276,6 +283,7 @@
       setNetworkState("Ledger connected", false);
       renderAll();
       await activateSharedSetup();
+      startQuoteRefreshLoop();
     } catch (error) {
       console.error(error);
       setNetworkState("Preview fallback", true);
@@ -418,13 +426,10 @@
   }
 
   async function refreshSetupQuotes() {
-    if (!state.live || state.quoteRefreshActive || !state.setups.length) return;
-    const tickers = [...new Set(state.setups
-      .filter((setup) => normalizeState(setup.status) !== "resolved")
-      .map((setup) => setup.ticker)
-      .filter(Boolean))].slice(0, 40);
-    if (!tickers.length) return;
+    if (!state.live || state.quoteRefreshActive) return;
+    const tickers = preferredQuoteTickers();
     state.quoteRefreshActive = true;
+    state.quoteLastRequestedAt = Date.now();
     setQuoteState("REFRESHING PRICES", "is-loading");
     try {
       const response = await fetch(`${config.supabaseUrl}/functions/v1/setup-book-quotes`, {
@@ -443,6 +448,7 @@
       }
       const hydratedTickers = new Set();
       state.setups.forEach((setup) => {
+        if (!isTrackableSetup(setup)) return;
         const quote = payload.quotes[setup.ticker];
         if (!quote || !Number.isFinite(Number(quote.price))) return;
         const entryRatio = Number.isFinite(setup.entry) && setup.entry > 0 ? Math.abs(Number(quote.price) - setup.entry) / setup.entry : 0;
@@ -464,6 +470,43 @@
     } finally {
       state.quoteRefreshActive = false;
     }
+  }
+
+  function preferredQuoteTickers() {
+    const visibleSetups = filteredSetups().filter(isTrackableSetup);
+    const remainingSetups = state.setups.filter(isTrackableSetup);
+    return [...new Set([...visibleSetups, ...remainingSetups]
+      .map((setup) => String(setup.ticker || "").trim().toUpperCase())
+      .filter(Boolean))].slice(0, 80);
+  }
+
+  function isTrackableSetup(setup) {
+    return !setup.final_status && normalizeState(setup.status) !== "resolved";
+  }
+
+  function requestQuoteRefreshIfStale(minimumAgeMs = quoteRefreshMinimumMs) {
+    if (!state.live || document.visibilityState === "hidden") return;
+    if (Date.now() - state.quoteLastRequestedAt < minimumAgeMs) return;
+    void refreshSetupQuotes();
+  }
+
+  function startQuoteRefreshLoop() {
+    if (state.quoteRefreshTimer) clearTimeout(state.quoteRefreshTimer);
+    if (!state.quoteResumeListenersBound) {
+      const refreshAfterResume = () => requestQuoteRefreshIfStale(quoteResumeMinimumMs);
+      document.addEventListener("visibilitychange", refreshAfterResume);
+      window.addEventListener("focus", refreshAfterResume);
+      state.quoteResumeListenersBound = true;
+    }
+
+    const schedule = () => {
+      const delay = quoteRefreshMinimumMs + Math.round(Math.random() * quoteRefreshJitterMs);
+      state.quoteRefreshTimer = setTimeout(async () => {
+        if (document.visibilityState !== "hidden") await refreshSetupQuotes();
+        schedule();
+      }, delay);
+    };
+    schedule();
   }
 
   function setQuoteState(label, className) {

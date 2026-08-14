@@ -5,6 +5,7 @@ const corsHeaders = {
 };
 
 const tickerPattern = /^[A-Z0-9.^=_-]{1,16}$/;
+const refreshBatchSize = 24;
 const requestWindows = new Map<string, { count: number; expiresAt: number }>();
 const fallbackCryptoSymbols = new Set([
   "BTC", "ETH", "USDT", "BNB", "XRP", "USDC", "SOL", "TRX", "DOGE", "ADA",
@@ -43,6 +44,20 @@ type Quote = {
   assetClass: AssetClass;
 };
 
+type CachedQuoteRow = {
+  ticker: string;
+  price: number | string | null;
+  currency: string | null;
+  exchange: string | null;
+  source: Quote["source"] | null;
+  requested_symbol: string | null;
+  resolved_symbol: string | null;
+  asset_class: AssetClass | null;
+  quoted_at: string | null;
+  refreshed_at: string | null;
+  next_refresh_at: string;
+};
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -60,6 +75,35 @@ function allowRequest(request: Request) {
   }
   current.count += 1;
   return current.count <= 30;
+}
+
+async function callDatabaseRpc<T>(name: string, body: Record<string, unknown>): Promise<T> {
+  const projectUrl = Deno.env.get("SUPABASE_URL");
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!projectUrl || !serviceRoleKey) throw new Error("The shared quote cache is not configured.");
+
+  const response = await fetch(`${projectUrl}/rest/v1/rpc/${name}`, {
+    method: "POST",
+    headers: {
+      apikey: serviceRoleKey,
+      Authorization: `Bearer ${serviceRoleKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(`${name} returned ${response.status}: ${message.slice(0, 500)}`);
+  }
+  if (response.status === 204) return undefined as T;
+  const text = await response.text();
+  return (text ? JSON.parse(text) : undefined) as T;
+}
+
+function cleanTickers(values: unknown, limit = 80) {
+  return [...new Set((Array.isArray(values) ? values : [])
+    .map((value: unknown) => String(value || "").trim().toUpperCase())
+    .filter((value: string) => tickerPattern.test(value)))].slice(0, limit) as string[];
 }
 
 async function fetchWithTimeout(url: string, timeoutMs = 6500) {
@@ -273,20 +317,77 @@ Deno.serve(async (request) => {
   if (!allowRequest(request)) return json({ error: "rate_limited", message: "Quote refresh limit reached. Try again shortly." }, 429);
 
   try {
-    const payload = await request.json();
-    const tickers = [...new Set((Array.isArray(payload?.tickers) ? payload.tickers : [])
-      .map((value: unknown) => String(value || "").trim().toUpperCase())
-      .filter((value: string) => tickerPattern.test(value)))].slice(0, 40) as string[];
-    if (!tickers.length) return json({ error: "invalid_tickers", message: "Send at least one supported ticker." }, 422);
-
-    const settled = await Promise.allSettled(tickers.map(async (ticker) => [ticker, await getQuote(ticker)] as const));
-    const quotes: Record<string, Quote> = {};
+    const payload: { tickers?: unknown } = await request.json().catch(() => ({}));
+    const preferredTickers = cleanTickers(payload?.tickers);
+    const claimedRows = await callDatabaseRpc<Array<{ ticker: string }>>("claim_setup_quote_refreshes", {
+      p_preferred: preferredTickers,
+      p_limit: refreshBatchSize,
+      p_lease_seconds: 45,
+    });
+    const claimedTickers = cleanTickers((claimedRows || []).map((row) => row.ticker), refreshBatchSize);
+    const settled = await Promise.allSettled(claimedTickers.map(async (ticker) => [ticker, await getQuote(ticker)] as const));
+    const storedResults: Array<Record<string, unknown>> = [];
     const unavailable: string[] = [];
     settled.forEach((result, index) => {
-      if (result.status === "fulfilled") quotes[result.value[0]] = result.value[1];
-      else unavailable.push(tickers[index]);
+      const ticker = claimedTickers[index];
+      if (result.status === "fulfilled") {
+        const quote = result.value[1];
+        storedResults.push({
+          ticker,
+          price: quote.price,
+          currency: quote.currency,
+          exchange: quote.exchange,
+          source: quote.source,
+          requested_symbol: quote.requestedSymbol,
+          resolved_symbol: quote.resolvedSymbol,
+          asset_class: quote.assetClass,
+          quoted_at: quote.quotedAt,
+          error: null,
+        });
+      } else {
+        unavailable.push(ticker);
+        storedResults.push({
+          ticker,
+          error: String(result.reason || "Quote unavailable.").slice(0, 500),
+        });
+      }
     });
-    return json({ quotes, unavailable, refreshedAt: new Date().toISOString() });
+    if (storedResults.length) {
+      await callDatabaseRpc<void>("store_setup_quote_results", { p_results: storedResults });
+    }
+
+    const snapshotRows = await callDatabaseRpc<CachedQuoteRow[]>("setup_quote_snapshot", {
+      p_tickers: preferredTickers,
+    });
+    const quotes: Record<string, Quote & { refreshedAt: string | null; nextRefreshAt: string }> = {};
+    (snapshotRows || []).forEach((row) => {
+      const price = Number(row.price);
+      if (!tickerPattern.test(String(row.ticker || "")) || !Number.isFinite(price) || price <= 0 || !row.source) return;
+      quotes[row.ticker] = {
+        price,
+        currency: row.currency || "USD",
+        exchange: row.exchange || "UNKNOWN",
+        quotedAt: row.quoted_at || row.refreshed_at || new Date().toISOString(),
+        source: row.source,
+        requestedSymbol: row.requested_symbol || row.ticker,
+        resolvedSymbol: row.resolved_symbol || row.ticker,
+        assetClass: row.asset_class || "EQUITY",
+        refreshedAt: row.refreshed_at,
+        nextRefreshAt: row.next_refresh_at,
+      };
+    });
+
+    return json({
+      quotes,
+      unavailable,
+      refreshedAt: new Date().toISOString(),
+      cache: {
+        mode: "SHARED_DEMAND_DRIVEN",
+        tracked: (snapshotRows || []).length,
+        claimed: claimedTickers.length,
+        refreshed: storedResults.length - unavailable.length,
+      },
+    });
   } catch (error) {
     console.error(error);
     return json({ error: "quote_refresh_failed", message: "The setup-book quotes could not be refreshed." }, 500);

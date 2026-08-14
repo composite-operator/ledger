@@ -14,6 +14,20 @@ GitHub Pages
 
 GitHub Pages cannot run server-side code or keep secrets. Supabase is the identity, database, policy, and query layer. The private Apps Script workbook can remain the price and outcome worker until those jobs move to a dedicated service.
 
+## Shared quote refresh
+
+The browser requests an immediate quote snapshot after Ledger data loads. While the tab is visible, it checks again after a randomized 45-to-75-second delay. Hidden tabs do not poll, and a returning tab refreshes only when its prior request is old enough.
+
+`setup-book-quotes` does not trust the browser as the tracking inventory. Its Postgres claim function derives unique symbols from public, non-final setups. Each stale cache row can be claimed by only one concurrent function request. The function refreshes at most 24 symbols per request, which lets higher traffic process separate rolling chunks without duplicating provider calls.
+
+Postgres makes symbols due by their most urgent open setup:
+
+- `HOT`, `ACTIVE`, and target-hit states: 60 seconds
+- `NEAR`: 120 seconds
+- Other non-final states: 300 seconds
+
+When the last open setup for a ticker becomes final, the next cache claim removes that ticker. A closed setup does not stop a shared ticker that another open setup still needs.
+
 ## Main records
 
 ### `profiles`
