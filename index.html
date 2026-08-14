@@ -6,7 +6,7 @@
   <meta name="theme-color" id="theme-color-meta" content="#06070b">
   <meta name="description" content="Composite Operator Ledger — public setup tracking, transparent outcomes, and an operator leaderboard.">
   <title>Ledger — Composite Operator</title>
-  <script>document.documentElement.dataset.theme="dark";document.documentElement.dataset.readable="false";try{document.documentElement.dataset.theme=localStorage.getItem("ledger-theme")==="light"?"light":"dark";document.documentElement.dataset.readable=localStorage.getItem("ledger-readable")==="true"?"true":"false"}catch(_error){}</script>
+  <script>document.documentElement.dataset.theme="dark";document.documentElement.dataset.readable="true";try{document.documentElement.dataset.theme=localStorage.getItem("ledger-theme")==="light"?"light":"dark"}catch(_error){}</script>
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
   <link rel="manifest" href="site.webmanifest">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -16,6 +16,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
   <script src="assets/runtime-config.js?v=__LEDGER_BUILD__" defer></script>
+  <script src="assets/lifecycle-engine.js?v=__LEDGER_BUILD__" defer></script>
   <script src="assets/app.js?v=__LEDGER_BUILD__" defer></script>
 </head>
 <body>
@@ -57,9 +58,6 @@
         <span class="pulse-dot"></span>
         <span id="network-state-label">Preview network</span>
       </div>
-      <button class="icon-button readable-button" id="readable-toggle" type="button" aria-label="Enable readable mode" aria-pressed="false" title="Enable readable mode">
-        <span aria-hidden="true">Aa</span>
-      </button>
       <button class="icon-button theme-button" id="theme-toggle" type="button" aria-label="Switch to light mode" title="Switch to light mode">
         <svg class="theme-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg>
         <svg class="theme-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.91-.1-1.35A7 7 0 0 1 12 3Z"/></svg>
@@ -453,7 +451,7 @@
             <span>Time horizon</span>
             <select name="horizon" id="horizon">
               <option value="SWING">Swing (default)</option>
-              <option value="DAY_TRADE">Day trade</option>
+              <option value="DAY_TRADE">Scalp / short term</option>
               <option value="POSITION">Position</option>
               <option value="LONG_TERM">Long term</option>
             </select>
@@ -476,7 +474,43 @@
       </div>
 
       <div class="form-section">
-        <div class="form-section-label"><span>02</span> EXECUTION MAP</div>
+        <div class="form-section-label"><span>02</span> LIFECYCLE CONTRACT</div>
+        <div class="lifecycle-form-grid">
+          <label class="field">
+            <span>Entry valid for</span>
+            <select name="entry_validity_days" id="entry-validity-days"></select>
+          </label>
+          <label class="field">
+            <span>Entry expires</span>
+            <input name="entry_expires_at" id="entry-expires-at" type="datetime-local">
+          </label>
+          <label class="field">
+            <span>Review cadence</span>
+            <input name="review_cadence_label" id="review-cadence-label" type="text" readonly>
+          </label>
+          <label class="field">
+            <span>Management style</span>
+            <select name="management_style" id="management-style">
+              <option value="SCALE_PROTECT">Scale out + protect</option>
+              <option value="FULL_T1">Full exit at T1</option>
+              <option value="CUSTOM">Custom allocation</option>
+            </select>
+          </label>
+        </div>
+        <div class="lifecycle-summary" id="lifecycle-default-summary" aria-live="polite"></div>
+        <details class="management-custom" id="management-custom">
+          <summary>Advanced target allocations <span>OPTIONAL +</span></summary>
+          <div class="allocation-grid">
+            <label class="field"><span>T1 allocation %</span><input name="t1_allocation" id="t1-allocation" type="number" min="0" max="100" step="5" value="40"></label>
+            <label class="field"><span>T2 allocation %</span><input name="t2_allocation" id="t2-allocation" type="number" min="0" max="100" step="5" value="30"></label>
+            <label class="field"><span>T3 allocation %</span><input name="t3_allocation" id="t3-allocation" type="number" min="0" max="100" step="5" value="30"></label>
+            <p>The three values must total 100%. Original entry, stop, and targets remain immutable after publication.</p>
+          </div>
+        </details>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-label"><span>03</span> EXECUTION MAP</div>
         <fieldset class="trigger-selector">
           <legend>Entry trigger <b>*</b></legend>
           <label><input type="radio" name="trigger_type" value="BREACH" checked><span><i>↗</i><b>Breach</b><small>Crosses entry</small></span></label>
@@ -516,7 +550,7 @@
       </div>
 
       <div class="form-section">
-        <div class="form-section-label"><span>03</span> THESIS</div>
+        <div class="form-section-label"><span>04</span> THESIS</div>
         <label class="field thesis-field">
           <span>Notes / thesis</span>
           <textarea name="thesis" id="thesis" rows="4" maxlength="1200" placeholder="What is the setup, what confirms it, and what would make you wrong?"></textarea>
@@ -580,10 +614,10 @@
       <div class="method-grid">
         <div><span>01</span><h3>Resolved records only</h3><p>Leaderboard metrics use locked archived setups. Open ideas do not improve a rank.</p></div>
         <div><span>02</span><h3>Risk-normalized outcomes</h3><p>Stops and targets translate each setup into comparable R multiples.</p></div>
-        <div><span>03</span><h3>Sample weighting</h3><p>GOAT score starts after three triggered setups and reaches full weight at twenty.</p></div>
-        <div><span>04</span><h3>Outlier control</h3><p>Average R is capped at ±5 inside the GOAT score so one result cannot dominate.</p></div>
+        <div><span>03</span><h3>Sample qualification</h3><p>GOAT stays NQ until three triggered setups resolve. Evidence reaches full weight at twenty.</p></div>
+        <div><span>04</span><h3>Outlier control</h3><p>Each trade contributes between -1R and +5R to GOAT. Full uncapped R remains in total score.</p></div>
       </div>
-      <code>GOAT = (70% × capped Avg R + 30% × Win Rate) × sample weight</code>
+      <code>GOAT = 100 × (75% × Edge + 25% × Consistency) × Evidence</code>
     </div>
   </dialog>
 

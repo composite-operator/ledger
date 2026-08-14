@@ -10,11 +10,15 @@
     },
     {
       "path": "assets/app.js",
-      "sha256": "23fdf8aba8553e08bb9023d51754f9436ea7c6ec23be6b1c754eef5b2eb51c6f"
+      "sha256": "174427a7b8a16c60ca3e5007a3d8112352bfb231aee7475776ea06e8d1b437d8"
     },
     {
       "path": "assets/icon.svg",
       "sha256": "2fcfe317968e34044cce5f3ce58e503177c925f7fe768e90aecad01826ad0ed6"
+    },
+    {
+      "path": "assets/lifecycle-engine.js",
+      "sha256": "91bdcb3ae5f27574e550cb9985b74771e41afbd4a31bf814399bb41e4871cced"
     },
     {
       "path": "assets/loss/account-crater.webp",
@@ -42,7 +46,7 @@
     },
     {
       "path": "assets/styles.css",
-      "sha256": "5dd6aa8f8789f616c146199b49ccf59d43b1491fb17cca05a70103c8ba60e82c"
+      "sha256": "4d2f310d7bc296972bd484d61077b267ec2dbe992ddeccbfaec873f0bca27252"
     },
     {
       "path": "assets/victory/chud-terminal.webp",
@@ -62,7 +66,7 @@
     },
     {
       "path": "index.html",
-      "sha256": "2e0d2d6b1bf6001c92feea64b9d416ce77dc40591c7b53d14765f247bfb0c6f0"
+      "sha256": "ce6942f142aa8a7e1b96fea05967a8830bf270952232cb631658b6e56a2d8832"
     },
     {
       "path": "site.webmanifest",

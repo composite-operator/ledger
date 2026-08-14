@@ -42,12 +42,6 @@
     notify_losses: true
   };
 
-  const previewLeaders = [
-    { id: "sheet-000000001", handle: "daft", display_name: "daft", total_setups: 2, triggered_setups: 2, stopped_setups: 2, t1_hits: 0, t2_hits: 0, t3_hits: 0, win_rate: 0, avg_r: -1, total_score: -2, goat_score: null, last_30d_score: 0, bio: "Verified Ledger operator from the current source sheet." }
-  ];
-
-  const previewSetups = [];
-  const previewStats = { setups: 2, resolved: 2 };
   const setupBooks = {
     all: { title: "All setups", kicker: "PUBLIC SETUP BOOK", description: "Every published thesis, from queue to resolved outcome." },
     queued: { title: "Queued setups", kicker: "PRE-EXECUTION BOOK", description: "Ideas waiting for their entry. Review the plan and discuss it before execution." },
@@ -123,11 +117,11 @@
     session: null,
     profile: null,
     live: false,
-    leaders: previewLeaders.slice(),
-    compactLeaders: previewLeaders.slice(0, 5),
-    podiumLeaders: previewLeaders.slice(0, 3),
-    rankTotal: previewLeaders.length,
-    setups: previewSetups.slice(),
+    leaders: [],
+    compactLeaders: [],
+    podiumLeaders: [],
+    rankTotal: 0,
+    setups: [],
     rankMode: "goat",
     rankSearch: "",
     rankPage: 1,
@@ -168,7 +162,6 @@
 
   async function init() {
     initTheme();
-    initReadableMode();
     bindNavigation();
     bindDialogs();
     bindLeaderboard();
@@ -562,9 +555,12 @@
         setup.quote_asset_class = quote.assetClass || null;
         hydratedTickers.add(setup.ticker);
       });
+      await syncQuoteDrivenSetups([...hydratedTickers]);
       const quoteCount = hydratedTickers.size;
       setQuoteState(`${quoteCount} LIVE QUOTE${quoteCount === 1 ? "" : "S"}`, "is-live");
       renderSetups();
+      renderActivity();
+      renderMetrics();
     } catch (error) {
       console.warn("Setup-book quote refresh failed", error);
       setQuoteState("STORED PRICES", "");
@@ -1583,6 +1579,8 @@
       const setup = state.setups.find((item) => String(item.id) === String(button.dataset.followSetup));
       if (setup) void toggleSetupFollow(setup);
     }));
+    $$("[data-lifecycle-stop]", grid).forEach((button) => button.addEventListener("click", () => void reviseLedgerStop(button.dataset.lifecycleStop)));
+    $$("[data-lifecycle-review]", grid).forEach((button) => button.addEventListener("click", () => void recordSetupReview(button.dataset.lifecycleReview)));
     renderSetupCounts();
     renderNetworkIntel();
   }
@@ -1600,9 +1598,10 @@
     const lossVariant = loss ? lossVariantFor(setup) : null;
     return `<article class="setup-card is-${setup.direction.toLowerCase()}${commentsOpen ? " has-open-comments" : ""}${isFollowed ? " is-followed" : ""}" id="setup-${escapeAttr(setupId)}">
       <div class="setup-card-top">
-        <div class="ticker-lockup"><div class="ticker-icon">${escapeHtml(setup.ticker.slice(0, 4))}</div><div class="ticker-copy"><b>${escapeHtml(setup.ticker)}</b><span>${escapeHtml(setup.direction)} · ${escapeHtml(labelize(setup.horizon || "SWING"))}</span></div></div>
+        <div class="ticker-lockup"><div class="ticker-icon">${escapeHtml(setup.ticker.slice(0, 4))}</div><div class="ticker-copy"><b>${escapeHtml(setup.ticker)}</b><span>${escapeHtml(setup.direction)} · ${escapeHtml(horizonLabel(setup.horizon))}</span></div></div>
         <span class="status-chip ${normalized}">${escapeHtml(normalized.toUpperCase())}</span>
       </div>
+      ${setupLifecyclePanel(setup)}
       ${setupPositionMap(setup)}
       <div class="setup-price-grid">
         <div><span>PLANNED R</span><b class="metric-positive">${formatNumber(plannedR, 2, "—")}R</b></div>
@@ -1627,6 +1626,95 @@
       </div>
       ${setupComments(setup)}
     </article>`;
+  }
+
+  function horizonLabel(horizon) {
+    return window.LedgerLifecycle?.horizonPreset(horizon).label || labelize(horizon || "SWING");
+  }
+
+  function setupLifecyclePanel(setup) {
+    if (!window.LedgerLifecycle || !setup.scoring_version) return "";
+    const lifecycle = window.LedgerLifecycle.lifecycleState(setup);
+    const coach = window.LedgerLifecycle.coachingSuggestion(setup);
+    const score = window.LedgerLifecycle.scoreSetup(setup);
+    const isOwner = state.session?.user?.id && String(state.session.user.id) === String(setup.user_id);
+    const activeClock = setup.triggered_at ? setup.review_due_at : setup.entry_expires_at;
+    const clockLabel = setup.triggered_at ? "NEXT REVIEW" : "ENTRY EXPIRES";
+    const ledgerStop = setup.ledger_stop ?? setup.stop;
+    const scoreText = score.kind === "trade" ? `${formatNumber(score.tradeR, 2)}R` : score.kind === "expiry" || score.kind === "cancel" ? `${formatNumber(score.score, 2)}` : score.kind === "void" ? "EXCLUDED" : "OPEN";
+    return `<section class="lifecycle-strip is-${escapeAttr(lifecycle.tone)}">
+      <div class="lifecycle-scenario"><span>LIFECYCLE</span><b>${escapeHtml(lifecycle.label)}</b></div>
+      <div><span>${clockLabel}</span><b>${activeClock ? escapeHtml(formatRelative(activeClock)) : "NOT SET"}</b></div>
+      <div><span>LEDGER STOP</span><b>${formatPrice(ledgerStop)} <small>ORIG ${formatPrice(setup.stop)}</small></b></div>
+      <div><span>GOAT V2 STATE</span><b>${escapeHtml(scoreText)}</b></div>
+      <strong>${escapeHtml(setup.scoring_version === "GOAT_V2" ? "GOAT V2" : "LEGACY")}</strong>
+      ${coach ? `<aside class="coach-prompt"><div><span>${escapeHtml(coach.title)}</span><p>${escapeHtml(coach.message)}</p></div>${isOwner ? `<button type="button" ${coach.kind === "PROTECT" ? `data-lifecycle-stop="${escapeAttr(setup.id)}"` : `data-lifecycle-review="${escapeAttr(setup.id)}"`}>${escapeHtml(coach.action)}</button>` : "<small>AUTHOR ACTION</small>"}</aside>` : ""}
+    </section>`;
+  }
+
+  async function syncQuoteDrivenSetups(tickers) {
+    if (!state.supabase || !tickers.length) return;
+    const { data, error } = await state.supabase
+      .from("setups_public")
+      .select("*")
+      .in("ticker", tickers);
+    if (error) {
+      console.warn("Quote-driven lifecycle refresh failed", error);
+      return;
+    }
+    const refreshed = new Map((data || []).map((row) => [String(row.id), normalizeSetup(row)]));
+    state.setups = state.setups.map((setup) => {
+      const next = refreshed.get(String(setup.id));
+      if (!next) return setup;
+      return {
+        ...next,
+        live_quote_source: setup.live_quote_source,
+        live_quote_at: setup.live_quote_at,
+        quote_symbol: setup.quote_symbol,
+        quote_asset_class: setup.quote_asset_class
+      };
+    });
+  }
+
+  async function reviseLedgerStop(setupId) {
+    const setup = state.setups.find((item) => String(item.id) === String(setupId));
+    const coach = setup && window.LedgerLifecycle.coachingSuggestion(setup);
+    if (!setup || coach?.suggestedStop == null || !state.supabase || !state.session?.user) return;
+    const validation = window.LedgerLifecycle.validateStopRevision({
+      direction: setup.direction,
+      currentLedgerStop: setup.ledger_stop ?? setup.stop,
+      proposedStop: coach.suggestedStop,
+      currentPrice: setup.current_price,
+      effectiveAt: new Date().toISOString(),
+      latestEventAt: setup.management_events?.at(-1)?.effective_at
+    });
+    if (!validation.valid) {
+      showToast("Revision blocked", validation.reason, true);
+      return;
+    }
+    const previous = setup.ledger_stop ?? setup.stop;
+    const { error } = await state.supabase.rpc("revise_ledger_stop", { p_setup_public_id: setup.id, p_proposed_stop: coach.suggestedStop });
+    if (error) {
+      showToast("Revision blocked", error.message, true);
+      return;
+    }
+    setup.ledger_stop = coach.suggestedStop;
+    renderSetups();
+    showToast("Public Ledger stop revised", `${setup.ticker}: ${formatPrice(previous)} to ${formatPrice(coach.suggestedStop)}. No broker action is claimed.`);
+  }
+
+  async function recordSetupReview(setupId) {
+    const setup = state.setups.find((item) => String(item.id) === String(setupId));
+    if (!setup || !state.supabase || !state.session?.user) return;
+    const cadence = Number(setup.review_cadence_days || window.LedgerLifecycle.horizonPreset(setup.horizon).reviewCadenceDays);
+    const { data, error } = await state.supabase.rpc("record_setup_review", { p_setup_public_id: setup.id, p_note: null });
+    if (error) {
+      showToast("Review not recorded", error.message, true);
+      return;
+    }
+    setup.review_due_at = data || new Date(Date.now() + cadence * 86400000).toISOString();
+    renderSetups();
+    showToast("Review recorded", `${setup.ticker} remains active. The next review is due in ${cadence} day${cadence === 1 ? "" : "s"}.`);
   }
 
   function setupPositionMap(setup) {
@@ -2216,7 +2304,8 @@
   function isLosingSetup(setup) {
     const result = Number(setup?.r_result ?? setup?.score);
     const finalStatus = String(setup?.final_status || "").toUpperCase();
-    const voidOutcome = ["CANCELLED", "EXPIRED"].includes(finalStatus);
+    const status = String(setup?.status || "").toUpperCase();
+    const voidOutcome = ["CANCELLED", "EXPIRED"].includes(finalStatus) || ["CANCELLED", "EXPIRED", "VOID", "TECHNICAL_VOID"].includes(status);
     return normalizeState(setup?.status) === "resolved" && Number.isFinite(result) && result < 0 && !voidOutcome;
   }
 
@@ -2605,11 +2694,16 @@
       input.addEventListener("input", () => {
         syncPriceInputStep(input);
         updateRiskPreview();
+        updateManagementPlan();
       });
       input.addEventListener("focus", () => syncPriceInputStep(input));
       syncPriceInputStep(input);
     });
     $$('input[name="direction"]').forEach((input) => input.addEventListener("change", updateRiskPreview));
+    $("#horizon").addEventListener("change", updateLifecycleDefaults);
+    $("#entry-validity-days").addEventListener("change", updateLifecycleExpiry);
+    $("#management-style").addEventListener("change", updateManagementPlan);
+    ["t1-allocation", "t2-allocation", "t3-allocation"].forEach((id) => $(`#${id}`).addEventListener("input", updateLifecycleSummary));
     $("#thesis").addEventListener("input", (event) => { $("#thesis-count").textContent = event.target.value.length; });
     $("#thesis-image").addEventListener("change", (event) => {
       pastedAttachmentFiles.delete(event.currentTarget);
@@ -2618,6 +2712,7 @@
     $("[data-remove-thesis-image]").addEventListener("click", () => clearAttachmentPreview($("#thesis-image"), $("#thesis-image-preview")));
     form.addEventListener("paste", (event) => handleAttachmentPaste(event, $("#thesis-image"), $("#thesis-image-preview"), "thesis"));
     form.addEventListener("submit", submitSetup);
+    updateLifecycleDefaults();
     updateRiskPreview();
     updateFormAuthState();
   }
@@ -2631,6 +2726,63 @@
 
   function updateFormAuthState() {
     $("#form-auth-alert").classList.toggle("is-visible", !state.session?.user);
+  }
+
+  function lifecycleValidityOptions(horizon) {
+    return {
+      DAY_TRADE: [1, 2, 3, 5, 7],
+      SWING: [7, 14, 21, 28],
+      POSITION: [30, 45, 60, 90],
+      LONG_TERM: [90, 180, 270, 365]
+    }[horizon] || [7, 14, 21, 28];
+  }
+
+  function datetimeLocalValue(value) {
+    const date = new Date(value);
+    const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+    return local.toISOString().slice(0, 16);
+  }
+
+  function updateLifecycleDefaults() {
+    const horizon = $("#horizon").value || "SWING";
+    const preset = window.LedgerLifecycle?.horizonPreset(horizon);
+    const defaults = window.LedgerLifecycle?.deriveLifecycleDefaults(horizon);
+    if (!preset || !defaults) return;
+    const validity = $("#entry-validity-days");
+    const values = lifecycleValidityOptions(horizon);
+    validity.innerHTML = values.map((days) => `<option value="${days}"${days === defaults.entryValidityDays ? " selected" : ""}>${days} day${days === 1 ? "" : "s"}</option>`).join("");
+    $("#review-cadence-label").value = `${preset.reviewLabel} after entry`;
+    updateLifecycleExpiry();
+    updateManagementPlan();
+  }
+
+  function updateLifecycleExpiry() {
+    const days = Number($("#entry-validity-days").value || 1);
+    $("#entry-expires-at").value = datetimeLocalValue(Date.now() + days * 86400000);
+    updateLifecycleSummary();
+  }
+
+  function updateManagementPlan() {
+    const style = $("#management-style").value || "SCALE_PROTECT";
+    const targetCount = [$("#t1").value, $("#t2").value, $("#t3").value].filter((value) => Number(value) > 0).length || 1;
+    const custom = $("#management-custom");
+    custom.hidden = style !== "CUSTOM";
+    custom.open = style === "CUSTOM";
+    if (style !== "CUSTOM") {
+      const allocations = window.LedgerLifecycle?.defaultAllocations(targetCount, style) || [1, 0, 0];
+      ["t1-allocation", "t2-allocation", "t3-allocation"].forEach((id, index) => { $(`#${id}`).value = String(Math.round(allocations[index] * 100)); });
+    }
+    updateLifecycleSummary();
+  }
+
+  function updateLifecycleSummary() {
+    const horizon = $("#horizon").value || "SWING";
+    const preset = window.LedgerLifecycle?.horizonPreset(horizon);
+    if (!preset) return;
+    const style = $("#management-style").value || "SCALE_PROTECT";
+    const management = window.LedgerLifecycle?.MANAGEMENT_PRESETS?.[style];
+    const allocations = [$("#t1-allocation").value, $("#t2-allocation").value, $("#t3-allocation").value].map((value) => Number(value) || 0);
+    $("#lifecycle-default-summary").innerHTML = `<span>ENTRY WINDOW <b>${escapeHtml($("#entry-validity-days").value)}D</b></span><span>ACTIVE REVIEW <b>${escapeHtml(preset.reviewLabel.toUpperCase())}</b></span><span>EXPECTED HOLD <b>${escapeHtml(preset.holdingGuide.toUpperCase())}</b></span><span>MANAGEMENT <b>${escapeHtml(management?.label || style)}</b></span><span>ALLOCATIONS <b>${allocations.join(" / ")}%</b></span>`;
   }
 
   function updateRiskPreview() {
@@ -2678,12 +2830,28 @@
       t2: toNumber(formData.get("t2")),
       t3: toNumber(formData.get("t3")),
       strategy: String(formData.get("strategy") || "").trim() || null,
-      thesis: String(formData.get("thesis") || "").trim() || null
+      thesis: String(formData.get("thesis") || "").trim() || null,
+      entry_expires_at: formData.get("entry_expires_at") ? new Date(formData.get("entry_expires_at")).toISOString() : null,
+      management_style: formData.get("management_style") || "SCALE_PROTECT",
+      t1_allocation: Number(formData.get("t1_allocation") || 0) / 100,
+      t2_allocation: Number(formData.get("t2_allocation") || 0) / 100,
+      t3_allocation: Number(formData.get("t3_allocation") || 0) / 100
     };
 
     const validationError = validateSetup(payload);
     if (validationError) {
       errorNode.textContent = validationError;
+      errorNode.hidden = false;
+      return;
+    }
+    const allocationTotal = payload.t1_allocation + payload.t2_allocation + payload.t3_allocation;
+    if (payload.management_style === "CUSTOM" && Math.abs(allocationTotal - 1) > 0.001) {
+      errorNode.textContent = "Custom T1, T2, and T3 allocations must total 100%.";
+      errorNode.hidden = false;
+      return;
+    }
+    if ((payload.t2 == null && payload.t2_allocation > 0) || (payload.t3 == null && payload.t3_allocation > 0)) {
+      errorNode.textContent = "A target allocation requires its matching T2 or T3 price.";
       errorNode.hidden = false;
       return;
     }
@@ -3066,7 +3234,6 @@
 
   function bindUtilities() {
     $("#theme-toggle").addEventListener("click", toggleTheme);
-    $("#readable-toggle").addEventListener("click", toggleReadableMode);
     applyLocationRoute();
     window.addEventListener("popstate", applyLocationRoute);
   }
@@ -3103,28 +3270,6 @@
     $("#theme-color-meta").setAttribute("content", nextTheme === "light" ? "#eef1f5" : "#06070b");
     if (persist) {
       try { localStorage.setItem("ledger-theme", nextTheme); } catch (_error) { /* Storage can be disabled. */ }
-    }
-  }
-
-  function initReadableMode() {
-    applyReadableMode(document.documentElement.dataset.readable === "true", false);
-  }
-
-  function toggleReadableMode() {
-    applyReadableMode(document.documentElement.dataset.readable !== "true", true);
-  }
-
-  function applyReadableMode(enabled, persist) {
-    document.documentElement.dataset.readable = enabled ? "true" : "false";
-    document.body.classList.toggle("readable-mode", enabled);
-    const button = $("#readable-toggle");
-    const targetLabel = enabled ? "Disable readable mode" : "Enable readable mode";
-    button.setAttribute("aria-label", targetLabel);
-    button.setAttribute("title", targetLabel);
-    button.setAttribute("aria-pressed", String(enabled));
-    if (persist) {
-      renderNetworkChart();
-      try { localStorage.setItem("ledger-readable", String(enabled)); } catch (_error) { /* Storage can be disabled. */ }
     }
   }
 
@@ -3172,8 +3317,8 @@
 
   function renderMetrics() {
     const operatorCount = state.live ? state.rankTotal : state.leaders.length;
-    const setupCount = state.live ? state.setups.length : previewStats.setups;
-    const resolvedCount = state.live ? state.setups.filter((setup) => normalizeState(setup.status) === "resolved").length : previewStats.resolved;
+    const setupCount = state.setups.length;
+    const resolvedCount = state.setups.filter((setup) => normalizeState(setup.status) === "resolved").length;
     const resolutionRate = setupCount > 0 ? Math.round((resolvedCount / setupCount) * 100) : 0;
     $$('[data-metric="operators"]').forEach((node) => node.textContent = formatInteger(operatorCount));
     $$('[data-metric="setups"]').forEach((node) => node.textContent = formatInteger(setupCount));
@@ -3239,7 +3384,7 @@
 
   function normalizeState(value) {
     const stateValue = String(value || "QUEUED").toUpperCase();
-    if (["STOPPED", "CLOSED", "ARCHIVED", "RESOLVED", "CANCELLED", "EXPIRED"].includes(stateValue)) return "resolved";
+    if (["STOPPED", "CLOSED", "ARCHIVED", "RESOLVED", "CANCELLED", "EXPIRED", "VOID", "TECHNICAL_VOID"].includes(stateValue)) return "resolved";
     if (["ACTIVE", "TRIGGERED", "T1 HIT", "T2 HIT", "T3 HIT", "T1_HIT", "T2_HIT", "T3_HIT"].includes(stateValue)) return "active";
     if (stateValue === "HOT") return "hot";
     if (stateValue === "NEAR") return "near";
@@ -3330,11 +3475,17 @@
   function formatRelative(value) {
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return "—";
-    const seconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
-    if (seconds < 60) return `${seconds}s ago`;
-    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-    return `${Math.floor(seconds / 86400)}d ago`;
+    const deltaSeconds = Math.floor((date.getTime() - Date.now()) / 1000);
+    const future = deltaSeconds > 0;
+    const seconds = Math.abs(deltaSeconds);
+    const quantity = seconds < 60
+      ? `${seconds}s`
+      : seconds < 3600
+        ? `${Math.floor(seconds / 60)}m`
+        : seconds < 86400
+          ? `${Math.floor(seconds / 3600)}h`
+          : `${Math.floor(seconds / 86400)}d`;
+    return future ? `in ${quantity}` : `${quantity} ago`;
   }
 
   function formatDate(value) {
