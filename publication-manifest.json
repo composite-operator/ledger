@@ -54,11 +54,11 @@
     },
     {
       "path": "assets/runtime-config.example.js",
-      "sha256": "1740f77ab817dafa1bf839ff8833d0afc4674a79be89305ac1e3a246f6ee29d1"
+      "sha256": "d1c708f0afbb7766924e4088f2e1050a0c0098d29cbee1e13b5245b0c3c7f9f4"
     },
     {
       "path": "assets/runtime-config.js",
-      "sha256": "6772c86a0b802389715750a2ff7d212ce1e82c3695403a4f90d6e704eb5600d1"
+      "sha256": "6fbacdd142f6fbcb08fb52787acddca8f315a3be5cbedd67537c45b91c7d4a12"
     },
     {
       "path": "assets/styles.css",
@@ -82,7 +82,7 @@
     },
     {
       "path": "index.html",
-      "sha256": "65d6ab583380b9fff00c61bd88c777c66a74e6459791246f9bbe52411ecaaa67"
+      "sha256": "1b87a438a7d163f89aa028a97abbbfc1d1afa7bb1368c77282213e3b9d9b23b7"
     },
     {
       "path": "site.webmanifest",

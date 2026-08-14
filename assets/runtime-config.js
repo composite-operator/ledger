@@ -5,6 +5,6 @@
 window.LEDGER_CONFIG = Object.freeze({
   supabaseUrl: "https://pynosegrafnskdlthdcr.supabase.co",
   supabasePublishableKey: "sb_publishable_PiqCuSrReoRf9zCl-m0omQ_CT2qNBlO",
-  siteUrl: "https://ximxesabortion.github.io/ledger/",
+  siteUrl: "https://composite-operator.github.io/ledger/",
   demoMode: false
 });
