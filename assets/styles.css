@@ -602,10 +602,13 @@ img.operator-avatar { object-fit: cover; }
 .setup-card-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 13px; padding-top: 11px; border-top: 1px solid var(--line); color: var(--faint); font-family: var(--mono); font-size: 6px; }
 .setup-card-foot button { border: 0; background: transparent; color: var(--acid); cursor: pointer; font-family: inherit; font-size: inherit; }
 .setup-card-foot > div { display: flex; gap: 12px; }
-.setup-card-foot .setup-card-byline { align-items: baseline; gap: 8px; min-width: 0; }
+.setup-card-foot .setup-card-byline { align-items: center; gap: 8px; min-width: 0; }
 .setup-card-byline > span { overflow: hidden; color: var(--faint); font-size: 6px; text-overflow: ellipsis; white-space: nowrap; }
-.setup-card-foot .setup-operator-handle { flex: 0 0 auto; padding: 0; color: var(--text); font-size: 11px; font-weight: 800; letter-spacing: -.03em; line-height: 1.2; }
+.setup-card-foot .setup-operator-handle { display: flex; flex: 0 0 auto; align-items: center; gap: 7px; padding: 0; color: var(--text); font-size: 11px; font-weight: 800; letter-spacing: -.03em; line-height: 1.2; }
+.setup-operator-avatar { display: grid; flex: 0 0 auto; place-items: center; width: 25px; height: 25px; overflow: hidden; border: 1px solid var(--line-strong); border-radius: 50%; background: linear-gradient(145deg, rgba(200,255,46,.12), rgba(88,230,255,.07)); color: var(--acid); font-family: var(--mono); font-size: 7px; font-weight: 700; letter-spacing: 0; }
+.setup-operator-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .setup-card-foot .setup-operator-handle:hover { color: var(--acid); }
+.setup-card-foot .setup-operator-handle:hover .setup-operator-avatar { border-color: rgba(200,255,46,.5); box-shadow: 0 0 12px rgba(200,255,46,.1); }
 .setup-card-foot .setup-operator-handle:focus-visible { border-radius: 3px; outline: 2px solid var(--acid); outline-offset: 3px; }
 .layout-compact .setup-card { padding: 10px 12px; border-radius: 9px; }
 .layout-compact .setup-card::before { height: 42px; }
@@ -630,6 +633,7 @@ img.operator-avatar { object-fit: cover; }
 .layout-compact .setup-victory-teaser b { font-size: 7px; }
 .layout-compact .setup-victory-teaser strong { font-size: 11px; }
 .layout-compact .setup-card-foot { margin-top: 6px; padding-top: 7px; }
+.layout-compact .setup-operator-avatar { width: 21px; height: 21px; font-size: 6px; }
 .layout-compact .setup-discussion { margin: 7px -12px -10px; }
 .layout-compact .discussion-toggle { padding: 7px 12px; }
 .setup-card-foot .setup-follow-button { padding: 4px 6px; border: 1px solid rgba(200,255,46,.22); border-radius: 5px; background: rgba(200,255,46,.045); }

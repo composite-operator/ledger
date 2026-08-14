@@ -20,6 +20,7 @@ The repository starts in an explicit preview mode. Preview mode shows only a ver
 - Searchable and sortable leaderboard
 - Public per-operator profile drawers
 - Owner-editable profile pictures, display names, and bios
+- Setup-card author avatars with initials fallbacks for rapid operator identification
 - Public join dates, complete performance stats, and recent setup history
 - Queue, Hot, Near, Active, and Resolved setup states
 - Permanent setup-book URLs for every state and the operator index
