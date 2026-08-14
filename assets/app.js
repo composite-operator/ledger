@@ -701,14 +701,10 @@
     }
     const email = $("#auth-email").value.trim();
     const password = $("#auth-password").value;
-    const handle = $("#auth-handle").value.trim().toLowerCase();
 
     $("#auth-inline-status").classList.remove("is-error", "is-success");
     if (!email || !email.includes("@")) return setAuthStatus("Enter a valid email address.", true);
     if (password.length < 8) return setAuthStatus("Use a password with at least 8 characters.", true);
-    if (mode === "signup" && !/^[a-z0-9][a-z0-9_-]{2,29}$/.test(handle)) {
-      return setAuthStatus("Handle: 3–30 letters, numbers, underscores, or hyphens.", true);
-    }
 
     setAuthBusy(true);
     setAuthStatus(mode === "signup" ? "Creating your Ledger account…" : "Signing in…");
@@ -716,15 +712,21 @@
       if (mode === "signup") {
         const { data, error } = await state.supabase.auth.signUp({
           email,
-          password,
-          options: { data: { user_name: handle, name: handle } }
+          password
         });
         if (error) throw error;
         if (data.session) {
+          await hydrateSignedInProfile();
           $("#auth-dialog").close();
-          showToast("Account created", `Welcome to the Ledger, @${handle}.`);
+          const assignedHandle = state.profile?.handle;
+          showToast(
+            "Account created",
+            assignedHandle
+              ? `@${assignedHandle} is your starter handle. You can change it in Edit public profile.`
+              : "Your starter public handle is ready. You can change it in Edit public profile."
+          );
         } else {
-          setAuthStatus("Account created. Check your email if confirmation is enabled.", false, true);
+          setAuthStatus("Account created. After email confirmation, sign in and choose your public handle in Edit public profile.", false, true);
         }
       } else {
         const { error } = await state.supabase.auth.signInWithPassword({ email, password });
@@ -970,7 +972,10 @@
     const followButton = $("[data-follow-profile]", drawer);
     if (followButton) followButton.addEventListener("click", () => toggleFollow(detailedLeader));
     const profileForm = $("[data-profile-form]", drawer);
-    if (profileForm) profileForm.addEventListener("submit", (event) => saveProfile(event, detailedLeader));
+    if (profileForm) {
+      profileForm.addEventListener("submit", (event) => saveProfile(event, detailedLeader));
+      bindProfileHandleAvailability(profileForm, detailedLeader);
+    }
     const notificationForm = $("[data-notification-settings-form]", drawer);
     if (notificationForm) notificationForm.addEventListener("submit", saveNotificationSettings);
     const openFollowedBookButton = $("[data-open-followed-book]", drawer);
@@ -1013,6 +1018,7 @@
       <summary><span>EDIT PUBLIC PROFILE</span><i>OPEN +</i></summary>
       <form data-profile-form>
         <label><span>PROFILE PICTURE</span><input name="avatar" type="file" accept="image/jpeg,image/png,image/webp"><small data-avatar-file>JPG, PNG, or WEBP · 2 MB maximum</small></label>
+        <label><span>PUBLIC HANDLE</span><span class="profile-handle-control"><i aria-hidden="true">@</i><input name="handle" type="text" minlength="3" maxlength="30" pattern="[a-z0-9][a-z0-9_-]{2,29}" autocomplete="off" autocapitalize="none" spellcheck="false" required value="${escapeAttr(profile.handle)}"></span><small data-profile-handle-status>3–30 lowercase letters, numbers, underscores, or hyphens. Handles are unique.</small></label>
         <label><span>DISPLAY NAME</span><input name="display_name" type="text" maxlength="80" required value="${escapeAttr(profile.display_name || profile.handle)}"></label>
         <label><span>BIO</span><textarea name="bio" maxlength="600" rows="5" placeholder="What do you trade? What is your process?">${escapeHtml(profile.bio || "")}</textarea></label>
         <p class="profile-form-status" data-profile-status></p>
@@ -1208,14 +1214,77 @@
     if (label) label.textContent = file ? `${file.name} · ${formatFileSize(file.size)}` : "JPG, PNG, or WEBP · 2 MB maximum";
   }
 
+  function normalizeProfileHandle(value) {
+    return String(value || "").trim().toLowerCase();
+  }
+
+  function validProfileHandle(value) {
+    return /^[a-z0-9][a-z0-9_-]{2,29}$/.test(value);
+  }
+
+  async function profileHandleIsAvailable(handle, profileId) {
+    const { data, error } = await state.supabase
+      .from("profiles")
+      .select("id")
+      .eq("handle", handle)
+      .neq("id", profileId)
+      .limit(1);
+    if (error) throw error;
+    return !data?.length;
+  }
+
+  function setProfileHandleStatus(node, message, stateName = "") {
+    if (!node) return;
+    node.textContent = message;
+    node.classList.toggle("is-error", stateName === "error");
+    node.classList.toggle("is-success", stateName === "success");
+  }
+
+  function bindProfileHandleAvailability(form, profile) {
+    const input = $("input[name='handle']", form);
+    const status = $("[data-profile-handle-status]", form);
+    if (!input || !status || !state.supabase) return;
+    let timer = null;
+    let requestNumber = 0;
+    input.addEventListener("input", () => {
+      input.value = input.value.toLowerCase();
+      input.setCustomValidity("");
+      clearTimeout(timer);
+      const candidate = normalizeProfileHandle(input.value);
+      if (!validProfileHandle(candidate)) {
+        setProfileHandleStatus(status, "Use 3–30 lowercase letters, numbers, underscores, or hyphens.", "error");
+        return;
+      }
+      if (candidate === normalizeProfileHandle(profile.handle)) {
+        setProfileHandleStatus(status, "This is your current public handle.");
+        return;
+      }
+      const activeRequest = ++requestNumber;
+      setProfileHandleStatus(status, "Checking handle availability…");
+      timer = window.setTimeout(async () => {
+        try {
+          const available = await profileHandleIsAvailable(candidate, profile.id);
+          if (activeRequest !== requestNumber || candidate !== normalizeProfileHandle(input.value)) return;
+          input.setCustomValidity(available ? "" : "That public handle is already taken.");
+          setProfileHandleStatus(status, available ? `@${candidate} is available.` : `@${candidate} is already taken.`, available ? "success" : "error");
+        } catch (_error) {
+          if (activeRequest === requestNumber) setProfileHandleStatus(status, "Availability will be checked again when you save.");
+        }
+      }, 260);
+    });
+  }
+
   async function saveProfile(event, leader) {
     event.preventDefault();
     const form = event.currentTarget;
     const status = $("[data-profile-status]", form);
     const button = $("button[type='submit']", form);
-    const displayName = String(new FormData(form).get("display_name") || "").trim();
-    const bio = String(new FormData(form).get("bio") || "").trim();
+    const formData = new FormData(form);
+    const handle = normalizeProfileHandle(formData.get("handle"));
+    const displayName = String(formData.get("display_name") || "").trim();
+    const bio = String(formData.get("bio") || "").trim();
     const avatarFile = $("input[name='avatar']", form).files?.[0] || null;
+    if (!validProfileHandle(handle)) return setProfileFormStatus(status, "Handle: use 3–30 lowercase letters, numbers, underscores, or hyphens.", true);
     if (!displayName) return setProfileFormStatus(status, "Display name is required.", true);
     if (bio.length > 600) return setProfileFormStatus(status, "Bio must be 600 characters or fewer.", true);
     if (avatarFile && (!['image/jpeg', 'image/png', 'image/webp'].includes(avatarFile.type) || avatarFile.size > 2097152)) {
@@ -1226,6 +1295,16 @@
     button.textContent = avatarFile ? "UPLOADING…" : "SAVING…";
     setProfileFormStatus(status, "Saving your public profile…");
     try {
+      if (handle !== normalizeProfileHandle(leader.handle)) {
+        button.textContent = "CHECKING HANDLE…";
+        const available = await profileHandleIsAvailable(handle, state.session.user.id);
+        if (!available) {
+          const handleError = new Error(`@${handle} is already taken. Choose another public handle.`);
+          handleError.code = "HANDLE_TAKEN";
+          throw handleError;
+        }
+        button.textContent = avatarFile ? "UPLOADING…" : "SAVING…";
+      }
       let avatarUrl = leader.avatar_url || null;
       if (avatarFile) {
         const objectPath = `${state.session.user.id}/avatar`;
@@ -1241,19 +1320,26 @@
 
       const { data, error } = await state.supabase
         .from("profiles")
-        .update({ display_name: displayName, bio, avatar_url: avatarUrl })
+        .update({ handle, display_name: displayName, bio, avatar_url: avatarUrl })
         .eq("id", state.session.user.id)
         .select("*")
         .single();
       if (error) throw error;
       applyProfileUpdate(data);
       renderAll();
-      showToast("Profile updated", "Your avatar, bio, and public profile are live.");
+      showToast("Profile updated", `@${data.handle}, your public profile is live.`);
       await openProfile({ ...leader, ...data });
     } catch (error) {
       button.disabled = false;
       button.innerHTML = 'SAVE PROFILE <span>→</span>';
-      setProfileFormStatus(status, error.message || "The profile could not be saved.", true);
+      const duplicateHandle = error.code === "23505" || /profiles_handle_key|duplicate key|already taken/i.test(error.message || "");
+      const permissionPending = error.code === "42501" || /permission denied.*handle/i.test(error.message || "");
+      const message = duplicateHandle
+        ? `@${handle} is already taken. Choose another public handle.`
+        : permissionPending
+          ? "Public handle changes require the latest profile-handle database migration."
+          : error.message || "The profile could not be saved.";
+      setProfileFormStatus(status, message, true);
     }
   }
 
@@ -1270,9 +1356,16 @@
     state.podiumLeaders = state.podiumLeaders.map(patchLeader);
     state.setups.forEach((setup) => {
       if (String(setup.user_id) !== String(profile.id)) return;
+      setup.handle = profile.handle;
       setup.display_name = profile.display_name;
       setup.avatar_url = profile.avatar_url;
     });
+    state.commentsBySetup.forEach((comments) => comments.forEach((comment) => {
+      if (String(comment.user_id) !== String(profile.id)) return;
+      comment.handle = profile.handle;
+      comment.display_name = profile.display_name;
+      comment.avatar_url = profile.avatar_url;
+    }));
   }
 
   async function signOut() {

@@ -992,6 +992,12 @@ dialog::backdrop { background: rgba(1,2,4,.78); backdrop-filter: blur(12px); }
 .profile-editor input, .profile-editor textarea { width: 100%; border: 1px solid var(--line); border-radius: 8px; outline: 0; background: #0d1017; color: var(--text); font-size: 9px; }
 .profile-editor input[type="text"], .profile-editor textarea { padding: 10px; }
 .profile-editor input:focus, .profile-editor textarea:focus { border-color: rgba(200,255,46,.32); }
+.profile-handle-control { display: grid; grid-template-columns: auto minmax(0,1fr); align-items: center; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: #0d1017; }
+.profile-handle-control > i { padding-left: 10px; color: var(--acid); font-family: var(--mono); font-size: 9px; font-style: normal; }
+.profile-editor .profile-handle-control input[type="text"] { border: 0; background: transparent; }
+.profile-handle-control:focus-within { border-color: rgba(200,255,46,.42); box-shadow: 0 0 0 2px rgba(200,255,46,.06); }
+.profile-editor [data-profile-handle-status].is-success { color: var(--green); }
+.profile-editor [data-profile-handle-status].is-error { color: var(--red); }
 .profile-editor input[type="file"] { padding: 7px; color: var(--muted); font-family: var(--mono); font-size: 7px; }
 .profile-editor input[type="file"]::file-selector-button { margin-right: 9px; padding: 6px 8px; border: 1px solid var(--line-strong); border-radius: 6px; background: rgba(255,255,255,.04); color: var(--text); cursor: pointer; font-family: var(--mono); font-size: 6px; }
 .profile-editor label small, .profile-form-status { margin: 0; color: var(--faint); font-family: var(--mono); font-size: 6px; }
@@ -1080,6 +1086,8 @@ dialog::backdrop { background: rgba(1,2,4,.78); backdrop-filter: blur(12px); }
 .profile-editor textarea { border-color: var(--line-strong); border-radius: 9px; font-size: 13px; }
 .profile-editor input[type="text"],
 .profile-editor textarea { padding: 12px; }
+.profile-handle-control { border-color: var(--line-strong); border-radius: 9px; }
+.profile-handle-control > i { padding-left: 12px; font-size: 13px; }
 .profile-editor input[type="file"] { padding: 9px; color: var(--drawer-muted); font-size: 11px; }
 .profile-editor input[type="file"]::file-selector-button { margin-right: 10px; padding: 7px 9px; font-size: 10px; }
 .profile-editor label small,

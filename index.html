@@ -380,15 +380,14 @@
       <button class="modal-close" type="button" data-close-auth aria-label="Close sign in">×</button>
       <span class="eyebrow">LEDGER ACCOUNT / $0 ACCESS</span>
       <h2>Enter the Ledger</h2>
-      <p>Create a Ledger account or sign in. Your email stays private. Your handle owns the public record.</p>
+      <p>Sign in with your private email and password. New accounts receive an editable public handle for the Ledger.</p>
       <div class="auth-setup-notice" id="auth-setup-notice">
         <b>FREE BACKEND CONNECTION REQUIRED</b>
         <span>Create the free Supabase project and add its public connection values. Google, X, and a custom domain are not required.</span>
       </div>
       <div class="credential-fields">
-        <label><span>PUBLIC HANDLE <i>NEW ACCOUNTS ONLY</i></span><input id="auth-handle" type="text" minlength="3" maxlength="30" pattern="[a-zA-Z0-9][a-zA-Z0-9_-]{2,29}" autocomplete="username" placeholder="your_handle"></label>
-        <label><span>PRIVATE EMAIL</span><input id="auth-email" type="email" autocomplete="email" placeholder="you@example.com"></label>
-        <label><span>PASSWORD</span><input id="auth-password" type="password" minlength="8" autocomplete="current-password" placeholder="8+ characters"></label>
+        <label><span>PRIVATE EMAIL</span><input id="auth-email" name="email" type="email" autocomplete="username" inputmode="email" required placeholder="you@example.com"></label>
+        <label><span>PASSWORD</span><input id="auth-password" name="password" type="password" minlength="8" autocomplete="current-password" required placeholder="8+ characters"></label>
       </div>
       <div class="credential-actions">
         <button class="publish-button" id="credential-sign-in" type="submit">Sign in <span>→</span></button>
