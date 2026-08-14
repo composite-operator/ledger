@@ -1171,7 +1171,9 @@ dialog::backdrop { background: rgba(1,2,4,.78); backdrop-filter: blur(12px); }
 
 .method-dialog { width: min(100% - 24px, 860px); }
 .method-card { max-height: calc(100vh - 30px); overflow-y: auto; padding: 34px; }
-.method-card h2 { margin: 7px 0 22px; font-size: 28px; letter-spacing: -.05em; }
+.method-card h2 { margin: 7px 0 8px; font-size: 28px; letter-spacing: -.05em; }
+.method-expansion { display: flex; align-items: center; gap: 9px; margin: 0 0 22px; color: var(--muted); font-family: var(--mono); font-size: 10px; }
+.method-expansion b { padding: 3px 6px; border: 1px solid rgba(200,255,46,.28); border-radius: 5px; background: var(--acid-soft); color: var(--acid); font-size: 9px; letter-spacing: .08em; }
 .method-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 9px; }
 .method-grid > div { padding: 15px; border: 1px solid var(--line); border-radius: 10px; background: rgba(255,255,255,.014); }
 .method-grid span { color: var(--acid); font-family: var(--mono); font-size: 7px; }
