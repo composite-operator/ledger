@@ -10,6 +10,9 @@
   const quoteRefreshJitterMs = 30 * 1000;
   const quoteResumeMinimumMs = 20 * 1000;
   const pastedAttachmentFiles = new WeakMap();
+  const mentionLookupState = new WeakMap();
+  const mentionSearchCache = new Map();
+  const mentionQueryLimit = 8;
   const attachmentMarkerPattern = /(?:\r?\n)?\[ledger-image:([0-9a-f-]{36}\/ledger-media\/(?:setups|comments)\/[0-9a-f-]{36}\.(?:jpg|png|webp))\]$/i;
   const defaultNotificationPreferences = {
     notifications_muted: false,
@@ -1316,6 +1319,8 @@
         $(".attachment-preview", form),
         "comment"
       ));
+      const textarea = $("textarea[name='comment']", form);
+      if (textarea) bindMentionAutocomplete(textarea, form);
     });
     $$("[data-comment-image]", grid).forEach((input) => input.addEventListener("change", () => {
       pastedAttachmentFiles.delete(input);
@@ -1404,7 +1409,10 @@
       <span class="comment-avatar">${avatarContent(state.profile?.avatar_url, state.profile?.handle || state.session.user.email)}</span>
       <div class="comment-compose-body">
         ${replyContext}
+        <div class="comment-mention-shell">
         <label><span class="sr-only">Comment on ${escapeHtml(setup.ticker)}</span><textarea name="comment" maxlength="600" placeholder="Add signal, context, or a question… Use @handle or paste a chart with Ctrl+V.">${escapeHtml(replyDraft)}</textarea></label>
+          <div class="mention-suggestions" id="mention-suggestions-${escapeAttr(setupId)}" role="listbox" aria-label="Matching Ledger operators" hidden></div>
+        </div>
         <div class="comment-attachment-actions">
           <label class="comment-image-picker" tabindex="0"><input class="attachment-input" name="comment_image" type="file" accept="image/jpeg,image/png,image/webp" data-comment-image><span>▧ ATTACH / PASTE</span></label>
           <small>CTRL+V · JPG, PNG, or WEBP · 2 MB maximum</small>
@@ -1460,6 +1468,194 @@
       /(^|[\s([{])@([a-z0-9][a-z0-9_-]{2,29})/gi,
       (_match, prefix, handle) => `${prefix}<button class="comment-mention" type="button" data-comment-handle="${escapeAttr(handle.toLowerCase())}">@${escapeHtml(handle)}</button>`
     );
+  }
+
+  function bindMentionAutocomplete(textarea, form) {
+    const panel = $(".mention-suggestions", form);
+    if (!panel) return;
+
+    textarea.setAttribute("autocomplete", "off");
+    textarea.setAttribute("aria-autocomplete", "list");
+    textarea.setAttribute("aria-haspopup", "listbox");
+    textarea.setAttribute("aria-controls", panel.id);
+    textarea.setAttribute("aria-expanded", "false");
+    mentionLookupState.set(textarea, {
+      activeIndex: -1,
+      items: [],
+      query: "",
+      requestToken: 0,
+      timer: null
+    });
+
+    const schedule = () => scheduleMentionLookup(textarea, panel);
+    textarea.addEventListener("input", schedule);
+    textarea.addEventListener("click", schedule);
+    textarea.addEventListener("keyup", (event) => {
+      if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) schedule();
+    });
+    textarea.addEventListener("keydown", (event) => handleMentionKeydown(event, textarea, panel));
+    textarea.addEventListener("blur", () => window.setTimeout(() => closeMentionSuggestions(textarea, panel), 140));
+  }
+
+  function currentMentionContext(textarea) {
+    const cursor = textarea.selectionStart;
+    if (!Number.isInteger(cursor)) return null;
+    const match = textarea.value.slice(0, cursor).match(/(^|[\s([{])@([a-z0-9_-]{0,29})$/i);
+    if (!match) return null;
+    return {
+      end: cursor,
+      query: match[2].toLowerCase(),
+      start: cursor - match[2].length - 1
+    };
+  }
+
+  function scheduleMentionLookup(textarea, panel) {
+    const lookup = mentionLookupState.get(textarea);
+    const context = currentMentionContext(textarea);
+    if (!lookup || !context || !state.supabase) {
+      closeMentionSuggestions(textarea, panel);
+      return;
+    }
+
+    if (lookup.timer) window.clearTimeout(lookup.timer);
+    lookup.query = context.query;
+    const requestToken = ++lookup.requestToken;
+    panel.hidden = false;
+    panel.innerHTML = '<div class="mention-suggestion-state"><i></i> SEARCHING LEDGER...</div>';
+    textarea.setAttribute("aria-expanded", "true");
+    textarea.removeAttribute("aria-activedescendant");
+    lookup.timer = window.setTimeout(() => {
+      void loadMentionSuggestions(textarea, panel, context.query, requestToken);
+    }, 110);
+  }
+
+  async function loadMentionSuggestions(textarea, panel, query, requestToken) {
+    const lookup = mentionLookupState.get(textarea);
+    if (!lookup) return;
+
+    let items = mentionSearchCache.get(query);
+    if (!items) {
+      let request = state.supabase
+        .from("profiles")
+        .select("id, handle, display_name, avatar_url")
+        .eq("is_public", true)
+        .eq("account_status", "ACTIVE")
+        .order("handle", { ascending: true })
+        .limit(mentionQueryLimit);
+      if (query) request = request.or(`handle.ilike.${query}%,display_name.ilike.%${query}%`);
+
+      const { data, error } = await request;
+      if (error) {
+        if (lookup.requestToken === requestToken) renderMentionSuggestions(textarea, panel, [], "Operator search is unavailable.");
+        return;
+      }
+      items = (data || []).filter((item) => item.handle).map((item) => ({
+        avatar_url: item.avatar_url || "",
+        display_name: item.display_name || item.handle,
+        handle: String(item.handle).toLowerCase(),
+        id: item.id
+      }));
+      mentionSearchCache.set(query, items);
+    }
+
+    const context = currentMentionContext(textarea);
+    if (!textarea.isConnected || lookup.requestToken !== requestToken || !context || context.query !== query) return;
+    renderMentionSuggestions(textarea, panel, items);
+  }
+
+  function renderMentionSuggestions(textarea, panel, items, errorMessage = "") {
+    const lookup = mentionLookupState.get(textarea);
+    if (!lookup) return;
+    lookup.items = items;
+    lookup.activeIndex = items.length ? 0 : -1;
+    panel.hidden = false;
+    textarea.setAttribute("aria-expanded", "true");
+
+    if (!items.length) {
+      panel.innerHTML = `<div class="mention-suggestion-state${errorMessage ? " is-error" : ""}">${escapeHtml(errorMessage || "NO MATCHING OPERATORS")}</div>`;
+      textarea.removeAttribute("aria-activedescendant");
+      return;
+    }
+
+    panel.innerHTML = items.map((item, index) => `<button class="mention-option${index === lookup.activeIndex ? " is-active" : ""}" id="${escapeAttr(panel.id)}-option-${index}" type="button" role="option" aria-selected="${index === lookup.activeIndex}" data-mention-index="${index}">
+      <span class="mention-option-avatar">${avatarContent(item.avatar_url, item.handle)}</span>
+      <span class="mention-option-copy"><b>@${escapeHtml(item.handle)}</b><small>${escapeHtml(item.display_name)}</small></span>
+    </button>`).join("");
+    syncMentionActiveOption(textarea, panel);
+
+    $$("[data-mention-index]", panel).forEach((button) => {
+      button.addEventListener("mousedown", (event) => event.preventDefault());
+      button.addEventListener("click", () => selectMention(textarea, panel, Number(button.dataset.mentionIndex)));
+      button.addEventListener("mousemove", () => {
+        const nextIndex = Number(button.dataset.mentionIndex);
+        if (lookup.activeIndex === nextIndex) return;
+        lookup.activeIndex = nextIndex;
+        syncMentionActiveOption(textarea, panel);
+      });
+    });
+  }
+
+  function handleMentionKeydown(event, textarea, panel) {
+    const lookup = mentionLookupState.get(textarea);
+    if (!lookup || panel.hidden) return;
+
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeMentionSuggestions(textarea, panel);
+      return;
+    }
+    if (!lookup.items.length) return;
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      const step = event.key === "ArrowDown" ? 1 : -1;
+      lookup.activeIndex = (lookup.activeIndex + step + lookup.items.length) % lookup.items.length;
+      syncMentionActiveOption(textarea, panel, true);
+      return;
+    }
+    if (event.key === "Enter" || event.key === "Tab") {
+      event.preventDefault();
+      selectMention(textarea, panel, lookup.activeIndex);
+    }
+  }
+
+  function syncMentionActiveOption(textarea, panel, ensureVisible = false) {
+    const lookup = mentionLookupState.get(textarea);
+    if (!lookup) return;
+    $$("[data-mention-index]", panel).forEach((button, index) => {
+      const active = index === lookup.activeIndex;
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-selected", String(active));
+      if (active) {
+        textarea.setAttribute("aria-activedescendant", button.id);
+        if (ensureVisible) button.scrollIntoView({ block: "nearest" });
+      }
+    });
+  }
+
+  function selectMention(textarea, panel, index) {
+    const lookup = mentionLookupState.get(textarea);
+    const context = currentMentionContext(textarea);
+    const item = lookup?.items[index];
+    if (!item || !context) return;
+    textarea.setRangeText(`@${item.handle} `, context.start, context.end, "end");
+    closeMentionSuggestions(textarea, panel);
+    textarea.focus();
+    textarea.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+
+  function closeMentionSuggestions(textarea, panel) {
+    const lookup = mentionLookupState.get(textarea);
+    if (lookup?.timer) window.clearTimeout(lookup.timer);
+    if (lookup) {
+      lookup.activeIndex = -1;
+      lookup.items = [];
+      lookup.requestToken += 1;
+      lookup.timer = null;
+    }
+    panel.hidden = true;
+    panel.innerHTML = "";
+    textarea.setAttribute("aria-expanded", "false");
+    textarea.removeAttribute("aria-activedescendant");
   }
 
   async function openProfileByHandle(handle) {

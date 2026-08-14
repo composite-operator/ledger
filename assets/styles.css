@@ -576,6 +576,21 @@ img.operator-avatar { object-fit: cover; }
 .comment-composer label { min-width: 0; }
 .comment-composer textarea { display: block; width: 100%; min-height: 50px; resize: vertical; border: 0; outline: 0; background: transparent; color: var(--text); font-size: 8px; line-height: 1.5; }
 .comment-composer textarea::placeholder { color: var(--faint); }
+.comment-mention-shell { display: grid; min-width: 0; gap: 5px; }
+.mention-suggestions { display: grid; max-height: 210px; overflow-x: hidden; overflow-y: auto; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--panel-strong); box-shadow: 0 14px 34px rgba(0,0,0,.28); }
+.mention-suggestions[hidden] { display: none; }
+.comment-composer .mention-option { grid-column: 1 / -1; display: grid; grid-template-columns: 26px minmax(0,1fr); align-items: center; gap: 8px; min-height: 0; padding: 6px 8px; border: 0; border-radius: 0; background: transparent; color: var(--text); text-align: left; }
+.comment-composer .mention-option + .mention-option { border-top: 1px solid var(--line); }
+.comment-composer .mention-option:hover, .comment-composer .mention-option.is-active { background: var(--cyan-soft); }
+.mention-option-avatar { display: grid; place-items: center; width: 26px; height: 26px; overflow: hidden; border: 1px solid var(--line-strong); border-radius: 7px; background: linear-gradient(145deg, rgba(88,230,255,.12), rgba(162,140,255,.06)); color: var(--text); font-family: var(--mono); font-size: 6px; }
+.mention-option-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.mention-option-copy { display: grid; min-width: 0; gap: 2px; }
+.mention-option-copy b, .mention-option-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mention-option-copy b { color: var(--cyan); font-size: 7px; }
+.mention-option-copy small { color: var(--muted); font-size: 6px; }
+.mention-suggestion-state { display: flex; align-items: center; justify-content: center; gap: 7px; min-height: 38px; padding: 8px; color: var(--faint); font-family: var(--mono); font-size: 6px; letter-spacing: .05em; }
+.mention-suggestion-state i { width: 5px; height: 5px; border: 1px solid var(--cyan); border-radius: 50%; animation: pulse 1.2s ease-in-out infinite; }
+.mention-suggestion-state.is-error { color: var(--red); }
 .comment-composer button, .comment-sign-in { border: 1px solid rgba(200,255,46,.22); border-radius: 7px; background: var(--acid-soft); color: var(--acid); cursor: pointer; font-family: var(--mono); font-size: 6px; }
 .comment-composer button { min-height: 32px; padding: 0 10px; }
 .comment-composer button:disabled { cursor: wait; opacity: .6; }
