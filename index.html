@@ -12,11 +12,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/styles.css?v=10">
+  <link rel="stylesheet" href="assets/styles.css?v=11">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
   <script src="assets/runtime-config.js?v=3" defer></script>
-  <script src="assets/app.js?v=12" defer></script>
+  <script src="assets/app.js?v=13" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to content</a>
@@ -49,6 +49,10 @@
     </button>
 
     <div class="topbar-actions">
+      <button class="symbol-guide-trigger" type="button" data-open-symbol-guide aria-label="Open ticker style guide">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h6a3 3 0 0 1 3 3V20a3.5 3.5 0 0 0-3.5-3.5H4Zm16 0h-6a3 3 0 0 0-3 3V20a3.5 3.5 0 0 1 3.5-3.5H20Z"/></svg>
+        <span>SYMBOL GUIDE</span>
+      </button>
       <div class="network-state" id="network-state" title="Application data status">
         <span class="pulse-dot"></span>
         <span id="network-state-label">Preview network</span>
@@ -413,6 +417,7 @@
           <label class="field ticker-field">
             <span>Ticker <b>*</b></span>
             <div class="field-control field-control-prefix"><i>$</i><input name="ticker" id="ticker" type="text" required maxlength="16" placeholder="SPY" autocomplete="off" spellcheck="false"></div>
+            <small class="ticker-field-hint">BTC and ETH resolve to USD pairs. <button type="button" data-open-symbol-guide>View symbol guide</button></small>
           </label>
           <fieldset class="field direction-field">
             <legend>Direction <b>*</b></legend>
@@ -547,6 +552,79 @@
         <div><span>04</span><h3>Outlier control</h3><p>Average R is capped at ±5 inside the GOAT score so one result cannot dominate.</p></div>
       </div>
       <code>GOAT = (70% × capped Avg R + 30% × Win Rate) × sample weight</code>
+    </div>
+  </dialog>
+
+  <dialog class="symbol-guide-dialog modal-shell" id="symbol-guide-dialog">
+    <div class="modal-card symbol-guide-card">
+      <button class="modal-close" type="button" data-close-symbol-guide aria-label="Close ticker style guide">×</button>
+      <header class="symbol-guide-head">
+        <span class="eyebrow">MARKET DATA CONTRACT</span>
+        <h2>Ticker style guide</h2>
+        <p>Use these symbols to get the intended Yahoo Finance instrument. Crypto uses its matching CoinGecko market as the backup; other assets use Google Finance. Classification follows the current top 100 market-cap assets.</p>
+      </header>
+
+      <section class="symbol-guide-rules" aria-label="Crypto symbol rules">
+        <div><i>AUTO</i><b>BTC → BTC-USD</b><span>Bare top-100 crypto symbols default to their USD pair.</span></div>
+        <div><i>AUTO</i><b>ETHUSD → ETH-USD</b><span>Compact USD pairs are accepted and normalized.</span></div>
+        <div><i>EXACT</i><b>BTC-USD</b><span>The canonical pair is retained as entered.</span></div>
+      </section>
+
+      <div class="symbol-guide-note">
+        <span>IMPORTANT</span>
+        <p>A bare symbol that matches a current top-100 crypto asset resolves as crypto, even when an exchange-traded product uses the same ticker.</p>
+      </div>
+
+      <section class="symbol-guide-section">
+        <div class="symbol-guide-section-head"><span>01</span><div><h3>Metals</h3><p>Continuous front-month futures</p></div></div>
+        <div class="symbol-guide-grid">
+          <button type="button" data-copy-symbol="GC=F"><b>GC=F</b><span>Gold</span></button>
+          <button type="button" data-copy-symbol="SI=F"><b>SI=F</b><span>Silver</span></button>
+          <button type="button" data-copy-symbol="HG=F"><b>HG=F</b><span>Copper</span></button>
+          <button type="button" data-copy-symbol="PL=F"><b>PL=F</b><span>Platinum</span></button>
+          <button type="button" data-copy-symbol="PA=F"><b>PA=F</b><span>Palladium</span></button>
+        </div>
+      </section>
+
+      <section class="symbol-guide-section">
+        <div class="symbol-guide-section-head"><span>02</span><div><h3>Energy</h3><p>Continuous front-month futures</p></div></div>
+        <div class="symbol-guide-grid">
+          <button type="button" data-copy-symbol="CL=F"><b>CL=F</b><span>WTI crude</span></button>
+          <button type="button" data-copy-symbol="BZ=F"><b>BZ=F</b><span>Brent crude</span></button>
+          <button type="button" data-copy-symbol="NG=F"><b>NG=F</b><span>Natural gas</span></button>
+          <button type="button" data-copy-symbol="RB=F"><b>RB=F</b><span>RBOB gasoline</span></button>
+          <button type="button" data-copy-symbol="HO=F"><b>HO=F</b><span>Heating oil</span></button>
+        </div>
+      </section>
+
+      <section class="symbol-guide-section">
+        <div class="symbol-guide-section-head"><span>03</span><div><h3>Agriculture and livestock</h3><p>Continuous front-month futures</p></div></div>
+        <div class="symbol-guide-grid">
+          <button type="button" data-copy-symbol="ZC=F"><b>ZC=F</b><span>Corn</span></button>
+          <button type="button" data-copy-symbol="ZW=F"><b>ZW=F</b><span>Wheat</span></button>
+          <button type="button" data-copy-symbol="ZS=F"><b>ZS=F</b><span>Soybeans</span></button>
+          <button type="button" data-copy-symbol="KC=F"><b>KC=F</b><span>Coffee</span></button>
+          <button type="button" data-copy-symbol="SB=F"><b>SB=F</b><span>Sugar</span></button>
+          <button type="button" data-copy-symbol="CC=F"><b>CC=F</b><span>Cocoa</span></button>
+          <button type="button" data-copy-symbol="CT=F"><b>CT=F</b><span>Cotton</span></button>
+          <button type="button" data-copy-symbol="LE=F"><b>LE=F</b><span>Live cattle</span></button>
+          <button type="button" data-copy-symbol="HE=F"><b>HE=F</b><span>Lean hogs</span></button>
+          <button type="button" data-copy-symbol="LBR=F"><b>LBR=F</b><span>Lumber</span></button>
+        </div>
+      </section>
+
+      <section class="symbol-guide-section symbol-guide-examples">
+        <div class="symbol-guide-section-head"><span>04</span><div><h3>Other exact formats</h3><p>Click any symbol to copy it</p></div></div>
+        <div class="symbol-guide-grid">
+          <button type="button" data-copy-symbol="^GSPC"><b>^GSPC</b><span>S&amp;P 500 index</span></button>
+          <button type="button" data-copy-symbol="^IXIC"><b>^IXIC</b><span>Nasdaq Composite</span></button>
+          <button type="button" data-copy-symbol="EURUSD=X"><b>EURUSD=X</b><span>Euro / US dollar</span></button>
+          <button type="button" data-copy-symbol="JPY=X"><b>JPY=X</b><span>US dollar / yen</span></button>
+          <button type="button" data-copy-symbol="BTC-USD"><b>BTC-USD</b><span>Bitcoin / US dollar</span></button>
+        </div>
+      </section>
+
+      <footer class="symbol-guide-foot">Futures symbols show rolling contracts. Their quoted price can change when the active contract rolls.</footer>
     </div>
   </dialog>
 

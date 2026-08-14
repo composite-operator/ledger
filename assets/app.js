@@ -142,6 +142,7 @@
     const authDialog = $("#auth-dialog");
     const submitDialog = $("#submit-dialog");
     const methodDialog = $("#method-dialog");
+    const symbolGuideDialog = $("#symbol-guide-dialog");
 
     $("#account-button").addEventListener("click", async () => {
       if (state.session?.user) {
@@ -161,13 +162,26 @@
     $("[data-close-auth]").addEventListener("click", () => authDialog.close());
     $("#open-methodology").addEventListener("click", () => methodDialog.showModal());
     $$('[data-close-method]').forEach((button) => button.addEventListener("click", () => methodDialog.close()));
+    $$('[data-open-symbol-guide]').forEach((button) => button.addEventListener("click", () => symbolGuideDialog.showModal()));
+    $$('[data-close-symbol-guide]').forEach((button) => button.addEventListener("click", () => symbolGuideDialog.close()));
+    $$('[data-copy-symbol]').forEach((button) => button.addEventListener("click", async () => {
+      const symbol = button.dataset.copySymbol;
+      const tickerInput = $("#ticker");
+      tickerInput.value = symbol;
+      try {
+        await navigator.clipboard.writeText(symbol);
+        showToast("Symbol selected", `${symbol} was copied and loaded into the setup form.`);
+      } catch (_error) {
+        showToast("Symbol selected", `${symbol} was loaded into the setup form.`);
+      }
+    }));
     $("#auth-form").addEventListener("submit", (event) => {
       event.preventDefault();
       authenticateWithPassword("signin");
     });
     $("#credential-sign-up").addEventListener("click", () => authenticateWithPassword("signup"));
 
-    const dialogs = [authDialog, submitDialog, methodDialog, $("#command-dialog"), $("#profile-dialog")];
+    const dialogs = [authDialog, submitDialog, methodDialog, symbolGuideDialog, $("#command-dialog"), $("#profile-dialog")];
     let overlayScrollY = 0;
     let overlayScrollLocked = false;
     const syncOverlayScrollLock = () => {
@@ -384,10 +398,13 @@
         const quote = payload.quotes[setup.ticker];
         if (!quote || !Number.isFinite(Number(quote.price))) return;
         const entryRatio = Number.isFinite(setup.entry) && setup.entry > 0 ? Math.abs(Number(quote.price) - setup.entry) / setup.entry : 0;
-        if (entryRatio > 0.5) return;
+        const unambiguousAsset = ["CRYPTO", "FUTURE", "INDEX", "FOREX"].includes(String(quote.assetClass || ""));
+        if (entryRatio > 0.5 && !unambiguousAsset) return;
         setup.current_price = Number(quote.price);
         setup.live_quote_source = quote.source;
         setup.live_quote_at = quote.quotedAt;
+        setup.quote_symbol = quote.resolvedSymbol || setup.ticker;
+        setup.quote_asset_class = quote.assetClass || null;
         hydratedTickers.add(setup.ticker);
       });
       const quoteCount = hydratedTickers.size;
@@ -1084,7 +1101,7 @@
         <span class="status-chip ${normalized}">${escapeHtml(normalized.toUpperCase())}</span>
       </div>
       <div class="setup-price-grid">
-        <div><span>CURRENT</span><b>${formatPrice(setup.current_price)}</b></div>
+        <div><span>CURRENT${setup.quote_symbol && setup.quote_symbol !== setup.ticker ? `<small>${escapeHtml(setup.quote_symbol)}</small>` : ""}</span><b>${formatPrice(setup.current_price)}</b></div>
         <div><span>ENTRY</span><b>${formatPrice(setup.entry)}</b></div>
         <div><span>% FROM ENTRY</span><b class="${metricClass(distance)}">${formatSignedPercent(distance)}</b></div>
         <div><span>STOP</span><b class="metric-negative">${formatPrice(setup.stop)}</b></div>
@@ -1483,7 +1500,10 @@
     clearAttachmentPreview(thesisImageInput, $("#thesis-image-preview"));
     updateRiskPreview();
     if (marketValidation) {
-      showToast("Market setup active", `${payload.ticker} was verified at ${formatPrice(marketValidation.verifiedEntry)} via ${labelize(marketValidation.source)}.`);
+      const resolution = marketValidation.resolvedSymbol && marketValidation.resolvedSymbol !== payload.ticker
+        ? `${payload.ticker} resolved as ${marketValidation.resolvedSymbol} and was`
+        : `${payload.ticker} was`;
+      showToast("Market setup active", `${resolution} verified at ${formatPrice(marketValidation.verifiedEntry)} via ${labelize(marketValidation.source)}.`);
     } else {
       showToast("Setup published", `${payload.ticker} is now part of your public record.`);
     }

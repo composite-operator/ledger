@@ -9,13 +9,41 @@ const corsHeaders = {
 const tolerance = 0.005;
 const tickerPattern = /^[A-Z0-9.^=_-]{1,16}$/;
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const fallbackCryptoSymbols = new Set([
+  "BTC", "ETH", "USDT", "BNB", "XRP", "USDC", "SOL", "TRX", "DOGE", "ADA",
+  "LINK", "XLM", "BCH", "DAI", "LTC", "AVAX", "SHIB", "DOT", "UNI", "XMR",
+  "AAVE", "ETC", "NEAR", "ICP", "FIL", "APT", "SUI", "HBAR", "ATOM", "CRO",
+  "ARB", "OP", "PEPE", "TAO", "TON", "LEO", "OKB", "ZEC", "MKR", "INJ",
+]);
+
+type AssetClass = "CRYPTO" | "FUTURE" | "INDEX" | "FOREX" | "EQUITY";
+
+type CryptoMarket = {
+  price: number;
+  name: string;
+  quotedAt: string;
+};
+
+type QuoteResolution = {
+  requestedSymbol: string;
+  resolvedSymbol: string;
+  assetClass: AssetClass;
+  cryptoBaseSymbol: string | null;
+};
+
+let cryptoMarketCache = new Map<string, CryptoMarket>();
+let cryptoMarketCacheExpiresAt = 0;
+let cryptoMarketRequest: Promise<Map<string, CryptoMarket>> | null = null;
 
 type Quote = {
   price: number;
   currency: string;
   exchange: string;
   quotedAt: string;
-  source: "YAHOO_FINANCE" | "GOOGLE_FINANCE_FALLBACK";
+  source: "YAHOO_FINANCE" | "GOOGLE_FINANCE_FALLBACK" | "COINGECKO_CRYPTO_FALLBACK";
+  requestedSymbol: string;
+  resolvedSymbol: string;
+  assetClass: AssetClass;
 };
 
 type SetupPayload = {
@@ -83,8 +111,80 @@ async function fetchWithTimeout(url: string, timeoutMs = 6500) {
   }
 }
 
-async function quoteFromYahoo(ticker: string): Promise<Quote> {
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1m&range=1d`;
+async function getTopCryptoMarket() {
+  const now = Date.now();
+  if (cryptoMarketCacheExpiresAt > now) return cryptoMarketCache;
+  if (cryptoMarketRequest) return await cryptoMarketRequest;
+
+  cryptoMarketRequest = (async () => {
+    try {
+      const url = "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&sparkline=false";
+      const response = await fetchWithTimeout(url, 5000);
+      if (!response.ok) throw new Error(`CoinGecko returned ${response.status}.`);
+      const payload = await response.json();
+      const market = new Map<string, CryptoMarket>();
+      if (Array.isArray(payload)) {
+        payload.forEach((coin) => {
+          const symbol = String(coin?.symbol || "").trim().toUpperCase();
+          const price = Number(coin?.current_price);
+          if (!/^[A-Z0-9_]{2,12}$/.test(symbol) || market.has(symbol)) return;
+          market.set(symbol, {
+            price: Number.isFinite(price) && price > 0 ? price : Number.NaN,
+            name: String(coin?.name || symbol),
+            quotedAt: String(coin?.last_updated || new Date().toISOString()),
+          });
+        });
+      }
+      cryptoMarketCache = market;
+      cryptoMarketCacheExpiresAt = Date.now() + 15 * 60_000;
+      return market;
+    } catch (error) {
+      console.error("Top-100 crypto classification failed", error);
+      cryptoMarketCacheExpiresAt = Date.now() + 60_000;
+      return cryptoMarketCache;
+    } finally {
+      cryptoMarketRequest = null;
+    }
+  })();
+
+  return await cryptoMarketRequest;
+}
+
+function classifyExplicitSymbol(symbol: string): AssetClass {
+  if (symbol.endsWith("=F")) return "FUTURE";
+  if (symbol.endsWith("=X")) return "FOREX";
+  if (symbol.startsWith("^")) return "INDEX";
+  return "EQUITY";
+}
+
+async function resolveQuoteSymbol(ticker: string): Promise<QuoteResolution> {
+  const requestedSymbol = ticker.trim().toUpperCase();
+  const explicitCrypto = requestedSymbol.match(/^([A-Z0-9_]{2,12})-USD$/);
+  if (explicitCrypto) {
+    return { requestedSymbol, resolvedSymbol: `${explicitCrypto[1]}-USD`, assetClass: "CRYPTO", cryptoBaseSymbol: explicitCrypto[1] };
+  }
+
+  const compactCrypto = requestedSymbol.match(/^([A-Z0-9_]{2,12})USD$/);
+  const candidate = compactCrypto?.[1] || (/^[A-Z0-9_]{2,12}$/.test(requestedSymbol) ? requestedSymbol : null);
+  if (candidate && fallbackCryptoSymbols.has(candidate)) {
+    return { requestedSymbol, resolvedSymbol: `${candidate}-USD`, assetClass: "CRYPTO", cryptoBaseSymbol: candidate };
+  }
+
+  const cryptoMarket = candidate ? await getTopCryptoMarket() : cryptoMarketCache;
+  if (candidate && cryptoMarket.has(candidate)) {
+    return { requestedSymbol, resolvedSymbol: `${candidate}-USD`, assetClass: "CRYPTO", cryptoBaseSymbol: candidate };
+  }
+
+  return {
+    requestedSymbol,
+    resolvedSymbol: requestedSymbol,
+    assetClass: classifyExplicitSymbol(requestedSymbol),
+    cryptoBaseSymbol: null,
+  };
+}
+
+async function quoteFromYahoo(resolution: QuoteResolution): Promise<Quote> {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(resolution.resolvedSymbol)}?interval=1m&range=1d`;
   const response = await fetchWithTimeout(url);
   if (!response.ok) throw new Error(`Yahoo returned ${response.status}.`);
   const payload = await response.json();
@@ -98,6 +198,9 @@ async function quoteFromYahoo(ticker: string): Promise<Quote> {
     exchange: String(result?.meta?.exchangeName || "UNKNOWN"),
     quotedAt: Number.isFinite(epoch) && epoch > 0 ? new Date(epoch * 1000).toISOString() : new Date().toISOString(),
     source: "YAHOO_FINANCE",
+    requestedSymbol: resolution.requestedSymbol,
+    resolvedSymbol: String(result?.meta?.symbol || resolution.resolvedSymbol).toUpperCase(),
+    assetClass: resolution.assetClass,
   };
 }
 
@@ -105,9 +208,32 @@ function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-async function quoteFromGoogle(ticker: string): Promise<Quote> {
+async function quoteFromGoogle(resolution: QuoteResolution): Promise<Quote> {
+  if (resolution.assetClass === "CRYPTO" && resolution.cryptoBaseSymbol) {
+    const url = `https://www.google.com/finance/quote/${encodeURIComponent(`${resolution.cryptoBaseSymbol}-USD`)}`;
+    const response = await fetchWithTimeout(url, 5000);
+    if (response.ok) {
+      const html = await response.text();
+      const priceText = html.match(/\$([0-9]{1,12}(?:,[0-9]{3})*(?:\.[0-9]{1,10})?)/)?.[1];
+      const price = Number(String(priceText || "").replaceAll(",", ""));
+      if (Number.isFinite(price) && price > 0) {
+        return {
+          price,
+          currency: "USD",
+          exchange: "CRYPTO",
+          quotedAt: new Date().toISOString(),
+          source: "GOOGLE_FINANCE_FALLBACK",
+          requestedSymbol: resolution.requestedSymbol,
+          resolvedSymbol: resolution.resolvedSymbol,
+          assetClass: resolution.assetClass,
+        };
+      }
+    }
+    throw new Error("Google Finance returned no usable crypto fallback quote.");
+  }
+
   const exchanges = ["NASDAQ", "NYSE", "NYSEARCA", "OTCMKTS", "INDEXSP", "INDEXNASDAQ"];
-  const symbol = ticker.replace(/[^A-Z0-9.=_-]/g, "");
+  const symbol = resolution.resolvedSymbol.replace(/[^A-Z0-9.=_-]/g, "");
   for (const exchange of exchanges) {
     try {
       const url = `https://www.google.com/finance/quote/${encodeURIComponent(symbol)}:${exchange}`;
@@ -125,6 +251,9 @@ async function quoteFromGoogle(ticker: string): Promise<Quote> {
         exchange,
         quotedAt: new Date().toISOString(),
         source: "GOOGLE_FINANCE_FALLBACK",
+        requestedSymbol: resolution.requestedSymbol,
+        resolvedSymbol: resolution.resolvedSymbol,
+        assetClass: resolution.assetClass,
       };
     } catch (_error) {
       // Try the next common US exchange code.
@@ -133,12 +262,41 @@ async function quoteFromGoogle(ticker: string): Promise<Quote> {
   throw new Error("Google Finance returned no usable fallback quote.");
 }
 
+async function quoteFromCoinGecko(resolution: QuoteResolution): Promise<Quote> {
+  if (!resolution.cryptoBaseSymbol) throw new Error("CoinGecko fallback applies only to crypto symbols.");
+  const market = await getTopCryptoMarket();
+  const coin = market.get(resolution.cryptoBaseSymbol);
+  if (!coin || !Number.isFinite(coin.price) || coin.price <= 0) throw new Error("CoinGecko returned no usable crypto fallback quote.");
+  return {
+    price: coin.price,
+    currency: "USD",
+    exchange: "CRYPTO",
+    quotedAt: coin.quotedAt,
+    source: "COINGECKO_CRYPTO_FALLBACK",
+    requestedSymbol: resolution.requestedSymbol,
+    resolvedSymbol: resolution.resolvedSymbol,
+    assetClass: resolution.assetClass,
+  };
+}
+
 async function getVerifiedQuote(ticker: string): Promise<Quote> {
+  const resolution = await resolveQuoteSymbol(ticker);
   try {
-    return await quoteFromYahoo(ticker);
+    return await quoteFromYahoo(resolution);
   } catch (yahooError) {
+    if (resolution.assetClass === "CRYPTO") {
+      try {
+        return await quoteFromCoinGecko(resolution);
+      } catch (coinGeckoError) {
+        try {
+          return await quoteFromGoogle(resolution);
+        } catch (googleError) {
+          throw new Error(`Crypto quote unavailable. ${String(yahooError)} ${String(coinGeckoError)} ${String(googleError)}`);
+        }
+      }
+    }
     try {
-      return await quoteFromGoogle(ticker);
+      return await quoteFromGoogle(resolution);
     } catch (googleError) {
       throw new Error(`Quote unavailable. ${String(yahooError)} ${String(googleError)}`);
     }
@@ -238,7 +396,7 @@ Deno.serve(async (request) => {
     const insertPayload = {
       client_request_id: clientRequestId,
       user_id: userData.user.id,
-      ticker,
+      ticker: quote.assetClass === "CRYPTO" ? quote.resolvedSymbol : ticker,
       direction,
       horizon,
       trigger_type: "MARKET",
@@ -278,6 +436,9 @@ Deno.serve(async (request) => {
         source: quote.source,
         exchange: quote.exchange,
         currency: quote.currency,
+        requested_symbol: quote.requestedSymbol,
+        resolved_symbol: quote.resolvedSymbol,
+        asset_class: quote.assetClass,
         quoted_at: quote.quotedAt,
         submitted_reference_entry: referenceEntry,
         verified_entry: roundPrice(quote.price),
@@ -298,6 +459,9 @@ Deno.serve(async (request) => {
         source: quote.source,
         exchange: quote.exchange,
         currency: quote.currency,
+        requestedSymbol: quote.requestedSymbol,
+        resolvedSymbol: quote.resolvedSymbol,
+        assetClass: quote.assetClass,
         quotedAt: quote.quotedAt,
       },
     }, 201);

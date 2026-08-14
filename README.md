@@ -25,6 +25,8 @@ The repository starts in an explicit preview mode. Preview mode shows only a ver
 - Permanent setup-book URLs for every state and the operator index
 - Sortable setup fields for posted date, entry distance, planned R, operator history, score, and comments
 - Live Yahoo Finance quotes with Google Finance fallback for setup-to-entry distance
+- Top-100 crypto normalization from bare symbols such as `BTC` and `ETH` to canonical USD pairs
+- Topbar ticker style guide with copyable commodity, index, foreign-exchange, and crypto symbols
 - Structured setup form with live risk/reward checks
 - Server-verified MARKET activation with a ±0.5% reference-price tolerance
 - Collapsible public discussions with authenticated comments and starred OP replies
@@ -106,6 +108,14 @@ The new form preserves the current Google Form fields:
 | Strategy Tag | `setups.strategy` |
 | Notes / Thesis | `setups.thesis` |
 
+### Ticker resolution
+
+- Bare symbols in the current CoinGecko top 100 resolve as crypto USD pairs. For example, `BTC` becomes `BTC-USD` and `ETH` becomes `ETH-USD`.
+- Compact crypto pairs such as `BTCUSD` also become `BTC-USD`.
+- Explicit pairs such as `BTC-USD` remain unchanged.
+- Commodity futures use Yahoo Finance symbols such as `GC=F` for gold and `CL=F` for WTI crude. The topbar **Symbol guide** lists the supported common formats.
+- A bare top-100 crypto symbol takes precedence over a same-named exchange-traded product. Use the intended product's explicit market symbol when you do not want the crypto pair.
+
 The metric contract preserves the current 14-column leaderboard. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for scoring and [`docs/MIGRATION.md`](docs/MIGRATION.md) for the workbook transition.
 
 ## Security boundary
@@ -116,8 +126,8 @@ The metric contract preserves the current 14-column leaderboard. See [`docs/ARCH
 - Row-level security limits user writes to their own setup submissions.
 - Public risk fields lock after submission.
 - Outcome updates use a trusted service process.
-- MARKET submissions use an authenticated Edge Function. It verifies Yahoo Finance first, uses Google Finance only as a fallback, snaps entry to the verified quote, and activates the setup immediately when the submitted reference is within ±0.5%.
-- Setup-book distance uses a publishable-key Edge Function with request-size and per-minute limits. A 50% entry sanity gate suppresses ambiguous symbols instead of showing a misleading price.
+- MARKET submissions use an authenticated Edge Function. It classifies current top-100 crypto symbols through CoinGecko and verifies Yahoo Finance first. Crypto uses the matching CoinGecko market price before the final Google fallback; other assets use Google directly as the Yahoo fallback. The function snaps entry to the verified quote and activates the setup immediately when the submitted reference is within ±0.5%.
+- Setup-book distance uses a publishable-key Edge Function with request-size and per-minute limits. A 50% entry sanity gate suppresses ambiguous equity symbols. Explicit crypto, futures, index, and foreign-exchange resolutions bypass that ambiguity gate.
 - Avatar files live in the public `avatars` bucket. Storage policies limit upload and replacement to the authenticated owner folder, while public reads support profile, leaderboard, header, and discussion images.
 - Thesis and discussion images reuse the public `avatars` bucket under each authenticated owner's protected folder. Attachment references are retained inside the immutable thesis or comment record. The bucket accepts JPG, PNG, and WEBP images up to 2 MB.
 - Follow relationships allow only owner-created writes. Notification rows and notification preferences are readable and mutable only by their recipient account.
