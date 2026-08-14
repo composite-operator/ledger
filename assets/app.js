@@ -1646,8 +1646,8 @@
       <div class="lifecycle-scenario"><span>LIFECYCLE</span><b>${escapeHtml(lifecycle.label)}</b></div>
       <div><span>${clockLabel}</span><b>${activeClock ? escapeHtml(formatRelative(activeClock)) : "NOT SET"}</b></div>
       <div><span>LEDGER STOP</span><b>${formatPrice(ledgerStop)} <small>ORIG ${formatPrice(setup.stop)}</small></b></div>
-      <div><span>GOAT V2 STATE</span><b>${escapeHtml(scoreText)}</b></div>
-      <strong>${escapeHtml(setup.scoring_version === "GOAT_V2" ? "GOAT V2" : "LEGACY")}</strong>
+      <div><span>GOAT STATE</span><b>${escapeHtml(scoreText)}</b></div>
+      <strong>${escapeHtml(setup.scoring_version === "GOAT_V2" ? "GOAT" : "LEGACY")}</strong>
       ${coach ? `<aside class="coach-prompt"><div><span>${escapeHtml(coach.title)}</span><p>${escapeHtml(coach.message)}</p></div>${isOwner ? `<button type="button" ${coach.kind === "PROTECT" ? `data-lifecycle-stop="${escapeAttr(setup.id)}"` : `data-lifecycle-review="${escapeAttr(setup.id)}"`}>${escapeHtml(coach.action)}</button>` : "<small>AUTHOR ACTION</small>"}</aside>` : ""}
     </section>`;
   }

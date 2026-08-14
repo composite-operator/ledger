@@ -10,7 +10,7 @@
     },
     {
       "path": "assets/app.js",
-      "sha256": "43ec7ad6b98799be7660a52601bea13936fb0a35b42189d6e4dcf6d6318ce6d9"
+      "sha256": "c4369442adf9f4f4b08302f6159d186c2dfee745ba9328b5004dcecf6d3e0502"
     },
     {
       "path": "assets/icon.svg",
@@ -66,7 +66,7 @@
     },
     {
       "path": "index.html",
-      "sha256": "52ee4fe517809afe031a911d5ab00cc29ffd84e45ea09df9513278a3d750fb21"
+      "sha256": "d45bb6ef8d515ba5d6985242c5f789e330273fa827b05b86db9ad53ab6899dc5"
     },
     {
       "path": "site.webmanifest",
