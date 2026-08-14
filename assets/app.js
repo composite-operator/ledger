@@ -764,7 +764,19 @@
       const metricRow = (metricsResult.data || []).map(normalizeLeader).find((item) => String(item.id) === String(leader.id));
       if (metricRow) detailedLeader = { ...detailedLeader, ...metricRow };
       if (profileResult.data) detailedLeader = { ...detailedLeader, ...profileResult.data, id: profileResult.data.id };
-      if (setupsResult.data) profileSetups = setupsResult.data.map(normalizeSetup);
+      if (setupsResult.data) {
+        profileSetups = setupsResult.data.map(normalizeSetup);
+        const loadedSetupIndexes = new Map(state.setups.map((setup, index) => [String(setup.id), index]));
+        profileSetups.forEach((setup) => {
+          const loadedIndex = loadedSetupIndexes.get(String(setup.id));
+          if (loadedIndex === undefined) {
+            loadedSetupIndexes.set(String(setup.id), state.setups.length);
+            state.setups.push(setup);
+          } else {
+            state.setups[loadedIndex] = { ...state.setups[loadedIndex], ...setup };
+          }
+        });
+      }
       if (socialResult.data?.[0]) detailedLeader = { ...detailedLeader, ...socialResult.data[0] };
     }
     const recent = profileSetups.slice().sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at)).slice(0, 100);
@@ -817,19 +829,27 @@
       openSetupBook("followed");
     });
     $$('[data-profile-open-setup]', drawer).forEach((record) => {
-      const openFollowedSetup = () => {
+      const openProfileSetup = () => {
         const setupId = String(record.dataset.profileOpenSetup);
+        const targetBook = record.dataset.profileSetupBook || "all";
         $("#profile-dialog").close();
-        openSetupBook("followed");
-        requestAnimationFrame(() => document.getElementById(`setup-${setupId}`)?.scrollIntoView({ behavior: "smooth", block: "start" }));
+        openSetupBook(targetBook);
+        requestAnimationFrame(() => {
+          const card = document.getElementById(`setup-${setupId}`);
+          if (!card) return;
+          card.scrollIntoView({ behavior: "smooth", block: "start" });
+          card.classList.add("is-profile-jump");
+          setTimeout(() => card.classList.remove("is-profile-jump"), 1800);
+        });
       };
       record.addEventListener("click", (event) => {
-        if (!event.target.closest("[data-profile-unfollow-setup]")) openFollowedSetup();
+        if (!event.target.closest("[data-profile-unfollow-setup]")) openProfileSetup();
       });
       record.addEventListener("keydown", (event) => {
+        if (event.target.closest("[data-profile-unfollow-setup]")) return;
         if (event.key !== "Enter" && event.key !== " ") return;
         event.preventDefault();
-        openFollowedSetup();
+        openProfileSetup();
       });
     });
     $$('[data-profile-unfollow-setup]', drawer).forEach((button) => button.addEventListener("click", async () => {
@@ -1117,7 +1137,7 @@
 
   function profileRecord(setup) {
     const result = setup.status === "RESOLVED" ? `${formatR(setup.r_result)}` : setup.status;
-    return `<div class="profile-record"><b>${escapeHtml(setup.ticker)}</b><span>${escapeHtml(setup.direction)} · ${escapeHtml(labelize(setup.trigger_type))} · ${formatDate(setup.submitted_at)}</span><i class="${metricClass(setup.r_result)}">${escapeHtml(result)}</i></div>`;
+    return `<div class="profile-record is-clickable" role="link" tabindex="0" data-profile-open-setup="${escapeAttr(setup.id)}" data-profile-setup-book="${escapeAttr(normalizeState(setup.status))}" aria-label="Open ${escapeAttr(setup.ticker)} setup from ${escapeAttr(formatDate(setup.submitted_at))}"><b>${escapeHtml(setup.ticker)}</b><span>${escapeHtml(setup.direction)} · ${escapeHtml(labelize(setup.trigger_type))} · ${formatDate(setup.submitted_at)}</span><i class="${metricClass(setup.r_result)}">${escapeHtml(result)} ↗</i></div>`;
   }
 
   function followedSetupDashboard(setups) {
@@ -1137,7 +1157,7 @@
 
   function followedSetupRecord(setup) {
     const distance = percentFromEntry(setup);
-    return `<div class="profile-followed-record" role="button" tabindex="0" data-profile-open-setup="${escapeAttr(setup.id)}">
+    return `<div class="profile-followed-record" role="link" tabindex="0" data-profile-open-setup="${escapeAttr(setup.id)}" data-profile-setup-book="followed">
       <b>${escapeHtml(setup.ticker)}</b>
       <span>@${escapeHtml(setup.handle)} · ${escapeHtml(labelize(setup.status))} · ${formatSignedPercent(distance)} from entry</span>
       <i class="status-chip ${normalizeState(setup.status)}">${escapeHtml(normalizeState(setup.status).toUpperCase())}</i>
