@@ -7,9 +7,10 @@
   --panel-soft: rgba(18, 21, 31, 0.68);
   --line: rgba(255, 255, 255, 0.14);
   --line-strong: rgba(255, 255, 255, 0.24);
-  --text: #f4f6f8;
-  --muted: #c4cad5;
-  --faint: #a3acbd;
+  /* Dark mode is the accessibility baseline. Text hierarchy uses size and weight, not low contrast. */
+  --text: #ffffff;
+  --muted: #ffffff;
+  --faint: #ffffff;
   --acid: #c8ff2e;
   --acid-soft: rgba(200, 255, 46, 0.13);
   --cyan: #58e6ff;
@@ -93,7 +94,7 @@ select option,
 select optgroup {
   color-scheme: dark;
   background-color: #10131a !important;
-  color: #f4f6f8 !important;
+  color: #ffffff !important;
 }
 select option:checked {
   background-color: #293416 !important;
@@ -101,7 +102,7 @@ select option:checked {
 }
 select option:disabled {
   background-color: #10131a !important;
-  color: #a1a8b8 !important;
+  color: #ffffff !important;
 }
 
 ::selection { background: var(--acid); color: #080b03; }
