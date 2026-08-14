@@ -52,12 +52,13 @@ The repository starts in an explicit preview mode. Preview mode shows only a ver
 8. Deploy `supabase/functions/submit-market-setup` and `supabase/functions/setup-book-quotes` as Edge Functions.
 9. Run [`supabase/migrations/202608130006_profile_avatars.sql`](supabase/migrations/202608130006_profile_avatars.sql) to create the public avatar bucket and owner-only upload policies.
 10. Run [`supabase/migrations/202608130007_operator_notifications.sql`](supabase/migrations/202608130007_operator_notifications.sql) to add follows, private notification feeds, preferences, triggers, and Realtime delivery.
-11. In **Authentication → URL Configuration**, set:
+11. Run [`supabase/migrations/202608130008_setup_follows.sql`](supabase/migrations/202608130008_setup_follows.sql) to add personal setup watchlists plus Hot, entry, target, and stop-out alerts.
+12. In **Authentication → URL Configuration**, set:
    - Site URL: `https://ximxesabortion.github.io/ledger/`
    - Redirect URL: `https://ximxesabortion.github.io/ledger/`
 
-12. In **Authentication → Sign In / Providers → Email**, keep Email enabled.
-13. For the $0 MVP, turn **Confirm email** off. This avoids relying on a paid production mail service. Add verified-email delivery later if the product needs email ownership proof or password-reset email.
+13. In **Authentication → Sign In / Providers → Email**, keep Email enabled.
+14. For the $0 MVP, turn **Confirm email** off. This avoids relying on a paid production mail service. Add verified-email delivery later if the product needs email ownership proof or password-reset email.
 
 Google and X are optional future identity links. They are not required for Ledger accounts.
 

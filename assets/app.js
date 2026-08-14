@@ -12,7 +12,11 @@
     notifications_muted: false,
     notify_new_setups: true,
     notify_comments: true,
-    notify_entry_hits: true
+    notify_entry_hits: true,
+    notify_followed_setup_hot: true,
+    notify_followed_setup_entry: true,
+    notify_followed_setup_targets: true,
+    notify_followed_setup_stops: true
   };
 
   const previewLeaders = [
@@ -27,7 +31,8 @@
     hot: { title: "Hot setups", kicker: "IMMEDIATE WATCH BOOK", description: "Setups receiving the strongest near-term attention from the network." },
     near: { title: "Near-entry setups", kicker: "PROXIMITY BOOK", description: "Setups closest to their published entry, ordered with live market distance." },
     active: { title: "Active setups", kicker: "LIVE EXECUTION BOOK", description: "Triggered setups now moving through their published stop and target map." },
-    resolved: { title: "Resolved setups", kicker: "OUTCOME BOOK", description: "Closed public records with the original plan, result, and full discussion intact." }
+    resolved: { title: "Resolved setups", kicker: "OUTCOME BOOK", description: "Closed public records with the original plan, result, and full discussion intact." },
+    followed: { title: "Followed setups", kicker: "PERSONAL WATCHLIST", description: "The individual setups you follow, with lifecycle alerts from Hot through final outcome." }
   };
 
   const state = {
@@ -53,6 +58,8 @@
     commentsLoading: new Set(),
     expandedComments: new Set(),
     followingIds: new Set(),
+    followedSetupIds: new Set(),
+    setupFollowsAvailable: true,
     notifications: [],
     notificationPreferences: { ...defaultNotificationPreferences },
     notificationsAvailable: true,
@@ -282,12 +289,15 @@
     state.compactLeaders = (compactResult.data || []).map(normalizeLeader);
     if (state.rankPage === 1) state.podiumLeaders = state.leaders.slice(0, 3);
     state.setups = (setupsResult.data || []).map(normalizeSetup);
+    await hydrateFollowedSetups();
     void refreshSetupQuotes();
   }
 
   async function loadAccountFeatures() {
     if (!state.supabase || !state.session?.user) {
       state.followingIds = new Set();
+      state.followedSetupIds = new Set();
+      state.setupFollowsAvailable = true;
       state.notifications = [];
       state.notificationPreferences = { ...defaultNotificationPreferences };
       state.notificationsAvailable = true;
@@ -296,8 +306,9 @@
     }
 
     const userId = state.session.user.id;
-    const [followingResult, preferencesResult, notificationsResult] = await Promise.all([
+    const [followingResult, setupFollowsResult, preferencesResult, notificationsResult] = await Promise.all([
       state.supabase.from("operator_follows").select("following_id").eq("follower_id", userId),
+      state.supabase.from("setup_follows").select("setup_id").eq("follower_id", userId).order("created_at", { ascending: false }).limit(500),
       state.supabase.from("notification_preferences").select("*").eq("user_id", userId).maybeSingle(),
       state.supabase.from("notification_feed").select("*").order("created_at", { ascending: false }).limit(100)
     ]);
@@ -305,6 +316,8 @@
     const featureError = followingResult.error || preferencesResult.error || notificationsResult.error;
     if (featureError) {
       state.followingIds = new Set();
+      state.followedSetupIds = new Set();
+      state.setupFollowsAvailable = !setupFollowsResult.error;
       state.notifications = [];
       state.notificationPreferences = { ...defaultNotificationPreferences };
       state.notificationsAvailable = false;
@@ -315,8 +328,12 @@
 
     state.notificationsAvailable = true;
     state.followingIds = new Set((followingResult.data || []).map((row) => String(row.following_id)));
+    state.setupFollowsAvailable = !setupFollowsResult.error;
+    state.followedSetupIds = new Set((setupFollowsResult.data || []).map((row) => String(row.setup_id)));
     state.notificationPreferences = { ...defaultNotificationPreferences, ...(preferencesResult.data || {}) };
     state.notifications = notificationsResult.data || [];
+
+    if (setupFollowsResult.error) console.warn("Setup follows are unavailable.", setupFollowsResult.error);
 
     if (!preferencesResult.data) {
       const { data } = await state.supabase
@@ -326,7 +343,23 @@
         .single();
       if (data) state.notificationPreferences = { ...defaultNotificationPreferences, ...data };
     }
+    await hydrateFollowedSetups();
     renderNotificationUI();
+  }
+
+  async function hydrateFollowedSetups() {
+    if (!state.supabase || !state.session?.user || !state.followedSetupIds.size || !state.setupFollowsAvailable) return;
+    const loadedIds = new Set(state.setups.map((setup) => String(setup.id)));
+    const missingIds = [...state.followedSetupIds].filter((setupId) => !loadedIds.has(setupId));
+    for (let offset = 0; offset < missingIds.length; offset += 100) {
+      const batch = missingIds.slice(offset, offset + 100);
+      const { data, error } = await state.supabase.from("setups_public").select("*").in("id", batch);
+      if (error) {
+        console.warn("Followed setup hydration failed.", error);
+        return;
+      }
+      state.setups.push(...(data || []).map(normalizeSetup));
+    }
   }
 
   async function loadNotifications() {
@@ -738,6 +771,9 @@
     const drawer = $("#profile-drawer");
     const isOwnProfile = Boolean(state.session?.user && String(state.session.user.id) === String(detailedLeader.id));
     const isFollowing = state.followingIds.has(String(detailedLeader.id));
+    const followedSetups = isOwnProfile
+      ? state.setups.filter((setup) => state.followedSetupIds.has(String(setup.id))).sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at))
+      : [];
     drawer.innerHTML = `<button class="modal-close profile-close" type="button" data-close-profile aria-label="Close profile">×</button>
     <div class="profile-head">
       <div class="profile-avatar-large">${profileAvatar(detailedLeader)}</div>
@@ -762,6 +798,7 @@
         <div><span>TARGET HITS</span><b><small>T1</small> ${formatInteger(detailedLeader.t1_hits)} <small>T2</small> ${formatInteger(detailedLeader.t2_hits)} <small>T3</small> ${formatInteger(detailedLeader.t3_hits)}</b></div>
       </div>
       ${isOwnProfile ? `${profileEditor(detailedLeader)}${notificationSettingsPanel()}` : ""}
+      ${isOwnProfile ? followedSetupDashboard(followedSetups) : ""}
       <div class="profile-section-title">PUBLIC RECORDS <span>${recent.length}</span></div>
       <div class="profile-records">${recent.length ? recent.map(profileRecord).join("") : '<div class="table-empty">No public setups yet.</div>'}</div>
     </div>`;
@@ -774,6 +811,31 @@
     if (profileForm) profileForm.addEventListener("submit", (event) => saveProfile(event, detailedLeader));
     const notificationForm = $("[data-notification-settings-form]", drawer);
     if (notificationForm) notificationForm.addEventListener("submit", saveNotificationSettings);
+    const openFollowedBookButton = $("[data-open-followed-book]", drawer);
+    if (openFollowedBookButton) openFollowedBookButton.addEventListener("click", () => {
+      $("#profile-dialog").close();
+      openSetupBook("followed");
+    });
+    $$('[data-profile-open-setup]', drawer).forEach((record) => {
+      const openFollowedSetup = () => {
+        const setupId = String(record.dataset.profileOpenSetup);
+        $("#profile-dialog").close();
+        openSetupBook("followed");
+        requestAnimationFrame(() => document.getElementById(`setup-${setupId}`)?.scrollIntoView({ behavior: "smooth", block: "start" }));
+      };
+      record.addEventListener("click", (event) => {
+        if (!event.target.closest("[data-profile-unfollow-setup]")) openFollowedSetup();
+      });
+      record.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        openFollowedSetup();
+      });
+    });
+    $$('[data-profile-unfollow-setup]', drawer).forEach((button) => button.addEventListener("click", async () => {
+      const setup = state.setups.find((item) => String(item.id) === String(button.dataset.profileUnfollowSetup));
+      if (setup) await toggleSetupFollow(setup, true);
+    }));
     const avatarInput = $("input[name='avatar']", drawer);
     if (avatarInput) avatarInput.addEventListener("change", () => updateAvatarFileLabel(avatarInput));
     if (!$("#profile-dialog").open) $("#profile-dialog").showModal();
@@ -802,11 +864,15 @@
     return `<details class="profile-editor notification-settings" data-notification-settings>
       <summary><span>NOTIFICATION SETTINGS</span><i>OPEN +</i></summary>
       <form data-notification-settings-form>
-        <p class="notification-settings-copy">Choose which activity from followed operators enters your private alert feed.</p>
+        <p class="notification-settings-copy">Choose which operator activity and followed-setup milestones enter your private alert feed.</p>
         ${notificationSetting("notifications_muted", "MUTE ALL ALERTS", "Pause delivery without changing your channel choices.", preferences.notifications_muted)}
         ${notificationSetting("notify_new_setups", "NEW SETUPS", "Alert when a followed operator publishes a setup.", preferences.notify_new_setups)}
         ${notificationSetting("notify_comments", "NEW COMMENTS", "Alert when a followed operator comments on any setup.", preferences.notify_comments)}
-        ${notificationSetting("notify_entry_hits", "ENTRY ACHIEVED", "Alert when a followed operator's setup reaches entry.", preferences.notify_entry_hits)}
+        ${notificationSetting("notify_entry_hits", "OPERATOR ENTRY ACHIEVED", "Alert when a followed operator's setup reaches entry.", preferences.notify_entry_hits)}
+        ${notificationSetting("notify_followed_setup_hot", "FOLLOWED SETUP GOES HOT", "Alert when an individually followed setup enters the Hot book.", preferences.notify_followed_setup_hot)}
+        ${notificationSetting("notify_followed_setup_entry", "FOLLOWED SETUP ENTRY", "Alert when an individually followed setup reaches entry.", preferences.notify_followed_setup_entry)}
+        ${notificationSetting("notify_followed_setup_targets", "FOLLOWED SETUP TARGETS", "Alert separately when T1, T2, or T3 is recorded.", preferences.notify_followed_setup_targets)}
+        ${notificationSetting("notify_followed_setup_stops", "FOLLOWED SETUP STOP-OUT", "Alert when the published stop is recorded.", preferences.notify_followed_setup_stops)}
         <p class="profile-form-status" data-notification-settings-status></p>
         <button type="submit">SAVE NOTIFICATIONS <span>→</span></button>
       </form>
@@ -831,7 +897,11 @@
       notifications_muted: data.has("notifications_muted"),
       notify_new_setups: data.has("notify_new_setups"),
       notify_comments: data.has("notify_comments"),
-      notify_entry_hits: data.has("notify_entry_hits")
+      notify_entry_hits: data.has("notify_entry_hits"),
+      notify_followed_setup_hot: data.has("notify_followed_setup_hot"),
+      notify_followed_setup_entry: data.has("notify_followed_setup_entry"),
+      notify_followed_setup_targets: data.has("notify_followed_setup_targets"),
+      notify_followed_setup_stops: data.has("notify_followed_setup_stops")
     };
     button.disabled = true;
     button.textContent = "SAVING...";
@@ -856,7 +926,11 @@
       notifications_muted: Boolean(merged.notifications_muted),
       notify_new_setups: Boolean(merged.notify_new_setups),
       notify_comments: Boolean(merged.notify_comments),
-      notify_entry_hits: Boolean(merged.notify_entry_hits)
+      notify_entry_hits: Boolean(merged.notify_entry_hits),
+      notify_followed_setup_hot: Boolean(merged.notify_followed_setup_hot),
+      notify_followed_setup_entry: Boolean(merged.notify_followed_setup_entry),
+      notify_followed_setup_targets: Boolean(merged.notify_followed_setup_targets),
+      notify_followed_setup_stops: Boolean(merged.notify_followed_setup_stops)
     };
     let { data, error } = await state.supabase
       .from("notification_preferences")
@@ -907,6 +981,57 @@
     else state.followingIds.add(profileId);
     showToast(isFollowing ? "Operator unfollowed" : "Operator followed", isFollowing ? `Alerts from @${profile.handle} are off.` : `Future activity from @${profile.handle} can now reach your alert feed.`);
     await openProfile(profile);
+  }
+
+  async function toggleSetupFollow(setup, refreshProfile = false) {
+    if (!state.session?.user || !state.supabase) {
+      if ($("#profile-dialog")?.open) $("#profile-dialog").close();
+      $("#auth-dialog").showModal();
+      return;
+    }
+    if (!state.setupFollowsAvailable) {
+      showToast("Setup follows unavailable", "The setup-follow database update is not active yet.", true);
+      return;
+    }
+
+    const setupId = String(setup.id);
+    const isFollowing = state.followedSetupIds.has(setupId);
+    const buttons = $$('[data-follow-setup], [data-profile-unfollow-setup]').filter((button) =>
+      String(button.dataset.followSetup || button.dataset.profileUnfollowSetup) === setupId
+    );
+    buttons.forEach((button) => {
+      button.disabled = true;
+      button.textContent = isFollowing ? "UNFOLLOWING…" : "FOLLOWING…";
+    });
+
+    const query = isFollowing
+      ? state.supabase.from("setup_follows").delete().eq("follower_id", state.session.user.id).eq("setup_id", setupId)
+      : state.supabase.from("setup_follows").insert({ follower_id: state.session.user.id, setup_id: setupId });
+    const { error } = await query;
+    if (error) {
+      buttons.forEach((button) => {
+        button.disabled = false;
+        button.textContent = button.matches("[data-profile-unfollow-setup]") ? "UNFOLLOW" : (isFollowing ? "FOLLOWING ✓" : "FOLLOW SETUP +");
+      });
+      renderSetups();
+      showToast("Setup follow failed", error.message, true);
+      return;
+    }
+
+    if (isFollowing) state.followedSetupIds.delete(setupId);
+    else state.followedSetupIds.add(setupId);
+    renderSetups();
+    showToast(
+      isFollowing ? "Setup unfollowed" : "Setup followed",
+      isFollowing
+        ? `${setup.ticker} was removed from your personal watchlist.`
+        : `${setup.ticker} is on your dashboard. Hot, entry, target, and stop alerts are active.`
+    );
+
+    if (refreshProfile) {
+      const ownLeader = [...state.leaders, ...state.compactLeaders].find((leader) => String(leader.id) === String(state.session.user.id)) || profileFromSession();
+      await openProfile(ownLeader);
+    }
   }
 
   function updateAvatarFileLabel(input) {
@@ -995,8 +1120,37 @@
     return `<div class="profile-record"><b>${escapeHtml(setup.ticker)}</b><span>${escapeHtml(setup.direction)} · ${escapeHtml(labelize(setup.trigger_type))} · ${formatDate(setup.submitted_at)}</span><i class="${metricClass(setup.r_result)}">${escapeHtml(result)}</i></div>`;
   }
 
+  function followedSetupDashboard(setups) {
+    const count = state.followedSetupIds.size;
+    const rows = setups.slice(0, 8);
+    const contents = !state.setupFollowsAvailable
+      ? '<div class="table-empty">The setup-follow database update is not active yet.</div>'
+      : rows.length
+        ? rows.map(followedSetupRecord).join("")
+        : '<div class="table-empty">Follow any setup to place it on this dashboard.</div>';
+    return `<section class="profile-watchlist">
+      <div class="profile-section-title">FOLLOWED SETUPS <span>${formatInteger(count)}</span></div>
+      <div class="profile-followed-records">${contents}</div>
+      <button class="profile-open-watchlist" type="button" data-open-followed-book ${state.setupFollowsAvailable ? "" : "disabled"}>OPEN FULL WATCHLIST <span>→</span></button>
+    </section>`;
+  }
+
+  function followedSetupRecord(setup) {
+    const distance = percentFromEntry(setup);
+    return `<div class="profile-followed-record" role="button" tabindex="0" data-profile-open-setup="${escapeAttr(setup.id)}">
+      <b>${escapeHtml(setup.ticker)}</b>
+      <span>@${escapeHtml(setup.handle)} · ${escapeHtml(labelize(setup.status))} · ${formatSignedPercent(distance)} from entry</span>
+      <i class="status-chip ${normalizeState(setup.status)}">${escapeHtml(normalizeState(setup.status).toUpperCase())}</i>
+      <button type="button" data-profile-unfollow-setup="${escapeAttr(setup.id)}">UNFOLLOW</button>
+    </div>`;
+  }
+
   function bindSetupFilters() {
     $$('[data-setup-state]').forEach((button) => button.addEventListener("click", () => {
+      if (button.dataset.setupState === "followed" && !state.session?.user) {
+        $("#auth-dialog").showModal();
+        return;
+      }
       openSetupBook(button.dataset.setupState);
     }));
     $$('[data-direction]').forEach((button) => button.addEventListener("click", () => {
@@ -1027,7 +1181,8 @@
 
   function filteredSetups() {
     let rows = state.setups.filter((setup) => {
-      const matchesState = state.setupState === "all" || normalizeState(setup.status) === state.setupState;
+      const matchesState = state.setupState === "all"
+        || (state.setupState === "followed" ? state.followedSetupIds.has(String(setup.id)) : normalizeState(setup.status) === state.setupState);
       const matchesDirection = state.setupDirection === "all" || setup.direction === state.setupDirection;
       const haystack = `${setup.ticker} ${setup.handle} ${setup.strategy || ""} ${setup.thesis || ""}`.toLowerCase();
       const matchesSearch = !state.setupSearch || haystack.includes(state.setupSearch);
@@ -1096,6 +1251,10 @@
     }));
     $$("[data-delete-comment]", grid).forEach((button) => button.addEventListener("click", () => softDeleteComment(button.dataset.setupId, button.dataset.deleteComment)));
     $$("[data-share-setup]", grid).forEach((button) => button.addEventListener("click", () => shareSetup(button.dataset.shareSetup)));
+    $$("[data-follow-setup]", grid).forEach((button) => button.addEventListener("click", () => {
+      const setup = state.setups.find((item) => String(item.id) === String(button.dataset.followSetup));
+      if (setup) void toggleSetupFollow(setup);
+    }));
     renderSetupCounts();
     renderNetworkIntel();
   }
@@ -1107,7 +1266,8 @@
     const operator = operatorHistory(setup);
     const setupId = String(setup.id);
     const commentsOpen = state.expandedComments.has(setupId);
-    return `<article class="setup-card is-${setup.direction.toLowerCase()}${commentsOpen ? " has-open-comments" : ""}" id="setup-${escapeAttr(setupId)}">
+    const isFollowed = state.followedSetupIds.has(setupId);
+    return `<article class="setup-card is-${setup.direction.toLowerCase()}${commentsOpen ? " has-open-comments" : ""}${isFollowed ? " is-followed" : ""}" id="setup-${escapeAttr(setupId)}">
       <div class="setup-card-top">
         <div class="ticker-lockup"><div class="ticker-icon">${escapeHtml(setup.ticker.slice(0, 4))}</div><div class="ticker-copy"><b>${escapeHtml(setup.ticker)}</b><span>${escapeHtml(setup.direction)} · ${escapeHtml(labelize(setup.horizon || "SWING"))}</span></div></div>
         <span class="status-chip ${normalized}">${escapeHtml(normalized.toUpperCase())}</span>
@@ -1125,7 +1285,7 @@
       ${setup.thesis_image_path ? `<a class="setup-thesis-image" href="${escapeAttr(publicMediaUrl(setup.thesis_image_path))}" target="_blank" rel="noopener noreferrer"><img src="${escapeAttr(publicMediaUrl(setup.thesis_image_path))}" loading="lazy" alt="Original ${escapeAttr(setup.ticker)} thesis chart"><span>ORIGINAL THESIS IMAGE ↗</span></a>` : ""}
       <div class="setup-card-foot">
         <span>@${escapeHtml(setup.handle)} · POSTED ${formatDate(setup.submitted_at)} · ${formatRelative(setup.submitted_at)}</span>
-        <div><button type="button" data-share-setup="${escapeAttr(setupId)}">SHARE ↗</button><button type="button" data-open-setup-profile="${escapeAttr(setup.user_id)}" data-handle="${escapeAttr(setup.handle)}">VIEW OPERATOR ↗</button></div>
+        <div><button class="setup-follow-button${isFollowed ? " is-following" : ""}" type="button" data-follow-setup="${escapeAttr(setupId)}" aria-pressed="${isFollowed}">${state.session?.user ? (isFollowed ? "FOLLOWING ✓" : "FOLLOW SETUP +") : "SIGN IN TO FOLLOW"}</button><button type="button" data-share-setup="${escapeAttr(setupId)}">SHARE ↗</button><button type="button" data-open-setup-profile="${escapeAttr(setup.user_id)}" data-handle="${escapeAttr(setup.handle)}">VIEW OPERATOR ↗</button></div>
       </div>
       ${setupComments(setup)}
     </article>`;
@@ -1325,7 +1485,7 @@
   }
 
   function renderSetupCounts() {
-    const counts = { all: state.setups.length, queued: 0, hot: 0, near: 0, active: 0, resolved: 0 };
+    const counts = { all: state.setups.length, queued: 0, hot: 0, near: 0, active: 0, resolved: 0, followed: state.followedSetupIds.size };
     state.setups.forEach((setup) => { counts[normalizeState(setup.status)] = (counts[normalizeState(setup.status)] || 0) + 1; });
     Object.entries(counts).forEach(([key, value]) => {
       const node = $(`#count-${key}`);
@@ -1638,7 +1798,7 @@
       const nextMuted = !state.notificationPreferences.notifications_muted;
       try {
         await persistNotificationPreferences({ notifications_muted: nextMuted });
-        showToast(nextMuted ? "Notifications muted" : "Notifications resumed", nextMuted ? "No new followed-operator alerts will be created." : "Your selected alert channels are active again.");
+        showToast(nextMuted ? "Notifications muted" : "Notifications resumed", nextMuted ? "No new Ledger alerts will be created." : "Your selected alert channels are active again.");
       } catch (error) {
         showToast("Notification setting failed", error.message, true);
       }
@@ -1704,7 +1864,7 @@
       return;
     }
     if (!state.notifications.length) {
-      list.innerHTML = '<div class="notification-empty"><b>ALL CLEAR</b><span>Follow an operator to receive setup, comment, and entry alerts here.</span></div>';
+      list.innerHTML = '<div class="notification-empty"><b>ALL CLEAR</b><span>Follow an operator or an individual setup to receive activity and lifecycle alerts here.</span></div>';
       return;
     }
     list.innerHTML = state.notifications.map(notificationItem).join("");
@@ -1724,18 +1884,40 @@
     const ticker = notification.ticker || "a setup";
     if (notification.notification_type === "COMMENT") return `${actor} commented on ${ticker}`;
     if (notification.notification_type === "ENTRY_HIT") return `${ticker} by ${actor} achieved entry`;
+    if (notification.notification_type === "SETUP_HOT") return `${ticker} moved to the Hot book`;
+    if (notification.notification_type === "SETUP_ENTRY") return `${ticker} achieved entry`;
+    if (notification.notification_type === "SETUP_T1") return `${ticker} hit T1`;
+    if (notification.notification_type === "SETUP_T2") return `${ticker} hit T2`;
+    if (notification.notification_type === "SETUP_T3") return `${ticker} hit T3`;
+    if (notification.notification_type === "SETUP_STOPPED") return `${ticker} hit its published stop`;
     return `${actor} published ${ticker}`;
   }
 
   function notificationDetail(notification) {
-    const type = notification.notification_type === "COMMENT" ? "COMMENT" : notification.notification_type === "ENTRY_HIT" ? "ENTRY ACHIEVED" : "NEW SETUP";
+    const labels = {
+      COMMENT: "COMMENT",
+      ENTRY_HIT: "OPERATOR ENTRY ACHIEVED",
+      NEW_SETUP: "NEW SETUP",
+      SETUP_HOT: "FOLLOWED SETUP · HOT",
+      SETUP_ENTRY: "FOLLOWED SETUP · ENTRY",
+      SETUP_T1: "FOLLOWED SETUP · T1",
+      SETUP_T2: "FOLLOWED SETUP · T2",
+      SETUP_T3: "FOLLOWED SETUP · T3",
+      SETUP_STOPPED: "FOLLOWED SETUP · STOPPED"
+    };
+    const type = labels[notification.notification_type] || "LEDGER ALERT";
     const status = notification.setup_status ? ` · ${labelize(notification.setup_status)}` : "";
     return `${type}${status} · ${formatRelative(notification.created_at)}`;
   }
 
   function notificationIcon(type) {
     if (type === "COMMENT") return "C";
-    if (type === "ENTRY_HIT") return "E";
+    if (type === "ENTRY_HIT" || type === "SETUP_ENTRY") return "E";
+    if (type === "SETUP_HOT") return "H";
+    if (type === "SETUP_T1") return "1";
+    if (type === "SETUP_T2") return "2";
+    if (type === "SETUP_T3") return "3";
+    if (type === "SETUP_STOPPED") return "S";
     return "N";
   }
 
