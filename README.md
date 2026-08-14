@@ -28,6 +28,7 @@ The repository starts in an explicit preview mode. Preview mode shows only a ver
 - Reversible heading sorts for posted date, entry distance, planned R, operator history, and comments, plus score sorting in the dropdown
 - Adaptive setup-book rail with Network Pulse physically nested directly below the state filters
 - Readable default typography for controls, setup records, discussions, authentication, and the complete submission form
+- Device-local Readable mode for larger interface text and stronger contrast without changing the default presentation
 - Direction-aware execution maps with SL, entry, current price, TP1-TP3, R multiples, and accessible hover or keyboard explanations
 - Persistent Panels, Linear, and At a glance setup-book layouts for responsive comparison, full-record reading, or execution-bar scanning with one distance percentage
 - Live Yahoo Finance quotes with Google Finance fallback for setup-to-entry distance

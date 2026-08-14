@@ -168,6 +168,7 @@
 
   async function init() {
     initTheme();
+    initReadableMode();
     bindNavigation();
     bindDialogs();
     bindLeaderboard();
@@ -2571,6 +2572,7 @@
   function renderNetworkChart() {
     if (!window.Chart || !$("#network-chart")) return;
     const lightTheme = document.documentElement.dataset.theme === "light";
+    const readableMode = document.documentElement.dataset.readable === "true";
     const buckets = [0, 0, 0, 0, 0, 0, 0];
     state.setups.forEach((setup) => {
       const age = Math.floor((Date.now() - new Date(setup.submitted_at).getTime()) / 86400000);
@@ -2587,9 +2589,9 @@
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { display: false }, tooltip: { displayColors: false, backgroundColor: lightTheme ? "#ffffff" : "#12151d", titleColor: lightTheme ? "#111827" : "#f4f6f8", bodyColor: lightTheme ? "#4b5563" : "#f4f6f8", borderColor: lightTheme ? "rgba(15,23,42,.16)" : "rgba(255,255,255,.1)", borderWidth: 1, titleFont: { family: "DM Mono", size: 8 }, bodyFont: { family: "DM Mono", size: 8 } } },
+        plugins: { legend: { display: false }, tooltip: { displayColors: false, backgroundColor: lightTheme ? "#ffffff" : "#12151d", titleColor: lightTheme ? "#111827" : "#f4f6f8", bodyColor: lightTheme ? "#4b5563" : "#f4f6f8", borderColor: lightTheme ? "rgba(15,23,42,.16)" : "rgba(255,255,255,.1)", borderWidth: 1, titleFont: { family: "DM Mono", size: readableMode ? 12 : 8 }, bodyFont: { family: "DM Mono", size: readableMode ? 12 : 8 } } },
         scales: {
-          x: { grid: { display: false }, border: { display: false }, ticks: { color: lightTheme ? "#6b7280" : "#5d6371", font: { family: "DM Mono", size: 7 } } },
+          x: { grid: { display: false }, border: { display: false }, ticks: { color: lightTheme ? "#4b5563" : (readableMode ? "#a3acbd" : "#5d6371"), font: { family: "DM Mono", size: readableMode ? 11 : 7 } } },
           y: { display: false, beginAtZero: true }
         }
       }
@@ -3048,6 +3050,7 @@
 
   function bindUtilities() {
     $("#theme-toggle").addEventListener("click", toggleTheme);
+    $("#readable-toggle").addEventListener("click", toggleReadableMode);
     applyLocationRoute();
     window.addEventListener("popstate", applyLocationRoute);
   }
@@ -3084,6 +3087,28 @@
     $("#theme-color-meta").setAttribute("content", nextTheme === "light" ? "#eef1f5" : "#06070b");
     if (persist) {
       try { localStorage.setItem("ledger-theme", nextTheme); } catch (_error) { /* Storage can be disabled. */ }
+    }
+  }
+
+  function initReadableMode() {
+    applyReadableMode(document.documentElement.dataset.readable === "true", false);
+  }
+
+  function toggleReadableMode() {
+    applyReadableMode(document.documentElement.dataset.readable !== "true", true);
+  }
+
+  function applyReadableMode(enabled, persist) {
+    document.documentElement.dataset.readable = enabled ? "true" : "false";
+    document.body.classList.toggle("readable-mode", enabled);
+    const button = $("#readable-toggle");
+    const targetLabel = enabled ? "Disable readable mode" : "Enable readable mode";
+    button.setAttribute("aria-label", targetLabel);
+    button.setAttribute("title", targetLabel);
+    button.setAttribute("aria-pressed", String(enabled));
+    if (persist) {
+      renderNetworkChart();
+      try { localStorage.setItem("ledger-readable", String(enabled)); } catch (_error) { /* Storage can be disabled. */ }
     }
   }
 

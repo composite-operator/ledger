@@ -6,7 +6,7 @@
   <meta name="theme-color" id="theme-color-meta" content="#06070b">
   <meta name="description" content="Composite Operator Ledger — public setup tracking, transparent outcomes, and an operator leaderboard.">
   <title>Ledger — Composite Operator</title>
-  <script>try{document.documentElement.dataset.theme=localStorage.getItem("ledger-theme")==="light"?"light":"dark"}catch(_error){document.documentElement.dataset.theme="dark"}</script>
+  <script>document.documentElement.dataset.theme="dark";document.documentElement.dataset.readable="false";try{document.documentElement.dataset.theme=localStorage.getItem("ledger-theme")==="light"?"light":"dark";document.documentElement.dataset.readable=localStorage.getItem("ledger-readable")==="true"?"true":"false"}catch(_error){}</script>
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
   <link rel="manifest" href="site.webmanifest">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -57,6 +57,9 @@
         <span class="pulse-dot"></span>
         <span id="network-state-label">Preview network</span>
       </div>
+      <button class="icon-button readable-button" id="readable-toggle" type="button" aria-label="Enable readable mode" aria-pressed="false" title="Enable readable mode">
+        <span aria-hidden="true">Aa</span>
+      </button>
       <button class="icon-button theme-button" id="theme-toggle" type="button" aria-label="Switch to light mode" title="Switch to light mode">
         <svg class="theme-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg>
         <svg class="theme-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.91-.1-1.35A7 7 0 0 1 12 3Z"/></svg>

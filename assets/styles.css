@@ -48,6 +48,20 @@
   --shadow: 0 24px 70px rgba(31, 41, 55, 0.16);
 }
 
+:root[data-readable="true"] {
+  --line: rgba(255, 255, 255, 0.14);
+  --line-strong: rgba(255, 255, 255, 0.24);
+  --muted: #c4cad5;
+  --faint: #a3acbd;
+}
+
+:root[data-theme="light"][data-readable="true"] {
+  --line: rgba(15, 23, 42, 0.2);
+  --line-strong: rgba(15, 23, 42, 0.32);
+  --muted: #374151;
+  --faint: #4b5563;
+}
+
 * { box-sizing: border-box; }
 
 html {
@@ -231,6 +245,9 @@ kbd { border: 1px solid var(--line-strong); border-bottom-color: rgba(255,255,25
 .icon-button:hover { border-color: var(--line-strong); background: rgba(255,255,255,.05); }
 .icon-button svg { width: 17px; fill: none; stroke: currentColor; stroke-width: 1.7; }
 .theme-button .theme-moon { display: none; }
+.readable-button { color: var(--muted); }
+.readable-button span { font-family: var(--sans); font-size: 12px; font-weight: 800; letter-spacing: -.06em; }
+:root[data-readable="true"] .readable-button[aria-pressed="true"] { border-color: rgba(200,255,46,.42); background: var(--acid-soft); color: var(--acid); box-shadow: 0 0 16px rgba(200,255,46,.08); }
 .account-button { display: flex; align-items: center; gap: 8px; height: 37px; padding: 4px 10px 4px 4px; border: 1px solid var(--line); border-radius: 10px; background: rgba(255,255,255,.025); cursor: pointer; color: var(--text); }
 .account-button:hover { border-color: rgba(200,255,46,.28); }
 .account-avatar { display: grid; place-items: center; width: 28px; height: 28px; overflow: hidden; border-radius: 7px; background: linear-gradient(135deg, var(--acid), #78e548); color: #0a0d04; font-family: var(--mono); font-size: 9px; font-weight: 700; }
@@ -1298,6 +1315,132 @@ dialog::backdrop { background: rgba(1,2,4,.78); backdrop-filter: blur(12px); }
 .toast b { font-size: 11px; }
 .toast span { font-size: 10px; }
 
+/* Optional high-contrast, large-type mode. */
+:root[data-readable="true"] input::placeholder,
+:root[data-readable="true"] textarea::placeholder { color: var(--muted); opacity: 1; }
+:root[data-readable="true"] .brand-copy strong { font-size: 13px; }
+:root[data-readable="true"] .brand-copy small { font-size: 10px; }
+:root[data-readable="true"] .nav-item { font-size: 13px; }
+:root[data-readable="true"] .command-trigger span { font-size: 13px; }
+:root[data-readable="true"] .symbol-guide-trigger,
+:root[data-readable="true"] .network-state,
+:root[data-readable="true"] .market-rail { font-size: 12px; }
+:root[data-readable="true"] .rail-track > a { font-size: 13px; }
+:root[data-readable="true"] .page-heading p { font-size: 16px; }
+:root[data-readable="true"] .filter-heading { font-size: 12px; }
+:root[data-readable="true"] .vertical-tabs button { font-size: 14px; }
+:root[data-readable="true"] .vertical-tabs b,
+:root[data-readable="true"] .segmented-control button { font-size: 12px; }
+:root[data-readable="true"] .filter-note { font-size: 13px; }
+:root[data-readable="true"] .quote-state,
+:root[data-readable="true"] .setup-layout-switcher button,
+:root[data-readable="true"] .setup-sort-dock > span,
+:root[data-readable="true"] .setup-sort-dock button { font-size: 11px; }
+:root[data-readable="true"] .setup-toolbar select,
+:root[data-readable="true"] .inline-search input { font-size: 14px; }
+:root[data-readable="true"] .ticker-copy b { font-size: 16px; }
+:root[data-readable="true"] .ticker-copy span,
+:root[data-readable="true"] .status-chip { font-size: 11px; }
+:root[data-readable="true"] .setup-position-map > header > span,
+:root[data-readable="true"] .setup-position-map > header > span small,
+:root[data-readable="true"] .setup-position-map > header b { font-size: 11px; }
+:root[data-readable="true"] .position-map-key { font-size: 9px; }
+:root[data-readable="true"] .position-value span { font-size: 10px; }
+:root[data-readable="true"] .position-value span small { font-size: 9px; }
+:root[data-readable="true"] .position-value b { font-size: 13px; }
+:root[data-readable="true"] .setup-price-grid span,
+:root[data-readable="true"] .setup-price-grid span small { font-size: 10px; }
+:root[data-readable="true"] .setup-price-grid b { font-size: 14px; }
+:root[data-readable="true"] .setup-thesis { font-size: 14px; }
+:root[data-readable="true"] .setup-card-foot,
+:root[data-readable="true"] .setup-card-byline > span { font-size: 11px; }
+:root[data-readable="true"] .discussion-toggle,
+:root[data-readable="true"] .discussion-toggle > b,
+:root[data-readable="true"] .discussion-toggle > em,
+:root[data-readable="true"] .discussion-heading span,
+:root[data-readable="true"] .discussion-heading small { font-size: 11px; }
+:root[data-readable="true"] .comment-handle,
+:root[data-readable="true"] .discussion-heading b { font-size: 13px; }
+:root[data-readable="true"] .comment-content p,
+:root[data-readable="true"] .comment-composer textarea { font-size: 14px; }
+:root[data-readable="true"] .ranking-table th { font-size: 12px; }
+:root[data-readable="true"] .ranking-table td { font-size: 14px; }
+:root[data-readable="true"] .podium-operator b { font-size: 17px; }
+:root[data-readable="true"] .podium-metrics span { font-size: 11px; }
+:root[data-readable="true"] .podium-metrics b { font-size: 14px; }
+:root[data-readable="true"] .activity-copy b { font-size: 12px; }
+:root[data-readable="true"] .activity-copy span,
+:root[data-readable="true"] .activity-item time { font-size: 11px; }
+:root[data-readable="true"] .notification-header span,
+:root[data-readable="true"] .notification-header button,
+:root[data-readable="true"] .notification-controls button,
+:root[data-readable="true"] .notification-muted-state { font-size: 10px; }
+:root[data-readable="true"] .notification-copy b { font-size: 13px; }
+:root[data-readable="true"] .notification-copy small { font-size: 11px; }
+
+:root[data-readable="true"] .auth-card > p { font-size: 15px; }
+:root[data-readable="true"] .auth-setup-notice b,
+:root[data-readable="true"] .credential-fields label > span { font-size: 12px; }
+:root[data-readable="true"] .auth-setup-notice span,
+:root[data-readable="true"] .secondary-auth-button,
+:root[data-readable="true"] .auth-inline-status,
+:root[data-readable="true"] .auth-footnote { font-size: 13px; }
+:root[data-readable="true"] .credential-fields input { min-height: 50px; font-size: 16px; }
+
+:root[data-readable="true"] .submit-header p { font-size: 16px; }
+:root[data-readable="true"] .form-alert b { font-size: 13px; }
+:root[data-readable="true"] .form-alert small,
+:root[data-readable="true"] .form-alert button { font-size: 13px; }
+:root[data-readable="true"] .form-section-label { font-size: 13px; }
+:root[data-readable="true"] .field > span,
+:root[data-readable="true"] .field legend,
+:root[data-readable="true"] .trigger-selector legend { font-size: 13px; }
+:root[data-readable="true"] .field input,
+:root[data-readable="true"] .field select,
+:root[data-readable="true"] .field textarea { font-size: 16px; }
+:root[data-readable="true"] .field input,
+:root[data-readable="true"] .field select,
+:root[data-readable="true"] .direction-switch { height: 52px; }
+:root[data-readable="true"] .field-control i,
+:root[data-readable="true"] .direction-switch label { font-size: 13px; }
+:root[data-readable="true"] .ticker-field-hint { font-size: 13px; }
+:root[data-readable="true"] .trigger-selector label > span { padding: 16px; }
+:root[data-readable="true"] .trigger-selector label b { font-size: 14px; }
+:root[data-readable="true"] .trigger-selector label small { font-size: 13px; }
+:root[data-readable="true"] .risk-preview span { font-size: 12px; }
+:root[data-readable="true"] .risk-preview b { font-size: 14px; }
+:root[data-readable="true"] .thesis-field > small { font-size: 11px; }
+:root[data-readable="true"] .form-error { font-size: 13px; }
+:root[data-readable="true"] .immutability-note b { font-size: 13px; }
+:root[data-readable="true"] .immutability-note small { font-size: 12px; }
+
+:root[data-readable="true"] .profile-head .profile-handle { font-size: 14px; }
+:root[data-readable="true"] .profile-head .profile-bio { font-size: 16px; }
+:root[data-readable="true"] .profile-badges span,
+:root[data-readable="true"] .profile-metric-grid span,
+:root[data-readable="true"] .profile-editor label > span,
+:root[data-readable="true"] .profile-form-status,
+:root[data-readable="true"] .profile-section-title { font-size: 12px; }
+:root[data-readable="true"] .profile-editor input,
+:root[data-readable="true"] .profile-editor textarea { font-size: 15px; }
+:root[data-readable="true"] .profile-record > b,
+:root[data-readable="true"] .profile-record > span,
+:root[data-readable="true"] .profile-record > i { font-size: 14px; }
+
+:root[data-readable="true"] .method-grid span,
+:root[data-readable="true"] .symbol-guide-rules i,
+:root[data-readable="true"] .symbol-guide-note span { font-size: 10px; }
+:root[data-readable="true"] .method-grid h3,
+:root[data-readable="true"] .symbol-guide-rules b,
+:root[data-readable="true"] .symbol-guide-section-head h3 { font-size: 14px; }
+:root[data-readable="true"] .method-grid p,
+:root[data-readable="true"] .method-card code,
+:root[data-readable="true"] .symbol-guide-head p,
+:root[data-readable="true"] .symbol-guide-rules span,
+:root[data-readable="true"] .symbol-guide-note p,
+:root[data-readable="true"] .symbol-guide-grid span,
+:root[data-readable="true"] .symbol-guide-foot { font-size: 12px; }
+
 @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(64,237,160,.28); } 70% { box-shadow: 0 0 0 6px rgba(64,237,160,0); } 100% { box-shadow: 0 0 0 0 rgba(64,237,160,0); } }
 @keyframes signal { to { height: 3px; opacity: .35; } }
 @keyframes rotate { to { transform: rotate(360deg); } }
@@ -1522,10 +1665,12 @@ dialog::backdrop { background: rgba(1,2,4,.78); backdrop-filter: blur(12px); }
 }
 
 @media (max-width: 640px) {
-  .topbar { grid-template-columns: 1fr auto auto; min-height: 63px; }
+  .topbar { grid-template-columns: 1fr auto auto; gap: 8px; min-height: 63px; padding-right: 8px; padding-left: 8px; }
+  .topbar-actions { gap: 4px; }
   .account-button > span:nth-child(2), .account-button svg { display: none; }
   .account-button { padding-right: 4px; }
   .icon-button { display: none; }
+  .readable-button { display: grid; width: 32px; height: 32px; }
   .notification-center .notification-button { display: grid; }
   .notification-popover { position: fixed; top: 58px; right: 8px; left: 8px; width: auto; }
   .symbol-guide-trigger { display: flex; }
