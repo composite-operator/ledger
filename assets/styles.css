@@ -294,7 +294,7 @@ kbd { border: 1px solid var(--line-strong); border-bottom-color: rgba(255,255,25
 .rail-copy { gap: 14px; color: var(--faint) !important; }
 .rail-copy b { flex: 0 0 auto; }
 
-main { width: min(1540px, calc(100% - 48px)); margin: 0 auto; padding: 34px 0 80px; }
+main { width: min(1920px, calc(100% - 48px)); margin: 0 auto; padding: 34px 0 80px; }
 .app-view { display: none; animation: view-in .35s ease both; }
 .app-view.is-active { display: block; }
 
@@ -474,11 +474,10 @@ img.operator-avatar { object-fit: cover; }
 .pagination button { display: grid; place-items: center; width: 26px; height: 26px; border: 1px solid var(--line); border-radius: 6px; background: rgba(255,255,255,.02); cursor: pointer; }
 .pagination button:disabled { opacity: .3; cursor: not-allowed; }
 
-.setup-dashboard { display: grid; grid-template-columns: 190px minmax(0,1fr); grid-template-areas: "filters feed" "intel feed"; gap: 10px; align-items: start; }
+.setup-dashboard { display: grid; grid-template-columns: 210px minmax(0,1fr); gap: 10px; align-items: start; }
+.setup-rail { display: grid; gap: 8px; min-width: 0; align-content: start; }
 .setup-filters, .market-intel { align-self: start; padding: 16px; }
-.setup-filters { grid-area: filters; }
-.setup-feed { grid-area: feed; }
-.market-intel { grid-area: intel; min-width: 0; }
+.setup-feed, .market-intel { min-width: 0; }
 .filter-heading { margin: 6px 0 10px; color: var(--faint); font-family: var(--mono); font-size: 7px; letter-spacing: .08em; }
 .vertical-tabs { display: grid; gap: 3px; margin-bottom: 22px; }
 .vertical-tabs button { display: flex; justify-content: space-between; padding: 9px 10px; border-radius: 7px; background: transparent; color: var(--muted); font-size: 9px; text-align: left; }
@@ -756,7 +755,7 @@ img.operator-avatar { object-fit: cover; }
 .intel-list span { color: var(--faint); font-size: 7px; }
 .intel-list b { font-family: var(--mono); font-size: 7px; }
 
-.site-footer { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 30px; min-height: 110px; padding: 24px max(28px, calc((100vw - 1540px) / 2)); border-top: 1px solid var(--line); background: rgba(4,5,8,.75); }
+.site-footer { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 30px; min-height: 110px; padding: 24px max(28px, calc((100vw - 1920px) / 2)); border-top: 1px solid var(--line); background: rgba(4,5,8,.75); }
 .footer-brand { display: flex; align-items: center; gap: 12px; }
 .footer-brand > div { display: grid; }
 .footer-brand strong { font-size: 9px; letter-spacing: .13em; }
@@ -1178,6 +1177,124 @@ dialog::backdrop { background: rgba(1,2,4,.78); backdrop-filter: blur(12px); }
 .toast span { color: var(--muted); font-size: 7px; }
 .toast button { border: 0; background: transparent; color: var(--faint); cursor: pointer; }
 
+/* Readable defaults. Compact remains the deliberate scan-density mode. */
+.button { font-size: 12px; }
+.symbol-guide-trigger, .network-state { font-size: 10px; }
+.account-button > span:nth-child(2) { font-size: 12px; }
+.market-rail { font-size: 10px; }
+.rail-track > a { font-size: 11px; }
+.page-heading p { font-size: 14px; }
+.mode-tabs button { font-size: 11px; }
+.inline-search input { font-size: 12px; }
+.podium-rank, .podium-score { font-size: 10px; }
+.podium-operator b { font-size: 15px; }
+.podium-metrics span { font-size: 9px; }
+.podium-metrics b { font-size: 12px; }
+.ranking-table th { font-size: 10px; }
+.ranking-table td { font-size: 12px; }
+.table-footer { font-size: 10px; }
+.activity-empty span { font-size: 11px; }
+
+.filter-heading { font-size: 10px; }
+.vertical-tabs button { font-size: 12px; }
+.vertical-tabs b, .segmented-control button { font-size: 10px; }
+.filter-note { font-size: 11px; }
+.quote-state { font-size: 9px; }
+.setup-toolbar select { font-size: 11px; }
+.setup-layout-switcher button, .setup-sort-dock > span, .setup-sort-dock button { font-size: 9px; }
+.ticker-icon { font-size: 10px; }
+.ticker-copy b { font-size: 14px; }
+.ticker-copy span { font-size: 10px; }
+.status-chip { font-size: 9px; }
+.setup-position-map > header span,
+.setup-position-map > header span small { font-size: 8px; }
+.setup-position-map > header b { font-size: 9px; }
+.position-map-key { font-size: 7px; }
+.position-value span { font-size: 8px; }
+.position-value span small { font-size: 7px; }
+.position-value b { font-size: 10px; }
+.position-marker[data-map-tooltip]::after,
+.position-value[data-map-tooltip]::after { font-size: 10px; }
+.setup-price-grid span, .setup-price-grid span small { font-size: 8px; }
+.setup-price-grid b { font-size: 11px; }
+.setup-price-grid b small { font-size: 8px; }
+.setup-thesis { font-size: 11px; }
+.setup-card-foot { font-size: 9px; }
+.setup-card-byline > span { font-size: 9px; }
+.setup-victory-teaser small, .setup-victory-teaser em { font-size: 8px; }
+.setup-victory-teaser b { font-size: 11px; }
+
+.discussion-toggle,
+.discussion-toggle > b,
+.discussion-toggle > em { font-size: 9px; }
+.discussion-heading span, .discussion-heading small { font-size: 9px; }
+.discussion-heading b { font-size: 11px; }
+.comment-avatar { font-size: 9px; }
+.comment-handle { font-size: 11px; }
+.comment-content header strong { font-size: 8px; }
+.comment-content time { font-size: 9px; }
+.comment-content p { font-size: 11px; }
+.comment-reply-reference span,
+.comment-reply-reference small { font-size: 9px; }
+.comment-reply, .comment-delete { font-size: 9px; }
+.comment-system-state { font-size: 10px; }
+.comment-composer textarea { font-size: 12px; }
+.mention-option-copy b, .mention-suggestion-state { font-size: 10px; }
+.comment-composer button, .comment-sign-in,
+.comment-reply-context span,
+.comment-image-picker span,
+.comment-attachment-actions > small { font-size: 9px; }
+.comment-reply-context p { font-size: 10px; }
+.attachment-picker b { font-size: 11px; }
+.attachment-picker small { font-size: 10px; }
+.attachment-preview b { font-size: 11px; }
+.attachment-preview small, .attachment-preview button,
+.comment-composer .attachment-preview button { font-size: 9px; }
+
+.gauge-labels { font-size: 9px; }
+.intel-list span, .intel-list b { font-size: 10px; }
+
+.auth-card > p { font-size: 12px; }
+.auth-setup-notice b { font-size: 10px; }
+.auth-setup-notice span { font-size: 11px; }
+.credential-fields label > span { font-size: 10px; }
+.credential-fields input { font-size: 14px; }
+.secondary-auth-button { font-size: 11px; }
+.auth-inline-status, .auth-footnote { font-size: 10px; }
+
+.submit-dialog { width: min(100% - 24px, 1180px); }
+.submit-header h2 { font-size: 34px; }
+.submit-header p { font-size: 13px; }
+.form-alert b { font-size: 11px; }
+.form-alert small, .form-alert button { font-size: 10px; }
+.form-section-label { font-size: 11px; }
+.field > span, .field legend, .trigger-selector legend { font-size: 11px; }
+.field input, .field select, .field textarea { font-size: 14px; }
+.field input, .field select { height: 46px; }
+.field-control i { font-size: 11px; }
+.ticker-field-hint { font-size: 10px; }
+.direction-switch { height: 46px; }
+.direction-switch label { font-size: 11px; }
+.trigger-selector label > span { padding: 13px; }
+.trigger-selector label b { font-size: 12px; }
+.trigger-selector label small { font-size: 10px; }
+.risk-preview span { font-size: 9px; }
+.risk-preview b { font-size: 12px; }
+.thesis-field > small { font-size: 9px; }
+.form-error { font-size: 11px; }
+.immutability-note b { font-size: 11px; }
+.immutability-note small { font-size: 10px; }
+
+.layout-compact .ticker-copy b { font-size: 12px; }
+.layout-compact .ticker-copy span { font-size: 9px; }
+.layout-compact .position-value span { font-size: 7px; }
+.layout-compact .position-value span small { font-size: 6px; }
+.layout-compact .position-value b { font-size: 9px; }
+.layout-compact .setup-victory-teaser b { font-size: 9px; }
+
+.toast b { font-size: 11px; }
+.toast span { font-size: 10px; }
+
 @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(64,237,160,.28); } 70% { box-shadow: 0 0 0 6px rgba(64,237,160,0); } 100% { box-shadow: 0 0 0 0 rgba(64,237,160,0); } }
 @keyframes signal { to { height: 3px; opacity: .35; } }
 @keyframes rotate { to { transform: rotate(360deg); } }
@@ -1368,10 +1485,7 @@ dialog::backdrop { background: rgba(1,2,4,.78); backdrop-filter: blur(12px); }
   .overview-grid { grid-template-columns: 1fr 360px; }
   .hero-panel { padding: 48px 40px 28px; }
   .metric-strip { grid-template-columns: repeat(2,1fr); }
-  .setup-dashboard { grid-template-columns: 170px minmax(0,1fr); grid-template-areas: "filters feed" "intel intel"; }
-  .market-intel { display: grid; grid-template-columns: 190px 1fr 220px; gap: 18px; align-items: center; }
-  .market-intel .filter-heading { grid-column: 1/-1; }
-  .chart-shell { border: 0; }
+  .setup-dashboard { grid-template-columns: 200px minmax(0,1fr); }
 }
 
 @media (max-width: 900px) {
@@ -1391,8 +1505,7 @@ dialog::backdrop { background: rgba(1,2,4,.78); backdrop-filter: blur(12px); }
   .podium-card { min-height: 145px; }
   .ranking-table { min-width: 780px; }
   .ranking-table-shell { overflow-x: auto; }
-  .setup-dashboard { grid-template-columns: 1fr; grid-template-areas: "filters" "feed" "intel"; }
-  .market-intel { display: block; }
+  .setup-dashboard { grid-template-columns: 1fr; }
   .setup-filters { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px; }
   .setup-filters .filter-heading { margin-top: 0; }
   .setup-filters .vertical-tabs { grid-column: 1/-1; grid-template-columns: repeat(3,1fr); }

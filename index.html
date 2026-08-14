@@ -283,7 +283,8 @@
       </header>
 
       <div class="setup-dashboard">
-        <aside class="setup-filters glass-panel">
+        <div class="setup-rail" aria-label="Setup filters and network pulse">
+          <aside class="setup-filters glass-panel">
           <div class="filter-heading">STATE FILTER</div>
           <div class="vertical-tabs" id="setup-state-tabs">
             <button class="is-active" data-setup-state="all" type="button"><span>All signals</span><b id="count-all">0</b></button>
@@ -304,7 +305,22 @@
             <span class="pulse-dot"></span>
             New submissions appear after validation.
           </div>
-        </aside>
+          </aside>
+
+          <aside class="market-intel glass-panel">
+            <div class="filter-heading">NETWORK PULSE</div>
+            <div class="bias-gauge">
+              <div class="gauge-labels"><span>SHORT</span><b id="long-bias-label">80% LONG</b><span>LONG</span></div>
+              <div class="gauge-track"><i id="long-bias-bar" style="width:80%"></i></div>
+            </div>
+            <div class="chart-shell"><canvas id="network-chart" aria-label="Setup activity over time"></canvas></div>
+            <div class="intel-list">
+              <div><span>Most active horizon</span><b id="top-horizon">SWING</b></div>
+              <div><span>Most used trigger</span><b id="top-trigger">PULLBACK</b></div>
+              <div><span>Median planned R</span><b id="median-r">2.1R</b></div>
+            </div>
+          </aside>
+        </div>
 
         <section class="setup-feed">
           <div class="setup-toolbar glass-panel">
@@ -344,19 +360,6 @@
           <div class="table-empty glass-panel" id="setup-empty" hidden>No current public setups. Historical Sheet records will appear after the live migration.</div>
         </section>
 
-        <aside class="market-intel glass-panel">
-          <div class="filter-heading">NETWORK PULSE</div>
-          <div class="bias-gauge">
-            <div class="gauge-labels"><span>SHORT</span><b id="long-bias-label">80% LONG</b><span>LONG</span></div>
-            <div class="gauge-track"><i id="long-bias-bar" style="width:80%"></i></div>
-          </div>
-          <div class="chart-shell"><canvas id="network-chart" aria-label="Setup activity over time"></canvas></div>
-          <div class="intel-list">
-            <div><span>Most active horizon</span><b id="top-horizon">SWING</b></div>
-            <div><span>Most used trigger</span><b id="top-trigger">PULLBACK</b></div>
-            <div><span>Median planned R</span><b id="median-r">2.1R</b></div>
-          </div>
-        </aside>
       </div>
     </section>
   </main>
