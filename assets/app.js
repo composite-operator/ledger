@@ -146,6 +146,19 @@
     $$('[data-setup-state]').forEach((item) => item.classList.toggle("is-active", item.dataset.setupState === state.setupState));
   }
 
+  function navigateToSetup(setupId, bookName) {
+    const profileDialog = $("#profile-dialog");
+    if (profileDialog?.open) profileDialog.close();
+    openSetupBook(bookName || "all");
+    requestAnimationFrame(() => {
+      const card = document.getElementById(`setup-${setupId}`);
+      if (!card) return;
+      card.scrollIntoView({ behavior: "smooth", block: "start" });
+      card.classList.add("is-context-jump");
+      setTimeout(() => card.classList.remove("is-context-jump"), 1800);
+    });
+  }
+
   function bindDialogs() {
     const authDialog = $("#auth-dialog");
     const submitDialog = $("#submit-dialog");
@@ -832,15 +845,7 @@
       const openProfileSetup = () => {
         const setupId = String(record.dataset.profileOpenSetup);
         const targetBook = record.dataset.profileSetupBook || "all";
-        $("#profile-dialog").close();
-        openSetupBook(targetBook);
-        requestAnimationFrame(() => {
-          const card = document.getElementById(`setup-${setupId}`);
-          if (!card) return;
-          card.scrollIntoView({ behavior: "smooth", block: "start" });
-          card.classList.add("is-profile-jump");
-          setTimeout(() => card.classList.remove("is-profile-jump"), 1800);
-        });
+        navigateToSetup(setupId, targetBook);
       };
       record.addEventListener("click", (event) => {
         if (!event.target.closest("[data-profile-unfollow-setup]")) openProfileSetup();
@@ -1522,11 +1527,21 @@
 
   function renderActivity() {
     const items = state.setups.slice().sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at)).slice(0, 7);
-    $("#activity-stream").innerHTML = items.length ? items.map((setup) => `<div class="activity-item">
+    const stream = $("#activity-stream");
+    stream.innerHTML = items.length ? items.map((setup) => `<div class="activity-item is-clickable" role="link" tabindex="0" data-activity-setup="${escapeAttr(setup.id)}" data-activity-book="${escapeAttr(normalizeState(setup.status))}" aria-label="Open ${escapeAttr(setup.ticker)} setup by ${escapeAttr(setup.handle)}">
       <div class="activity-node">${setup.direction === "LONG" ? "↗" : "↘"}</div>
       <div class="activity-copy"><b>@${escapeHtml(setup.handle)} published ${escapeHtml(setup.ticker)}</b><span>${escapeHtml(setup.direction)} ${escapeHtml(labelize(setup.trigger_type))} at ${formatPrice(setup.entry)} · ${escapeHtml(setup.strategy || "Uncategorized")}</span></div>
-      <time>${formatRelative(setup.submitted_at)}</time>
+      <time><span>${formatRelative(setup.submitted_at)}</span><b>OPEN ↗</b></time>
     </div>`).join("") : '<div class="activity-empty"><b>No current public signals</b><span>The stream is ready for the first operator submission.</span></div>';
+    $$('[data-activity-setup]', stream).forEach((item) => {
+      const openStreamSetup = () => navigateToSetup(String(item.dataset.activitySetup), item.dataset.activityBook || "all");
+      item.addEventListener("click", openStreamSetup);
+      item.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        openStreamSetup();
+      });
+    });
   }
 
   function renderNetworkIntel() {
