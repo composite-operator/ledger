@@ -146,6 +146,7 @@
     notificationChannel: null,
     outcomeSetupId: null,
     outcomeCardKind: null,
+    pendingSocialShare: null,
     quoteRefreshActive: false,
     quoteRefreshTimer: null,
     quoteLastRequestedAt: 0,
@@ -251,6 +252,7 @@
     const methodDialog = $("#method-dialog");
     const symbolGuideDialog = $("#symbol-guide-dialog");
     const outcomeDialog = $("#outcome-dialog");
+    const socialShareDialog = $("#social-share-dialog");
     const profileDialog = $("#profile-dialog");
 
     $("#account-button").addEventListener("click", async () => {
@@ -274,6 +276,30 @@
     $$('[data-open-symbol-guide]').forEach((button) => button.addEventListener("click", () => symbolGuideDialog.showModal()));
     $$('[data-close-symbol-guide]').forEach((button) => button.addEventListener("click", () => symbolGuideDialog.close()));
     $("[data-close-outcome]").addEventListener("click", () => outcomeDialog.close());
+    $("[data-close-social-share]").addEventListener("click", () => socialShareDialog.close());
+    $("[data-share-x]").addEventListener("click", () => {
+      const pending = state.pendingSocialShare;
+      if (!pending) return;
+      const intent = new URL("https://twitter.com/intent/tweet");
+      intent.searchParams.set("text", pending.text);
+      intent.searchParams.set("url", pending.xUrl);
+      window.open(intent.toString(), "_blank", "noopener,noreferrer");
+      socialShareDialog.close();
+    });
+    $("[data-share-discord]").addEventListener("click", async () => {
+      const pending = state.pendingSocialShare;
+      if (!pending) return;
+      try {
+        await navigator.clipboard.writeText(pending.discordUrl);
+        socialShareDialog.close();
+        showToast("Discord link copied", "Paste it into Discord to render the clickable Ledger card.");
+      } catch (_error) {
+        showToast("Copy blocked", pending.discordUrl, true);
+      }
+    });
+    socialShareDialog.addEventListener("close", () => {
+      state.pendingSocialShare = null;
+    });
     $("[data-share-outcome]").addEventListener("click", () => {
       const setup = state.setups.find((item) => String(item.id) === String(state.outcomeSetupId));
       if (!setup) return;
@@ -2399,6 +2425,17 @@
   }
 
   function socialCardUrl(type, values) {
+    if (!config.socialCardEndpoint) return null;
+    const url = new URL(config.socialCardEndpoint);
+    url.searchParams.set("type", type);
+    url.searchParams.set("v", "x-3");
+    Object.entries(values).forEach(([key, value]) => {
+      if (value != null && String(value).trim()) url.searchParams.set(key, String(value));
+    });
+    return url.toString();
+  }
+
+  function discordSharePageUrl(type, values) {
     if (config.socialSharePages && config.siteUrl) {
       const value = type === "operator" ? values.handle : values.id;
       if (value != null && String(value).trim()) {
@@ -2410,14 +2447,7 @@
         return url.toString();
       }
     }
-    if (!config.socialCardEndpoint) return null;
-    const url = new URL(config.socialCardEndpoint);
-    url.searchParams.set("type", type);
-    url.searchParams.set("v", "discord-2");
-    Object.entries(values).forEach(([key, value]) => {
-      if (value != null && String(value).trim()) url.searchParams.set(key, String(value));
-    });
-    return url.toString();
+    return socialCardUrl(type, values);
   }
 
   function operatorRecordUrl(profile) {
@@ -2432,6 +2462,10 @@
     return socialCardUrl("operator", { handle: profile.handle }) || operatorRecordUrl(profile);
   }
 
+  function operatorDiscordShareUrl(profile) {
+    return discordSharePageUrl("operator", { handle: profile.handle }) || operatorRecordUrl(profile);
+  }
+
   function victoryShareUrl(setup) {
     const socialUrl = socialCardUrl("victory", { id: setup.id });
     if (socialUrl) return socialUrl;
@@ -2442,6 +2476,10 @@
     return url.toString();
   }
 
+  function victoryDiscordShareUrl(setup) {
+    return discordSharePageUrl("victory", { id: setup.id }) || victoryRecordUrl(setup);
+  }
+
   function lossShareUrl(setup) {
     const socialUrl = socialCardUrl("loss", { id: setup.id });
     if (socialUrl) return socialUrl;
@@ -2450,6 +2488,10 @@
     url.searchParams.set("loss", setup.id);
     url.hash = "setups";
     return url.toString();
+  }
+
+  function lossDiscordShareUrl(setup) {
+    return discordSharePageUrl("loss", { id: setup.id }) || victoryRecordUrl(setup);
   }
 
   function victoryElapsed(setup) {
@@ -2599,64 +2641,45 @@
     if (!dialog.open) dialog.showModal();
   }
 
-  async function shareOperatorProfile(profile) {
-    const url = operatorShareUrl(profile);
+  function openSocialShareChooser({ title, text, xUrl, discordUrl }) {
+    state.pendingSocialShare = { title, text, xUrl, discordUrl };
+    $("[data-social-share-title]").textContent = title;
+    $("[data-social-share-copy]").textContent = text;
+    const dialog = $("#social-share-dialog");
+    if (!dialog.open) dialog.showModal();
+  }
+
+  function shareOperatorProfile(profile) {
     const rank = Number(profile.rank_position || 0);
     const score = formatNumber(profile.goat_score, 2, "NQ");
     const standing = rank ? `Global rank #${rank}. ` : "";
     const text = `@${profile.handle} on Composite Operator Ledger. ${standing}GOAT ${score} · ${formatPercent(profile.win_rate)} win rate · ${formatR(profile.avg_r)} average.`;
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: `@${profile.handle} · Ledger operator card`, text, url });
-        return;
-      } catch (error) {
-        if (error?.name === "AbortError") return;
-      }
-    }
-    try {
-      await navigator.clipboard.writeText(`${text}\n${url}`);
-      showToast("Profile card link copied", config.socialCardEndpoint ? "Discord and X can render the public operator statistics preview." : "The public Ledger profile link is ready to share.");
-    } catch (_error) {
-      showToast("Copy blocked", url, true);
-    }
+    openSocialShareChooser({
+      title: `Share @${profile.handle}`,
+      text,
+      xUrl: operatorShareUrl(profile),
+      discordUrl: operatorDiscordShareUrl(profile)
+    });
   }
 
-  async function shareVictorySetup(setup) {
-    const url = victoryShareUrl(setup);
+  function shareVictorySetup(setup) {
     const text = `${setup.ticker} closed ${formatR(setup.r_result ?? setup.score)} by @${setup.handle}. Verified on Composite Operator Ledger.`;
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: `${setup.ticker} victory card`, text, url });
-        return;
-      } catch (error) {
-        if (error?.name === "AbortError") return;
-      }
-    }
-    try {
-      await navigator.clipboard.writeText(`${text}\n${url}`);
-      showToast("Victory link copied", "The branded result card is ready to share.");
-    } catch (_error) {
-      showToast("Copy blocked", url, true);
-    }
+    openSocialShareChooser({
+      title: `Share ${setup.ticker} victory`,
+      text,
+      xUrl: victoryShareUrl(setup),
+      discordUrl: victoryDiscordShareUrl(setup)
+    });
   }
 
-  async function shareLossSetup(setup) {
-    const url = lossShareUrl(setup);
+  function shareLossSetup(setup) {
     const text = `${setup.ticker} closed ${formatR(setup.r_result ?? setup.score)} by @${setup.handle}. The public loss receipt is verified on Composite Operator Ledger.`;
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: `${setup.ticker} loss card`, text, url });
-        return;
-      } catch (error) {
-        if (error?.name === "AbortError") return;
-      }
-    }
-    try {
-      await navigator.clipboard.writeText(`${text}\n${url}`);
-      showToast("Loss link copied", "The branded damage report is ready to share.");
-    } catch (_error) {
-      showToast("Copy blocked", url, true);
-    }
+    openSocialShareChooser({
+      title: `Share ${setup.ticker} loss`,
+      text,
+      xUrl: lossShareUrl(setup),
+      discordUrl: lossDiscordShareUrl(setup)
+    });
   }
 
   async function shareSetup(setupId) {

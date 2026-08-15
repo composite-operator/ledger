@@ -866,6 +866,26 @@ dialog::backdrop { background: rgba(1,2,4,.78); backdrop-filter: blur(12px); }
 .loss-card .victory-operator-stats b { color: #ffbd4a; }
 .victory-modal-card.is-loss .victory-actions button { border-color: rgba(255,102,95,.3); background: rgba(255,102,95,.1); color: #ff665f; }
 
+.social-share-dialog { width: min(100% - 24px, 560px); }
+.social-share-card { padding: 34px; }
+.social-share-card > .eyebrow { color: var(--acid); font-size: 11px; font-weight: 700; }
+.social-share-card h2 { margin: 10px 0 8px; color: #fff; font-size: clamp(28px, 5vw, 36px); letter-spacing: -.045em; }
+.social-share-card > p { margin: 0; color: #e8edf5; font-size: 15px; line-height: 1.55; }
+.social-share-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 28px; }
+.social-share-actions button { display: grid; grid-template-columns: 42px minmax(0,1fr); grid-template-rows: auto auto; align-items: center; min-height: 92px; padding: 16px; border: 1px solid var(--line-strong); border-radius: 13px; color: #fff; cursor: pointer; text-align: left; transition: border-color .16s ease, transform .16s ease, filter .16s ease; }
+.social-share-actions button:hover { border-color: #fff; filter: brightness(1.08); transform: translateY(-2px); }
+.social-share-actions button > span { grid-row: 1 / 3; font-size: 28px; line-height: 1; text-align: center; }
+.social-share-actions button > b { font-family: var(--mono); font-size: 11px; letter-spacing: .04em; }
+.social-share-actions button > small { margin-top: 5px; color: rgba(255,255,255,.8); font-size: 10px; }
+.share-x { background: #050505; }
+.share-discord { background: #5865f2; }
+.social-share-note { display: block; margin-top: 18px; color: #cbd5e1; font-size: 10px; text-align: center; }
+
+@media (max-width: 560px) {
+  .social-share-card { padding: 28px 20px 22px; }
+  .social-share-actions { grid-template-columns: 1fr; }
+}
+
 .auth-dialog { width: min(100% - 24px, 470px); }
 .auth-card { max-height: calc(100vh - 30px); overflow-y: auto; overscroll-behavior: contain; padding: 36px; }
 .auth-card h2 { margin: 8px 0 8px; font-size: 29px; letter-spacing: -.05em; }
