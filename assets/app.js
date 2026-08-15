@@ -2399,6 +2399,17 @@
   }
 
   function socialCardUrl(type, values) {
+    if (config.socialSharePages && config.siteUrl) {
+      const value = type === "operator" ? values.handle : values.id;
+      if (value != null && String(value).trim()) {
+        const url = new URL(config.siteUrl);
+        const root = url.pathname.endsWith("/") ? url.pathname : `${url.pathname}/`;
+        url.pathname = `${root}share/${encodeURIComponent(type)}/${encodeURIComponent(String(value).trim().toLowerCase())}/`;
+        url.search = "";
+        url.hash = "";
+        return url.toString();
+      }
+    }
     if (!config.socialCardEndpoint) return null;
     const url = new URL(config.socialCardEndpoint);
     url.searchParams.set("type", type);

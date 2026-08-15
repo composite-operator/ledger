@@ -1,12 +1,12 @@
 {
   "files": [
     {
-      "path": ".gitignore",
-      "sha256": "0c676e67b32edd4bb33ee763ebd1dc9c7a5d20088fe243018853aeb5df681f32"
+      "path": ".github/workflows/deploy-pages.yml",
+      "sha256": "9cfeddc9ceb8074c371e8e77ed5397f7f287f3f842c6d332169f4a5ddf79c25d"
     },
     {
-      "path": ".github/workflows/deploy-pages.yml",
-      "sha256": "51d920177a6f73487e432170745583f32bf1b6ba047c7f3d97aa1c77d6b63bf5"
+      "path": ".gitignore",
+      "sha256": "0c676e67b32edd4bb33ee763ebd1dc9c7a5d20088fe243018853aeb5df681f32"
     },
     {
       "path": ".nojekyll",
@@ -14,7 +14,7 @@
     },
     {
       "path": "assets/app.js",
-      "sha256": "3f7e1477b1dcaf4b67661ef68c3aea697d66ba20e6ecf01936974a99331e446f"
+      "sha256": "95ce5860513a3919ff8758e39a18384845b228a32a308e0b41bdeeaf5802774d"
     },
     {
       "path": "assets/brand-mark.svg",
@@ -62,11 +62,11 @@
     },
     {
       "path": "assets/runtime-config.example.js",
-      "sha256": "4f7a1f389a031914265b79367fcc473938663224caf177293ce42b3905addfa0"
+      "sha256": "f0a4f3142c8d7c570e20c74830f4e93d4736e4063b4fbffe5ffc981450f25eba"
     },
     {
       "path": "assets/runtime-config.js",
-      "sha256": "5ef495d6838558a58fca766e4ca8478cceaaba255f7513ffdf9ec754c2ae5e6f"
+      "sha256": "d22fdd9947daae16a2469582f2525a43467b6ea6c8fd7667bbaccddeef2bdbc6"
     },
     {
       "path": "assets/styles.css",
@@ -95,6 +95,10 @@
     {
       "path": "legal.html",
       "sha256": "285e0ad66855ee5f5cd8400a256f257a90d3ee1954f8e8937f26a311fd2f8312"
+    },
+    {
+      "path": "scripts/generate-social-pages.mjs",
+      "sha256": "e655960ab254c797a7bdc6894a78b161f48286ad4b9f897b0e16e33d00de1c1a"
     },
     {
       "path": "site.webmanifest",

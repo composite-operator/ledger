@@ -7,5 +7,6 @@ window.LEDGER_CONFIG = Object.freeze({
   supabasePublishableKey: "sb_publishable_PiqCuSrReoRf9zCl-m0omQ_CT2qNBlO",
   siteUrl: "https://composite-operator.github.io/ledger/",
   socialCardEndpoint: "https://pynosegrafnskdlthdcr.supabase.co/functions/v1/social-card",
+  socialSharePages: true,
   demoMode: false
 });
