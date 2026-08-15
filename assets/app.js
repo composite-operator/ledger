@@ -277,14 +277,16 @@
     $$('[data-close-symbol-guide]').forEach((button) => button.addEventListener("click", () => symbolGuideDialog.close()));
     $("[data-close-outcome]").addEventListener("click", () => outcomeDialog.close());
     $("[data-close-social-share]").addEventListener("click", () => socialShareDialog.close());
-    $("[data-share-x]").addEventListener("click", () => {
+    $("[data-share-x]").addEventListener("click", async () => {
       const pending = state.pendingSocialShare;
       if (!pending) return;
-      const intent = new URL("https://twitter.com/intent/tweet");
-      intent.searchParams.set("text", pending.text);
-      intent.searchParams.set("url", pending.xUrl);
-      window.open(intent.toString(), "_blank", "noopener,noreferrer");
-      socialShareDialog.close();
+      try {
+        await navigator.clipboard.writeText(pending.xUrl);
+        socialShareDialog.close();
+        showToast("X link copied", "Paste it into X. Your post text stays yours.");
+      } catch (_error) {
+        showToast("Copy blocked", pending.xUrl, true);
+      }
     });
     $("[data-share-discord]").addEventListener("click", async () => {
       const pending = state.pendingSocialShare;
@@ -2641,42 +2643,33 @@
     if (!dialog.open) dialog.showModal();
   }
 
-  function openSocialShareChooser({ title, text, xUrl, discordUrl }) {
-    state.pendingSocialShare = { title, text, xUrl, discordUrl };
+  function openSocialShareChooser({ title, xUrl, discordUrl }) {
+    state.pendingSocialShare = { title, xUrl, discordUrl };
     $("[data-social-share-title]").textContent = title;
-    $("[data-social-share-copy]").textContent = text;
+    $("[data-social-share-copy]").textContent = "Choose a destination link to copy. Your post text stays yours.";
     const dialog = $("#social-share-dialog");
     if (!dialog.open) dialog.showModal();
   }
 
   function shareOperatorProfile(profile) {
-    const rank = Number(profile.rank_position || 0);
-    const score = formatNumber(profile.goat_score, 2, "NQ");
-    const standing = rank ? `Global rank #${rank}. ` : "";
-    const text = `@${profile.handle} on Composite Operator Ledger. ${standing}GOAT ${score} · ${formatPercent(profile.win_rate)} win rate · ${formatR(profile.avg_r)} average.`;
     openSocialShareChooser({
       title: `Share @${profile.handle}`,
-      text,
       xUrl: operatorShareUrl(profile),
       discordUrl: operatorDiscordShareUrl(profile)
     });
   }
 
   function shareVictorySetup(setup) {
-    const text = `${setup.ticker} closed ${formatR(setup.r_result ?? setup.score)} by @${setup.handle}. Verified on Composite Operator Ledger.`;
     openSocialShareChooser({
       title: `Share ${setup.ticker} victory`,
-      text,
       xUrl: victoryShareUrl(setup),
       discordUrl: victoryDiscordShareUrl(setup)
     });
   }
 
   function shareLossSetup(setup) {
-    const text = `${setup.ticker} closed ${formatR(setup.r_result ?? setup.score)} by @${setup.handle}. The public loss receipt is verified on Composite Operator Ledger.`;
     openSocialShareChooser({
       title: `Share ${setup.ticker} loss`,
-      text,
       xUrl: lossShareUrl(setup),
       discordUrl: lossDiscordShareUrl(setup)
     });
