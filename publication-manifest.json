@@ -14,7 +14,7 @@
     },
     {
       "path": "assets/app.js",
-      "sha256": "da3c66c7635ccec12fb51f4d488fb4d74d1c184a0d895dbf21abd422e30ef71e"
+      "sha256": "16bbff93bb74cd874cbded37f578a593fafa5a02046f52daaf384576c5b54fb8"
     },
     {
       "path": "assets/brand-mark.svg",
@@ -90,7 +90,7 @@
     },
     {
       "path": "index.html",
-      "sha256": "5226f2adda40d27b0249497b9124d32ea433d5854a7e67d7751d2928e9ed6985"
+      "sha256": "eb843c1f094d6994308b64d6f91eb4dc8d923d06cf7d5b4938014db8a8695fe7"
     },
     {
       "path": "legal.html",

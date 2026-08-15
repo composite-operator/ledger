@@ -283,7 +283,7 @@
       try {
         await navigator.clipboard.writeText(pending.xUrl);
         socialShareDialog.close();
-        showToast("X link copied", "Paste it into X. Your post text stays yours.");
+        showToast("X link copied", "Paste it into X.");
       } catch (_error) {
         showToast("Copy blocked", pending.xUrl, true);
       }
@@ -2646,7 +2646,7 @@
   function openSocialShareChooser({ title, xUrl, discordUrl }) {
     state.pendingSocialShare = { title, xUrl, discordUrl };
     $("[data-social-share-title]").textContent = title;
-    $("[data-social-share-copy]").textContent = "Choose a destination link to copy. Your post text stays yours.";
+    $("[data-social-share-copy]").textContent = "Choose a destination link to copy.";
     const dialog = $("#social-share-dialog");
     if (!dialog.open) dialog.showModal();
   }
