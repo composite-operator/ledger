@@ -5,6 +5,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const SITE_URL = "https://composite-operator.github.io/ledger/";
 const CACHE_CONTROL = "public, max-age=300, s-maxage=900, stale-while-revalidate=86400";
+const SOCIAL_CARD_VERSION = "discord-2";
 const HANDLE_PATTERN = /^[a-z0-9][a-z0-9_-]{1,29}$/;
 const ID_PATTERN = /^[a-zA-Z0-9_-]{6,80}$/;
 
@@ -285,11 +286,18 @@ function socialHtml(record: CardRecord, imageUrl: string) {
   const description = escapeHtml(record.description);
   const targetUrl = escapeHtml(record.targetUrl);
   const escapedImage = escapeHtml(imageUrl);
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><meta name="description" content="${description}"><link rel="canonical" href="${targetUrl}"><meta property="og:type" content="website"><meta property="og:site_name" content="Composite Operator Ledger"><meta property="og:title" content="${title}"><meta property="og:description" content="${description}"><meta property="og:url" content="${targetUrl}"><meta property="og:image" content="${escapedImage}"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="${title}"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${title}"><meta name="twitter:description" content="${description}"><meta name="twitter:image" content="${escapedImage}"><style>body{margin:0;display:grid;min-height:100vh;place-items:center;background:#090b11;color:#fff;font:18px Arial,sans-serif}.card{max-width:680px;padding:36px;border:1px solid #384214;border-radius:18px;background:#0e1118}.card b{display:block;color:#c8ff2e;font-size:30px}.card p{line-height:1.6;color:#d9dde5}.card a{display:inline-block;margin-top:12px;padding:14px 18px;border-radius:9px;background:#c8ff2e;color:#090b11;font-weight:800;text-decoration:none}</style></head><body><main class="card"><b>${title}</b><p>${description}</p><a href="${targetUrl}">Open the public Ledger record →</a></main></body></html>`;
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><meta name="description" content="${description}"><link rel="canonical" href="${targetUrl}"><meta property="og:type" content="website"><meta property="og:site_name" content="Composite Operator Ledger"><meta property="og:title" content="${title}"><meta property="og:description" content="${description}"><meta property="og:url" content="${targetUrl}"><meta property="og:image" content="${escapedImage}"><meta property="og:image:secure_url" content="${escapedImage}"><meta property="og:image:type" content="image/png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="${title}"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${title}"><meta name="twitter:description" content="${description}"><meta name="twitter:image" content="${escapedImage}"><meta name="twitter:image:alt" content="${title}"><style>body{margin:0;display:grid;min-height:100vh;place-items:center;background:#090b11;color:#fff;font:18px Arial,sans-serif}.card{max-width:680px;padding:36px;border:1px solid #384214;border-radius:18px;background:#0e1118}.card b{display:block;color:#c8ff2e;font-size:30px}.card p{line-height:1.6;color:#d9dde5}.card a{display:inline-block;margin-top:12px;padding:14px 18px;border-radius:9px;background:#c8ff2e;color:#090b11;font-weight:800;text-decoration:none}</style></head><body><main class="card"><b>${title}</b><p>${description}</p><a href="${targetUrl}">Open the public Ledger record →</a></main></body></html>`;
 }
 
 function isCrawler(userAgent: string) {
   return /bot|crawler|spider|preview|discord|twitter|facebookexternalhit|slack|linkedin|whatsapp|telegram/i.test(userAgent);
+}
+
+function needsDirectImage(userAgent: string) {
+  // Supabase rewrites HTML GET responses to text/plain on its standard domain.
+  // Discord honors nosniff and rejects that response. A direct PNG response
+  // preserves Discord embeds while X can continue to parse the social HTML.
+  return /discord|slackbot|whatsapp|telegram/i.test(userAgent);
 }
 
 async function handler(request: Request) {
@@ -302,14 +310,16 @@ async function handler(request: Request) {
       ? await loadOperator(url.searchParams.get("handle") || "")
       : await loadOutcome(url.searchParams.get("id") || "", type);
 
-    if (url.searchParams.get("format") === "image") return imageResponse(record);
+    const userAgent = request.headers.get("user-agent") || "";
+    if (url.searchParams.get("format") === "image" || needsDirectImage(userAgent)) return imageResponse(record);
 
     const imageUrl = new URL(PUBLIC_FUNCTION_URL);
     imageUrl.searchParams.set("type", record.kind);
     if (record.kind === "operator") imageUrl.searchParams.set("handle", record.handle);
     else imageUrl.searchParams.set("id", url.searchParams.get("id") || "");
     imageUrl.searchParams.set("format", "image");
-    if (!isCrawler(request.headers.get("user-agent") || "") && url.searchParams.get("inspect") !== "1") {
+    imageUrl.searchParams.set("v", SOCIAL_CARD_VERSION);
+    if (!isCrawler(userAgent) && url.searchParams.get("inspect") !== "1") {
       return Response.redirect(record.targetUrl, 302);
     }
     return new Response(socialHtml(record, imageUrl.toString()), {

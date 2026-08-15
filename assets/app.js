@@ -2402,6 +2402,7 @@
     if (!config.socialCardEndpoint) return null;
     const url = new URL(config.socialCardEndpoint);
     url.searchParams.set("type", type);
+    url.searchParams.set("v", "discord-2");
     Object.entries(values).forEach(([key, value]) => {
       if (value != null && String(value).trim()) url.searchParams.set(key, String(value));
     });

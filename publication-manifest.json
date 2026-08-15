@@ -14,7 +14,7 @@
     },
     {
       "path": "assets/app.js",
-      "sha256": "7c8a42efc1a2b8fcf8d7739133ea755552244610367b9b540a2b2661e3167156"
+      "sha256": "3f7e1477b1dcaf4b67661ef68c3aea697d66ba20e6ecf01936974a99331e446f"
     },
     {
       "path": "assets/brand-mark.svg",
@@ -106,7 +106,7 @@
     },
     {
       "path": "supabase/functions/social-card/index.tsx",
-      "sha256": "60f688702ab9cded7508fa1f5c5a8a1550bccf3fc254adcc5573b516f0f7d7a1"
+      "sha256": "6f01a698e8c5cb90dea103ff70a5e85d3ec5e15724fb45eb1e6426de936cfa8a"
     }
   ],
   "profile": "ledger",
