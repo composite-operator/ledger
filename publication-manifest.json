@@ -1,6 +1,10 @@
 {
   "files": [
     {
+      "path": ".gitignore",
+      "sha256": "0c676e67b32edd4bb33ee763ebd1dc9c7a5d20088fe243018853aeb5df681f32"
+    },
+    {
       "path": ".github/workflows/deploy-pages.yml",
       "sha256": "51d920177a6f73487e432170745583f32bf1b6ba047c7f3d97aa1c77d6b63bf5"
     },
@@ -10,7 +14,7 @@
     },
     {
       "path": "assets/app.js",
-      "sha256": "4da571ac9c9ad2955beea2574f15ec49367335d3f84d9c52a27d68336f2fd669"
+      "sha256": "7c8a42efc1a2b8fcf8d7739133ea755552244610367b9b540a2b2661e3167156"
     },
     {
       "path": "assets/brand-mark.svg",
@@ -58,15 +62,15 @@
     },
     {
       "path": "assets/runtime-config.example.js",
-      "sha256": "ebbe347c9731425cb8cdedf07ba0fa45771514d58aed3ace4271aefbb3a9e52e"
+      "sha256": "4f7a1f389a031914265b79367fcc473938663224caf177293ce42b3905addfa0"
     },
     {
       "path": "assets/runtime-config.js",
-      "sha256": "2c58981b0f25495db51f35047684c416a882ac15984e31d752185bc61f6782cc"
+      "sha256": "5ef495d6838558a58fca766e4ca8478cceaaba255f7513ffdf9ec754c2ae5e6f"
     },
     {
       "path": "assets/styles.css",
-      "sha256": "184845e939397d979a16db1635c3bc6c6a7882701446f9dfc372fc463ce7dd25"
+      "sha256": "054be636269df4a60016b577de29c73c2827e46dd96c23e277190d2968270210"
     },
     {
       "path": "assets/victory/chud-terminal.webp",
@@ -86,7 +90,7 @@
     },
     {
       "path": "index.html",
-      "sha256": "724172b4d517ca3e202b847658a7121f6c81d03eb264e6d24d6dfe8538eccebc"
+      "sha256": "49ebadc2d416cf79bab1d945921e080d4dbc28c581080b45ea98cd5b0698d7f3"
     },
     {
       "path": "legal.html",
@@ -95,6 +99,14 @@
     {
       "path": "site.webmanifest",
       "sha256": "e9928d2409a9f3188052d194f86cd86a4c9b6f51fcff82b71577d9261ff1c8f7"
+    },
+    {
+      "path": "supabase/config.toml",
+      "sha256": "220e266f022424595f7cbdbd28acd2bb6a46c8a0ccedf5d4960f63ada6eacac8"
+    },
+    {
+      "path": "supabase/functions/social-card/index.tsx",
+      "sha256": "60f688702ab9cded7508fa1f5c5a8a1550bccf3fc254adcc5573b516f0f7d7a1"
     }
   ],
   "profile": "ledger",

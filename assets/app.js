@@ -251,6 +251,7 @@
     const methodDialog = $("#method-dialog");
     const symbolGuideDialog = $("#symbol-guide-dialog");
     const outcomeDialog = $("#outcome-dialog");
+    const profileDialog = $("#profile-dialog");
 
     $("#account-button").addEventListener("click", async () => {
       if (state.session?.user) {
@@ -288,6 +289,12 @@
       nextUrl.searchParams.delete("loss");
       history.replaceState(null, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
     });
+    profileDialog.addEventListener("close", () => {
+      const nextUrl = new URL(location.href);
+      if (!nextUrl.searchParams.has("profile")) return;
+      nextUrl.searchParams.delete("profile");
+      history.replaceState(null, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
+    });
     $$('[data-copy-symbol]').forEach((button) => button.addEventListener("click", async () => {
       const symbol = button.dataset.copySymbol;
       const tickerInput = $("#ticker");
@@ -305,7 +312,7 @@
     });
     $("#credential-sign-up").addEventListener("click", () => authenticateWithPassword("signup"));
 
-    const dialogs = [authDialog, submitDialog, methodDialog, symbolGuideDialog, outcomeDialog, $("#command-dialog"), $("#profile-dialog")];
+    const dialogs = [authDialog, submitDialog, methodDialog, symbolGuideDialog, outcomeDialog, $("#command-dialog"), profileDialog];
     let overlayScrollY = 0;
     let overlayScrollLocked = false;
     const syncOverlayScrollLock = () => {
@@ -966,6 +973,7 @@
       <div class="profile-avatar-row"><div class="profile-avatar-large">${profileAvatar(detailedLeader)}</div><div class="profile-identity-block"><h2>@${escapeHtml(detailedLeader.handle)}</h2>${isOwnProfile ? profileEditor(detailedLeader) : ""}</div></div>
       <p class="profile-bio">${escapeHtml(detailedLeader.bio || "No bio yet.")}</p>
       <div class="profile-badges"><span>LEDGER ACCOUNT</span><span>${detailedLeader.is_public === false ? "PRIVATE / HIDDEN" : "PUBLIC RECORD"}</span><span>JOINED ${escapeHtml(formatMonthYear(detailedLeader.created_at))}</span><span>${detailedLeader.triggered_setups || 0} TRIGGERED</span><span>${formatInteger(detailedLeader.follower_count)} FOLLOWERS</span><span>${formatInteger(detailedLeader.following_count)} FOLLOWING</span></div>
+      ${profileShareSummary(detailedLeader)}
       ${isOwnProfile
         ? '<button class="profile-signout" type="button" data-sign-out>Sign out</button>'
         : `<button class="profile-follow-button${isFollowing ? " is-following" : ""}" type="button" data-follow-profile="${escapeAttr(detailedLeader.id)}">${state.session?.user ? (isFollowing ? "FOLLOWING" : "FOLLOW OPERATOR") : "SIGN IN TO FOLLOW"}</button>`}
@@ -992,6 +1000,8 @@
     if (signOutButton) signOutButton.addEventListener("click", signOut);
     const followButton = $("[data-follow-profile]", drawer);
     if (followButton) followButton.addEventListener("click", () => toggleFollow(detailedLeader));
+    const shareProfileButton = $("[data-share-profile]", drawer);
+    if (shareProfileButton && !shareProfileButton.disabled) shareProfileButton.addEventListener("click", () => void shareOperatorProfile(detailedLeader));
     const profileForm = $("[data-profile-form]", drawer);
     if (profileForm) {
       profileForm.addEventListener("submit", (event) => saveProfile(event, detailedLeader));
@@ -1032,6 +1042,30 @@
   function profileAvatar(profile) {
     if (profile.avatar_url) return `<img src="${escapeAttr(profile.avatar_url)}" alt="@${escapeAttr(profile.handle)} profile picture">`;
     return escapeHtml(initials(profile.handle));
+  }
+
+  function profileShareSummary(profile) {
+    const totalOperators = Number(profile.total_count || state.rankTotal || 0);
+    const explicitRank = Number(profile.rank_position || 0);
+    const listedIndex = [...state.leaders, ...state.compactLeaders].findIndex((item) => String(item.id) === String(profile.id));
+    const globalRank = explicitRank || (listedIndex >= 0 ? listedIndex + 1 : 0);
+    const percentile = globalRank > 0 && totalOperators > 0 ? Math.max(1, Math.ceil((globalRank / totalOperators) * 100)) : null;
+    const isPublic = profile.is_public !== false;
+    return `<section class="profile-share-summary${isPublic ? "" : " is-private"}" aria-label="Public operator statistics card">
+      <div class="profile-share-standing">
+        <span>GLOBAL LEDGER STANDING</span>
+        <b>${globalRank ? `#${formatInteger(globalRank)}` : "NQ"}</b>
+        <small>${totalOperators ? `OF ${formatInteger(totalOperators)} OPERATORS${totalOperators >= 20 && percentile ? ` · TOP ${percentile}%` : ""}` : "RANKS AFTER QUALIFICATION"}</small>
+      </div>
+      <div class="profile-share-score"><span>GOAT SCORE</span><b>${formatNumber(profile.goat_score, 2, "NQ")}</b><small>GAINS, OR ABSOLUTE TRAGEDY</small></div>
+      <div class="profile-share-proof">
+        <span><small>WIN RATE</small><b>${formatPercent(profile.win_rate)}</b></span>
+        <span><small>AVG R</small><b class="${metricClass(profile.avg_r)}">${formatR(profile.avg_r)}</b></span>
+        <span><small>NET R</small><b class="${metricClass(profile.total_score)}">${formatSigned(profile.total_score)}</b></span>
+        <span><small>FOLLOWERS</small><b>${formatInteger(profile.follower_count)}</b></span>
+      </div>
+      <button type="button" data-share-profile${isPublic ? "" : " disabled"}>${isPublic ? "SHARE PUBLIC STATS CARD <span>↗</span>" : "PROFILE HIDDEN FROM PUBLIC SHARING"}</button>
+    </section>`;
   }
 
   function profileEditor(profile) {
@@ -2162,8 +2196,9 @@
     if (!profile && state.supabase) {
       const { data } = await state.supabase
         .from("profiles")
-        .select("id, handle, display_name, avatar_url, bio, created_at")
+        .select("id, handle, display_name, avatar_url, bio, is_public, created_at")
         .eq("handle", normalizedHandle)
+        .eq("is_public", true)
         .maybeSingle();
       if (data) profile = data;
     }
@@ -2363,7 +2398,31 @@
     return url.toString();
   }
 
+  function socialCardUrl(type, values) {
+    if (!config.socialCardEndpoint) return null;
+    const url = new URL(config.socialCardEndpoint);
+    url.searchParams.set("type", type);
+    Object.entries(values).forEach(([key, value]) => {
+      if (value != null && String(value).trim()) url.searchParams.set(key, String(value));
+    });
+    return url.toString();
+  }
+
+  function operatorRecordUrl(profile) {
+    const url = new URL(config.siteUrl || location.href);
+    url.search = "";
+    url.searchParams.set("profile", profile.handle);
+    url.hash = "leaderboard";
+    return url.toString();
+  }
+
+  function operatorShareUrl(profile) {
+    return socialCardUrl("operator", { handle: profile.handle }) || operatorRecordUrl(profile);
+  }
+
   function victoryShareUrl(setup) {
+    const socialUrl = socialCardUrl("victory", { id: setup.id });
+    if (socialUrl) return socialUrl;
     const url = new URL(config.siteUrl || location.href);
     url.search = "";
     url.searchParams.set("victory", setup.id);
@@ -2372,6 +2431,8 @@
   }
 
   function lossShareUrl(setup) {
+    const socialUrl = socialCardUrl("loss", { id: setup.id });
+    if (socialUrl) return socialUrl;
     const url = new URL(config.siteUrl || location.href);
     url.search = "";
     url.searchParams.set("loss", setup.id);
@@ -2526,6 +2587,28 @@
     if (!dialog.open) dialog.showModal();
   }
 
+  async function shareOperatorProfile(profile) {
+    const url = operatorShareUrl(profile);
+    const rank = Number(profile.rank_position || 0);
+    const score = formatNumber(profile.goat_score, 2, "NQ");
+    const standing = rank ? `Global rank #${rank}. ` : "";
+    const text = `@${profile.handle} on Composite Operator Ledger. ${standing}GOAT ${score} · ${formatPercent(profile.win_rate)} win rate · ${formatR(profile.avg_r)} average.`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: `@${profile.handle} · Ledger operator card`, text, url });
+        return;
+      } catch (error) {
+        if (error?.name === "AbortError") return;
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(`${text}\n${url}`);
+      showToast("Profile card link copied", config.socialCardEndpoint ? "Discord and X can render the public operator statistics preview." : "The public Ledger profile link is ready to share.");
+    } catch (_error) {
+      showToast("Copy blocked", url, true);
+    }
+  }
+
   async function shareVictorySetup(setup) {
     const url = victoryShareUrl(setup);
     const text = `${setup.ticker} closed ${formatR(setup.r_result ?? setup.score)} by @${setup.handle}. Verified on Composite Operator Ledger.`;
@@ -2578,6 +2661,11 @@
 
   async function activateSharedSetup() {
     const params = new URLSearchParams(location.search);
+    const profileHandle = params.get("profile");
+    if (profileHandle) {
+      await openProfileByHandle(profileHandle);
+      return;
+    }
     const victoryId = params.get("victory");
     if (victoryId) {
       let victorySetup = state.setups.find((setup) => String(setup.id) === victoryId);

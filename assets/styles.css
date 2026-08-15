@@ -1114,6 +1114,26 @@ dialog::backdrop { background: rgba(1,2,4,.78); backdrop-filter: blur(12px); }
 .profile-head .profile-bio { max-width: 560px; margin-top: 14px; color: var(--drawer-muted); font-size: 14px; line-height: 1.7; }
 .profile-badges { gap: 8px; margin-top: 17px; }
 .profile-badges span { padding: 6px 8px; border-color: var(--line-strong); border-radius: 6px; color: var(--drawer-faint); font-size: 10px; }
+.profile-share-summary { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 10px; margin-top: 18px; padding: 11px; border: 1px solid rgba(200,255,46,.3); border-radius: 14px; background: radial-gradient(circle at 85% 0, rgba(200,255,46,.13), transparent 45%), rgba(255,255,255,.022); box-shadow: inset 0 1px rgba(255,255,255,.025); }
+.profile-share-standing,
+.profile-share-score { display: grid; min-width: 0; min-height: 116px; align-content: center; padding: 15px; border: 1px solid var(--line-strong); border-radius: 10px; background: rgba(5,7,11,.64); }
+.profile-share-standing > span,
+.profile-share-score > span { color: var(--drawer-faint); font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: .08em; }
+.profile-share-standing > b,
+.profile-share-score > b { margin-top: 6px; color: var(--text); font-family: var(--mono); font-size: 34px; line-height: 1; letter-spacing: -.055em; }
+.profile-share-standing > b { color: var(--acid); }
+.profile-share-standing > small,
+.profile-share-score > small { margin-top: 8px; color: var(--drawer-muted); font-family: var(--mono); font-size: 9px; line-height: 1.45; }
+.profile-share-proof { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); border: 1px solid var(--line-strong); border-radius: 10px; background: rgba(5,7,11,.52); }
+.profile-share-proof > span { display: grid; min-width: 0; gap: 5px; padding: 13px; border-right: 1px solid var(--line-strong); }
+.profile-share-proof > span:last-child { border-right: 0; }
+.profile-share-proof small { color: var(--drawer-faint); font-family: var(--mono); font-size: 9px; }
+.profile-share-proof b { overflow: hidden; color: var(--text); font-family: var(--mono); font-size: 16px; text-overflow: ellipsis; white-space: nowrap; }
+.profile-share-summary > button { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; min-height: 42px; padding: 0 14px; border: 1px solid rgba(200,255,46,.4); border-radius: 9px; background: var(--acid); color: #0a0d04; cursor: pointer; font-family: var(--mono); font-size: 11px; font-weight: 800; letter-spacing: .045em; }
+.profile-share-summary > button:hover { filter: brightness(1.06); }
+.profile-share-summary > button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.profile-share-summary.is-private { border-color: var(--line-strong); }
+.profile-share-summary > button:disabled { border-color: var(--line-strong); background: rgba(255,255,255,.035); color: var(--drawer-faint); cursor: not-allowed; }
 .profile-signout { margin-top: 18px; padding: 9px 13px; border-color: var(--line-strong); border-radius: 8px; background: rgba(255,255,255,.025); color: var(--drawer-muted); font-size: 11px; }
 
 .profile-body { padding: 28px 40px 60px; }
@@ -1698,6 +1718,13 @@ textarea::placeholder { color: var(--muted); opacity: 1; }
   .profile-avatar-large { width: 80px; height: 80px; border-radius: 20px; }
   .profile-head h2 { margin-top: 18px; font-size: 29px; }
   .profile-head .profile-bio { font-size: 13px; }
+  .profile-share-summary { grid-template-columns: 1fr; }
+  .profile-share-standing,
+  .profile-share-score { min-height: 102px; }
+  .profile-share-score { grid-column: 1; }
+  .profile-share-proof { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .profile-share-proof > span:nth-child(2) { border-right: 0; }
+  .profile-share-proof > span:nth-child(n+3) { border-top: 1px solid var(--line-strong); }
   .profile-body { padding: 22px 18px 44px; }
   .profile-metric-grid { grid-template-columns: repeat(2,1fr); }
   .profile-record { grid-template-columns: 54px 1fr auto; padding: 11px; }

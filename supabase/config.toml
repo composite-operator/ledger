@@ -1,0 +1,5 @@
+project_id = "pynosegrafnskdlthdcr"
+
+[functions.social-card]
+verify_jwt = false
+entrypoint = "./functions/social-card/index.tsx"
