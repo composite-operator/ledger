@@ -1049,10 +1049,10 @@
         navigateToSetup(setupId, targetBook);
       };
       record.addEventListener("click", (event) => {
-        if (!event.target.closest("[data-profile-unfollow-setup]")) openProfileSetup();
+        if (!event.target.closest("[data-profile-unfollow-setup], [data-profile-share-setup]")) openProfileSetup();
       });
       record.addEventListener("keydown", (event) => {
-        if (event.target.closest("[data-profile-unfollow-setup]")) return;
+        if (event.target.closest("[data-profile-unfollow-setup], [data-profile-share-setup]")) return;
         if (event.key !== "Enter" && event.key !== " ") return;
         event.preventDefault();
         openProfileSetup();
@@ -1061,6 +1061,10 @@
     $$('[data-profile-unfollow-setup]', drawer).forEach((button) => button.addEventListener("click", async () => {
       const setup = state.setups.find((item) => String(item.id) === String(button.dataset.profileUnfollowSetup));
       if (setup) await toggleSetupFollow(setup, true);
+    }));
+    $$('[data-profile-share-setup]', drawer).forEach((button) => button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      void shareSetup(button.dataset.profileShareSetup);
     }));
     const avatarInput = $("input[name='avatar']", drawer);
     if (avatarInput) avatarInput.addEventListener("change", () => updateAvatarFileLabel(avatarInput));
@@ -1471,7 +1475,7 @@
 
   function profileRecord(setup) {
     const result = setup.status === "RESOLVED" ? `${formatR(setup.r_result)}` : setup.status;
-    return `<div class="profile-record is-clickable" role="link" tabindex="0" data-profile-open-setup="${escapeAttr(setup.id)}" data-profile-setup-book="${escapeAttr(normalizeState(setup.status))}" aria-label="Open ${escapeAttr(setup.ticker)} setup from ${escapeAttr(formatDate(setup.submitted_at))}"><b>${escapeHtml(setup.ticker)}</b><span>${escapeHtml(setup.direction)} · ${escapeHtml(labelize(setup.trigger_type))} · ${formatDate(setup.submitted_at)}</span><i class="${metricClass(setup.r_result)}">${escapeHtml(result)} ↗</i></div>`;
+    return `<div class="profile-record is-clickable" role="link" tabindex="0" data-profile-open-setup="${escapeAttr(setup.id)}" data-profile-setup-book="${escapeAttr(normalizeState(setup.status))}" aria-label="Open ${escapeAttr(setup.ticker)} setup from ${escapeAttr(formatDate(setup.submitted_at))}"><b>${escapeHtml(setup.ticker)}</b><span>${escapeHtml(setup.direction)} · ${escapeHtml(labelize(setup.trigger_type))} · ${formatDate(setup.submitted_at)}</span><i class="${metricClass(setup.r_result)}">${escapeHtml(result)} ↗</i><button type="button" data-profile-share-setup="${escapeAttr(setup.id)}" aria-label="Share ${escapeAttr(setup.ticker)} setup">SHARE ↗</button></div>`;
   }
 
   function followedSetupDashboard(setups) {
@@ -1495,6 +1499,7 @@
       <b>${escapeHtml(setup.ticker)}</b>
       <span>@${escapeHtml(setup.handle)} · ${escapeHtml(labelize(setup.status))} · ${formatSignedPercent(distance)} from entry</span>
       <i class="status-chip ${normalizeState(setup.status)}">${escapeHtml(normalizeState(setup.status).toUpperCase())}</i>
+      <button class="is-share" type="button" data-profile-share-setup="${escapeAttr(setup.id)}">SHARE ↗</button>
       <button type="button" data-profile-unfollow-setup="${escapeAttr(setup.id)}">UNFOLLOW</button>
     </div>`;
   }
@@ -2684,7 +2689,14 @@
   }
 
   async function shareSetup(setupId) {
-    const setup = state.setups.find((item) => String(item.id) === String(setupId));
+    let setup = state.setups.find((item) => String(item.id) === String(setupId));
+    if (!setup && state.supabase) {
+      const { data } = await state.supabase.from("setups_public").select("*").eq("id", setupId).maybeSingle();
+      if (data) {
+        setup = normalizeSetup(data);
+        state.setups.unshift(setup);
+      }
+    }
     if (!setup) {
       const url = new URL(config.siteUrl || location.href);
       url.searchParams.set("setup", setupId);
@@ -2785,16 +2797,24 @@
       <div class="activity-node ${setup.direction === "LONG" ? "is-long" : "is-short"}" aria-hidden="true">${setup.direction === "LONG" ? "↗" : "↘"}</div>
       <div class="activity-copy"><b>@${escapeHtml(setup.handle)} published ${escapeHtml(setup.ticker)}</b><span>${escapeHtml(setup.direction)} ${escapeHtml(labelize(setup.trigger_type))} at ${formatPrice(setup.entry)} · ${escapeHtml(setup.strategy || "Uncategorized")}</span></div>
       <time><span>${formatRelative(setup.submitted_at)}</span><b>OPEN ↗</b></time>
+      <button class="activity-share" type="button" data-activity-share-setup="${escapeAttr(setup.id)}" aria-label="Share ${escapeAttr(setup.ticker)} setup">SHARE ↗</button>
     </div>`).join("") : '<div class="activity-empty"><b>No current public signals</b><span>The stream is ready for the first operator submission.</span></div>';
     $$('[data-activity-setup]', stream).forEach((item) => {
       const openStreamSetup = () => navigateToSetup(String(item.dataset.activitySetup), item.dataset.activityBook || "all");
-      item.addEventListener("click", openStreamSetup);
+      item.addEventListener("click", (event) => {
+        if (!event.target.closest("[data-activity-share-setup]")) openStreamSetup();
+      });
       item.addEventListener("keydown", (event) => {
+        if (event.target.closest("[data-activity-share-setup]")) return;
         if (event.key !== "Enter" && event.key !== " ") return;
         event.preventDefault();
         openStreamSetup();
       });
     });
+    $$('[data-activity-share-setup]', stream).forEach((button) => button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      void shareSetup(button.dataset.activityShareSetup);
+    }));
   }
 
   function renderNetworkIntel() {
@@ -3147,12 +3167,17 @@
       if (data) commandLeaders = data.map(normalizeLeader);
     }
     const leaderItems = commandLeaders.map((leader) => ({ type: "OPERATOR", icon: initials(leader.handle), label: `@${leader.handle}`, note: `${leader.triggered_setups} triggered · ${formatR(leader.avg_r)} average`, action: () => openProfile(leader) }));
-    const setupItems = state.setups.map((setup) => ({ type: "SETUP", icon: setup.direction === "LONG" ? "↗" : "↘", label: setup.ticker, note: `@${setup.handle} · ${setup.status} · ${setup.strategy || "Uncategorized"}`, action: () => { state.setupSearch = setup.ticker.toLowerCase(); $("#setup-search").value = setup.ticker; openSetupBook(normalizeState(setup.status)); } }));
+    const setupItems = state.setups.map((setup) => ({ type: "SETUP", icon: setup.direction === "LONG" ? "↗" : "↘", label: setup.ticker, note: `@${setup.handle} · ${setup.status} · ${setup.strategy || "Uncategorized"}`, setupId: String(setup.id), action: () => { state.setupSearch = setup.ticker.toLowerCase(); $("#setup-search").value = setup.ticker; openSetupBook(normalizeState(setup.status)); } }));
     state.commandItems = [...viewItems, ...leaderItems, ...setupItems].filter((item) => !query || `${item.label} ${item.note} ${item.type}`.toLowerCase().includes(query)).slice(0, 12);
-    $("#command-results").innerHTML = state.commandItems.map((item, index) => `<div class="command-result ${index === 0 ? "is-selected" : ""}" data-command-index="${index}"><span class="command-result-icon">${escapeHtml(item.icon)}</span><span class="command-result-copy"><b>${escapeHtml(item.label)}</b><small>${escapeHtml(item.note)}</small></span><span class="command-result-type">${item.type}</span></div>`).join("") || '<div class="table-empty">No matching operators or setups.</div>';
+    $("#command-results").innerHTML = state.commandItems.map((item, index) => `<div class="command-result ${index === 0 ? "is-selected" : ""}" data-command-index="${index}"><span class="command-result-icon">${escapeHtml(item.icon)}</span><span class="command-result-copy"><b>${escapeHtml(item.label)}</b><small>${escapeHtml(item.note)}</small></span><span class="command-result-type">${item.type}</span>${item.setupId ? `<button type="button" data-command-share-setup="${escapeAttr(item.setupId)}" aria-label="Share ${escapeAttr(item.label)} setup">SHARE ↗</button>` : ""}</div>`).join("") || '<div class="table-empty">No matching operators or setups.</div>';
     $$('[data-command-index]').forEach((element) => element.addEventListener("click", () => {
       $("#command-dialog").close();
       state.commandItems[Number(element.dataset.commandIndex)].action();
+    }));
+    $$('[data-command-share-setup]').forEach((button) => button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      $("#command-dialog").close();
+      void shareSetup(button.dataset.commandShareSetup);
     }));
   }
 
@@ -3202,6 +3227,12 @@
     });
 
     $("#notification-list").addEventListener("click", (event) => {
+      const shareButton = event.target.closest("[data-notification-share-setup]");
+      if (shareButton) {
+        event.stopPropagation();
+        void shareSetup(shareButton.dataset.notificationShareSetup);
+        return;
+      }
       const item = event.target.closest("[data-notification-id]");
       if (!item) return;
       const notification = state.notifications.find((entry) => String(entry.id) === String(item.dataset.notificationId));
@@ -3255,11 +3286,14 @@
 
   function notificationItem(notification) {
     const unread = !notification.read_at;
-    return `<button class="notification-item${unread ? " is-unread" : ""}" type="button" data-notification-id="${escapeAttr(notification.id)}">
-      <span class="notification-type-icon" data-notification-type="${escapeAttr(notification.notification_type)}">${notificationIcon(notification.notification_type)}</span>
-      <span class="notification-copy"><b>${escapeHtml(notificationMessage(notification))}</b><small>${escapeHtml(notificationDetail(notification))}</small></span>
-      ${unread ? '<i class="notification-unread-dot" aria-label="Unread"></i>' : ""}
-    </button>`;
+    return `<div class="notification-item-shell${unread ? " is-unread" : ""}">
+      <button class="notification-item" type="button" data-notification-id="${escapeAttr(notification.id)}">
+        <span class="notification-type-icon" data-notification-type="${escapeAttr(notification.notification_type)}">${notificationIcon(notification.notification_type)}</span>
+        <span class="notification-copy"><b>${escapeHtml(notificationMessage(notification))}</b><small>${escapeHtml(notificationDetail(notification))}</small></span>
+        ${unread ? '<i class="notification-unread-dot" aria-label="Unread"></i>' : ""}
+      </button>
+      ${notification.setup_id ? `<button class="notification-share" type="button" data-notification-share-setup="${escapeAttr(notification.setup_id)}" aria-label="Share ${escapeAttr(notification.ticker || "this")} setup">SHARE ↗</button>` : ""}
+    </div>`;
   }
 
   function notificationMessage(notification) {
