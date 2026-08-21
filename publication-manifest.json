@@ -2,7 +2,7 @@
   "files": [
     {
       "path": ".github/workflows/deploy-pages.yml",
-      "sha256": "9cfeddc9ceb8074c371e8e77ed5397f7f287f3f842c6d332169f4a5ddf79c25d"
+      "sha256": "125adbf1f2de6df255a15e8377859c54bd360dfcc666965b5d0100497f2bf64f"
     },
     {
       "path": ".gitignore",
@@ -14,7 +14,7 @@
     },
     {
       "path": "assets/app.js",
-      "sha256": "16bbff93bb74cd874cbded37f578a593fafa5a02046f52daaf384576c5b54fb8"
+      "sha256": "d32122acc706b45e05e45a386091e657e094cfeb533178cf283f992a932de1fe"
     },
     {
       "path": "assets/brand-mark.svg",
@@ -98,7 +98,7 @@
     },
     {
       "path": "scripts/generate-social-pages.mjs",
-      "sha256": "e655960ab254c797a7bdc6894a78b161f48286ad4b9f897b0e16e33d00de1c1a"
+      "sha256": "f898868462e668e146d810127576fd5a6e2ce2625d277ec644174881914e2e60"
     },
     {
       "path": "site.webmanifest",
@@ -110,7 +110,7 @@
     },
     {
       "path": "supabase/functions/social-card/index.tsx",
-      "sha256": "6f01a698e8c5cb90dea103ff70a5e85d3ec5e15724fb45eb1e6426de936cfa8a"
+      "sha256": "bf7e930a123113c41d1eebe10ada48cf6f48a833dfd7952b20e63f3999927e1d"
     }
   ],
   "profile": "ledger",

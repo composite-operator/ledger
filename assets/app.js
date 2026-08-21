@@ -2468,6 +2468,14 @@
     return discordSharePageUrl("operator", { handle: profile.handle }) || operatorRecordUrl(profile);
   }
 
+  function setupShareUrl(setup) {
+    return socialCardUrl("setup", { id: setup.id }) || victoryRecordUrl(setup);
+  }
+
+  function setupDiscordShareUrl(setup) {
+    return discordSharePageUrl("setup", { id: setup.id }) || victoryRecordUrl(setup);
+  }
+
   function victoryShareUrl(setup) {
     const socialUrl = socialCardUrl("victory", { id: setup.id });
     if (socialUrl) return socialUrl;
@@ -2676,15 +2684,24 @@
   }
 
   async function shareSetup(setupId) {
-    const url = new URL(config.siteUrl || location.href);
-    url.searchParams.set("setup", setupId);
-    url.hash = "setups";
-    try {
-      await navigator.clipboard.writeText(url.toString());
-      showToast("Post link copied", "The link opens this setup with its discussion expanded.");
-    } catch (_error) {
-      showToast("Copy blocked", url.toString(), true);
+    const setup = state.setups.find((item) => String(item.id) === String(setupId));
+    if (!setup) {
+      const url = new URL(config.siteUrl || location.href);
+      url.searchParams.set("setup", setupId);
+      url.hash = "setups";
+      try {
+        await navigator.clipboard.writeText(url.toString());
+        showToast("Post link copied", "The link opens this setup with its discussion expanded.");
+      } catch (_error) {
+        showToast("Copy blocked", url.toString(), true);
+      }
+      return;
     }
+    openSocialShareChooser({
+      title: `Share ${setup.ticker} setup`,
+      xUrl: setupShareUrl(setup),
+      discordUrl: setupDiscordShareUrl(setup)
+    });
   }
 
   async function activateSharedSetup() {

@@ -33,7 +33,7 @@ function operatorTarget(handle) {
 
 function setupTarget(id, kind) {
   const url = new URL(siteUrl);
-  url.searchParams.set(kind, id);
+  url.searchParams.set(kind === "setup" ? "setup" : kind, id);
   url.hash = "setups";
   return url.toString();
 }
@@ -47,8 +47,23 @@ function socialImageUrl(kind, value) {
   url.searchParams.set("type", kind);
   url.searchParams.set(kind === "operator" ? "handle" : "id", value);
   url.searchParams.set("format", "image");
-  url.searchParams.set("v", "discord-link-1");
+  url.searchParams.set("v", "setup-1");
   return url.toString();
+}
+
+function formatPrice(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "—";
+  const absolute = Math.abs(number);
+  const digits = absolute > 0 && absolute < 1 ? 6 : absolute < 100 ? 4 : 2;
+  return `$${number.toLocaleString("en-US", { maximumFractionDigits: digits })}`;
+}
+
+function setupDescription(setup) {
+  const trigger = String(setup.trigger_type || "PUBLISHED").replace(/[_-]+/g, " ").toUpperCase();
+  const horizon = String(setup.horizon || "SWING").replace(/[_-]+/g, " ").toUpperCase();
+  const targets = [setup.t1, setup.t2, setup.t3].filter((value) => Number.isFinite(Number(value)) && Number(value) > 0).map(formatPrice).join(" / ") || "—";
+  return `${trigger} ${horizon} · Entry ${formatPrice(setup.entry)} · Stop ${formatPrice(setup.stop)} · Targets ${targets}. Inspect the original public plan and discussion.`;
 }
 
 function pageHtml({ title, description, shareUrl, targetUrl, imageUrl }) {
@@ -116,15 +131,25 @@ for (const operator of operators) {
   });
 }
 
-const setups = await fetchJson(`${supabaseUrl}/rest/v1/setups_public?select=id,handle,ticker,status,final_status,r_result,score&limit=5000`);
+const setups = await fetchJson(`${supabaseUrl}/rest/v1/setups_public?select=id,handle,ticker,direction,horizon,trigger_type,strategy,entry,stop,t1,t2,t3,status,final_status,r_result,score&limit=5000`);
 for (const setup of setups) {
   const id = safeSegment(setup.id);
+  const ticker = String(setup.ticker || "MARKET").toUpperCase();
+  const direction = String(setup.direction || "LONG").toUpperCase();
+  const handle = String(setup.handle || "operator").replace(/^@/, "");
+  const publicTargetUrl = setupTarget(id, "setup");
+  await writeSharePage("setup", id, {
+    title: `${ticker} ${direction} · @${handle} · Ledger setup`,
+    description: setupDescription(setup),
+    shareUrl: sharePageUrl("setup", id),
+    targetUrl: publicTargetUrl,
+    imageUrl: socialImageUrl("setup", id),
+  });
+
   const result = Number(setup.r_result ?? setup.score);
   const resolved = Boolean(setup.final_status) || ["RESOLVED", "STOPPED"].includes(String(setup.status || "").toUpperCase());
   if (!resolved || !Number.isFinite(result)) continue;
   const kind = result > 0 ? "victory" : "loss";
-  const ticker = String(setup.ticker || "MARKET").toUpperCase();
-  const handle = String(setup.handle || "operator").replace(/^@/, "");
   const targetUrl = setupTarget(id, kind);
   await writeSharePage(kind, id, {
     title: `${ticker} ${result > 0 ? "+" : ""}${result.toFixed(2)}R · @${handle}`,
@@ -135,4 +160,4 @@ for (const setup of setups) {
   });
 }
 
-console.log(`Generated ${operators.length} operator share page(s) and resolved setup share pages in ${outputRoot}.`);
+console.log(`Generated ${operators.length} operator page(s), ${setups.length} setup page(s), and resolved outcome pages in ${outputRoot}.`);

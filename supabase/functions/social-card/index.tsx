@@ -5,11 +5,11 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const SITE_URL = "https://composite-operator.github.io/ledger/";
 const CACHE_CONTROL = "public, max-age=300, s-maxage=900, stale-while-revalidate=86400";
-const SOCIAL_CARD_VERSION = "discord-2";
+const SOCIAL_CARD_VERSION = "setup-1";
 const HANDLE_PATTERN = /^[a-z0-9][a-z0-9_-]{1,29}$/;
 const ID_PATTERN = /^[a-zA-Z0-9_-]{6,80}$/;
 
-type CardKind = "operator" | "victory" | "loss";
+type CardKind = "operator" | "setup" | "victory" | "loss";
 type CardRecord = {
   kind: CardKind;
   title: string;
@@ -29,6 +29,16 @@ type CardRecord = {
   resultR?: number | null;
   finalStatus?: string | null;
   entry?: number | null;
+  stop?: number | null;
+  t1?: number | null;
+  t2?: number | null;
+  t3?: number | null;
+  currentPrice?: number | null;
+  plannedR?: number | null;
+  status?: string | null;
+  triggerType?: string | null;
+  strategy?: string | null;
+  thesisImageUrl?: string | null;
   terminalPrice?: number | null;
   closedAt?: string | null;
 };
@@ -44,6 +54,11 @@ function numberOrNull(value: unknown): number | null {
   if (value == null || value === "") return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function priceOrNull(value: unknown): number | null {
+  const parsed = numberOrNull(value);
+  return parsed != null && parsed > 0 ? parsed : null;
 }
 
 function formatNumber(value: number | null | undefined, digits = 2, fallback = "NQ") {
@@ -64,6 +79,13 @@ function formatPercent(value: number | null | undefined) {
 function formatR(value: number | null | undefined) {
   if (value == null || !Number.isFinite(value)) return "—";
   return `${value > 0 ? "+" : ""}${formatNumber(value, 2, "—")}R`;
+}
+
+function formatPrice(value: number | null | undefined) {
+  if (value == null || !Number.isFinite(value)) return "—";
+  const absolute = Math.abs(value);
+  const digits = absolute > 0 && absolute < 1 ? 6 : absolute < 100 ? 4 : 2;
+  return `$${value.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: digits })}`;
 }
 
 function labelize(value: unknown) {
@@ -91,11 +113,43 @@ function operatorTargetUrl(handle: string) {
   return url.toString();
 }
 
-function setupTargetUrl(id: string, kind: "victory" | "loss") {
+function setupTargetUrl(id: string, kind: "setup" | "victory" | "loss") {
   const url = new URL(SITE_URL);
-  url.searchParams.set(kind, id);
+  url.searchParams.set(kind === "setup" ? "setup" : kind, id);
   url.hash = "setups";
   return url.toString();
+}
+
+const attachmentMarkerPattern = /(?:\r?\n)?\[ledger-image:([0-9a-f-]{36}\/ledger-media\/setups\/[0-9a-f-]{36}\.(?:jpg|png|webp))\]$/i;
+
+function publicStorageUrl(objectPath: string | null) {
+  if (!objectPath || !supabaseUrl) return null;
+  const encodedPath = objectPath.split("/").map(encodeURIComponent).join("/");
+  return `${supabaseUrl}/storage/v1/object/public/avatars/${encodedPath}`;
+}
+
+function thesisImageUrl(value: unknown) {
+  const match = String(value || "").match(attachmentMarkerPattern);
+  return publicStorageUrl(match?.[1] || null);
+}
+
+function targetR(direction: string, entry: number | null, stop: number | null, target: number | null) {
+  if (entry == null || stop == null || target == null || entry === stop) return null;
+  const reward = direction === "SHORT" ? entry - target : target - entry;
+  return reward / Math.abs(entry - stop);
+}
+
+function setupPlannedR(setup: Record<string, unknown>, direction: string, entry: number | null, stop: number | null) {
+  const targets = [priceOrNull(setup.t1), priceOrNull(setup.t2), priceOrNull(setup.t3)];
+  const allocations = [numberOrNull(setup.t1_allocation), numberOrNull(setup.t2_allocation), numberOrNull(setup.t3_allocation)];
+  const allocationTotal = allocations.reduce((sum: number, value) => sum + (value || 0), 0);
+  if (allocationTotal >= .99 && allocationTotal <= 1.01) {
+    return targets.reduce((sum: number, target, index) => {
+      const result = targetR(direction, entry, stop, target);
+      return sum + (result == null ? 0 : result * (allocations[index] || 0));
+    }, 0);
+  }
+  return targetR(direction, entry, stop, targets[0]);
 }
 
 async function loadOperator(handle: string): Promise<CardRecord> {
@@ -191,6 +245,50 @@ async function loadOutcome(id: string, kind: "victory" | "loss"): Promise<CardRe
   };
 }
 
+async function loadSetup(id: string): Promise<CardRecord> {
+  if (!ID_PATTERN.test(id)) throw new Response("Invalid setup identifier.", { status: 400 });
+  const result = await supabase.from("setups_public").select("*").eq("id", id).maybeSingle();
+  if (result.error) throw new Response("The public setup could not be read.", { status: 502 });
+  if (!result.data) throw new Response("Public setup not found.", { status: 404 });
+
+  const setup = result.data as Record<string, unknown>;
+  const handle = String(setup.handle || setup.profile_handle || "operator").replace(/^@/, "").toLowerCase();
+  const ticker = String(setup.ticker || "MARKET").toUpperCase();
+  const direction = labelize(setup.direction || "LONG");
+  const horizon = labelize(setup.horizon || "SWING");
+  const triggerType = labelize(setup.trigger_type || "PUBLISHED");
+  const strategy = labelize(setup.strategy || "PUBLIC SETUP");
+  const status = labelize(setup.status || "QUEUED");
+  const entry = priceOrNull(setup.entry);
+  const stop = priceOrNull(setup.stop);
+  const t1 = priceOrNull(setup.t1);
+  const t2 = priceOrNull(setup.t2);
+  const t3 = priceOrNull(setup.t3);
+  const plannedR = setupPlannedR(setup, direction, entry, stop);
+  const targets = [t1, t2, t3].filter((value) => value != null).map(formatPrice).join(" / ");
+  return {
+    kind: "setup",
+    title: `${ticker} ${direction} · @${handle} · Ledger setup`,
+    description: `${triggerType} ${horizon}. Entry ${formatPrice(entry)} · Stop ${formatPrice(stop)} · Targets ${targets || "—"} · Planned ${formatR(plannedR)}.`,
+    targetUrl: setupTargetUrl(id, "setup"),
+    handle,
+    ticker,
+    direction,
+    horizon,
+    triggerType,
+    strategy,
+    status,
+    entry,
+    stop,
+    t1,
+    t2,
+    t3,
+    currentPrice: priceOrNull(setup.current_price),
+    plannedR,
+    thesisImageUrl: thesisImageUrl(setup.thesis),
+  };
+}
+
 function stat(label: string, value: string, accent?: string) {
   return <div style={{ display: "flex", flexDirection: "column", flex: 1, minWidth: 0, padding: "18px 20px", borderRight: "1px solid rgba(255,255,255,.12)" }}>
     <span style={{ color: "#aeb5c2", fontSize: 17, fontWeight: 700, letterSpacing: ".08em" }}>{label}</span>
@@ -241,6 +339,92 @@ function operatorImage(record: CardRecord) {
   </div>;
 }
 
+function setupExecutionMap(record: CardRecord) {
+  const levels = [record.stop, record.entry, record.t1, record.t2, record.t3, record.currentPrice].filter((value): value is number => value != null && Number.isFinite(value));
+  const floor = levels.length ? Math.min(...levels) : 0;
+  const ceiling = levels.length ? Math.max(...levels) : 1;
+  const rawSpan = Math.max(ceiling - floor, Math.abs((record.entry || 0) - (record.stop || 0)), 1e-9);
+  const scaleFloor = floor - rawSpan * .08;
+  const scaleCeiling = ceiling + rawSpan * .08;
+  const position = (value: number | null | undefined) => value == null ? 50 : Math.max(4, Math.min(96, ((value - scaleFloor) / (scaleCeiling - scaleFloor)) * 100));
+  const entryPosition = position(record.entry);
+  const stopPosition = position(record.stop);
+  const currentPosition = position(record.currentPrice ?? record.entry);
+  const targetValues = [record.t1, record.t2, record.t3].filter((value): value is number => value != null && Number.isFinite(value));
+  const targetBoundary = targetValues.length ? (record.direction === "SHORT" ? Math.min(...targetValues) : Math.max(...targetValues)) : record.entry;
+  const targetPosition = position(targetBoundary);
+  const riskLeft = Math.min(entryPosition, stopPosition);
+  const riskWidth = Math.max(1, Math.abs(entryPosition - stopPosition));
+  const targetLeft = Math.min(entryPosition, targetPosition);
+  const targetWidth = Math.max(1, Math.abs(entryPosition - targetPosition));
+  const nowLeft = Math.min(entryPosition, currentPosition);
+  const nowWidth = Math.max(1, Math.abs(entryPosition - currentPosition));
+  const marker = (label: string, value: number | null | undefined, color: string, index?: number) => value == null ? null : <div style={{ display: "flex", position: "absolute", left: `${position(value)}%`, top: 117, transform: "translateX(-50%)", flexDirection: "column", alignItems: "center", gap: 7 }}>
+    <div style={{ display: "flex", width: index ? 28 : 19, height: index ? 28 : 19, alignItems: "center", justifyContent: "center", border: `3px solid ${color}`, borderRadius: 99, background: "#090b11", color, fontSize: 13, fontWeight: 900 }}>{index || ""}</div>
+    <span style={{ color, fontSize: 14, fontWeight: 900 }}>{label}</span>
+    <span style={{ color: "#ffffff", fontSize: 15, fontWeight: 800 }}>{formatPrice(value)}</span>
+  </div>;
+  const distance = record.entry && record.currentPrice
+    ? ((record.currentPrice - record.entry) / record.entry) * 100 * (record.direction === "SHORT" ? -1 : 1)
+    : null;
+
+  return <div style={{ display: "flex", position: "relative", flexDirection: "column", flex: 1, minWidth: 0, height: 392, overflow: "hidden", border: "1px solid rgba(255,255,255,.16)", borderRadius: 18, background: "#0d1118" }}>
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "18px 20px", borderBottom: "1px solid rgba(255,255,255,.1)" }}>
+      <span style={{ color: "#c8ff2e", fontSize: 16, fontWeight: 900, letterSpacing: ".12em" }}>PUBLIC EXECUTION MAP</span>
+      <span style={{ color: distance == null ? "#b8c0cd" : distance >= 0 ? "#3be7aa" : "#ff665f", fontSize: 16, fontWeight: 900 }}>{distance == null ? "QUOTE PENDING" : `${Math.abs(distance).toFixed(2)}% ${distance >= 0 ? "FAVORABLE" : "ADVERSE"}`}</span>
+    </div>
+    <div style={{ display: "flex", position: "relative", flex: 1 }}>
+      <div style={{ display: "flex", position: "absolute", left: "4%", right: "4%", top: 126, height: 3, background: "rgba(255,255,255,.2)" }} />
+      <div style={{ display: "flex", position: "absolute", left: `${riskLeft}%`, width: `${riskWidth}%`, top: 119, height: 17, borderRadius: 20, background: "rgba(255,102,95,.32)" }} />
+      <div style={{ display: "flex", position: "absolute", left: `${targetLeft}%`, width: `${targetWidth}%`, top: 119, height: 17, borderRadius: 20, background: "rgba(59,231,170,.28)" }} />
+      {record.currentPrice != null ? <div style={{ display: "flex", position: "absolute", left: `${nowLeft}%`, width: `${nowWidth}%`, top: 123, height: 9, borderRadius: 20, background: "#55dcf0" }} /> : null}
+      {marker("SL", record.stop, "#ff665f")}
+      {marker("ENTRY", record.entry, "#ffffff")}
+      {marker("T1", record.t1, "#3be7aa", 1)}
+      {marker("T2", record.t2, "#3be7aa", 2)}
+      {marker("T3", record.t3, "#3be7aa", 3)}
+      {record.currentPrice != null ? marker("NOW", record.currentPrice, "#55dcf0") : null}
+      <div style={{ display: "flex", position: "absolute", left: 20, right: 20, bottom: 16, justifyContent: "space-between", color: "#aeb5c2", fontSize: 14 }}>
+        <span>RED: PUBLISHED RISK</span><span>GREEN: TARGET PATH</span><span>CYAN: ENTRY → NOW</span>
+      </div>
+    </div>
+  </div>;
+}
+
+function setupImage(record: CardRecord) {
+  const accent = record.direction === "SHORT" ? "#ff665f" : "#3be7aa";
+  const targetList = [record.t1, record.t2, record.t3].filter((value) => value != null).map(formatPrice).join(" · ") || "—";
+  return <div style={{ display: "flex", flexDirection: "column", width: "100%", height: "100%", padding: "38px 44px", background: "#090b11", color: "#ffffff" }}>
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      {brand()}
+      <div style={{ display: "flex", padding: "9px 14px", border: `1px solid ${accent}`, borderRadius: 999, color: accent, fontSize: 16, fontWeight: 900, letterSpacing: ".08em" }}>{record.status || "PUBLIC SETUP"}</div>
+    </div>
+    <div style={{ display: "flex", flex: 1, alignItems: "stretch", gap: 30, marginTop: 26, minHeight: 0 }}>
+      <div style={{ display: "flex", flexDirection: "column", width: 480, minWidth: 480 }}>
+        <span style={{ color: accent, fontSize: 19, fontWeight: 900, letterSpacing: ".13em" }}>{record.direction} · {record.horizon} · {record.triggerType}</span>
+        <b style={{ marginTop: 8, fontSize: 76, lineHeight: .95, letterSpacing: "-.055em" }}>{record.ticker}</b>
+        <span style={{ marginTop: 10, color: "#ffffff", fontSize: 26, fontWeight: 800 }}>@{record.handle}</span>
+        <span style={{ marginTop: 8, color: "#c8ced9", fontSize: 19 }}>{record.strategy}</span>
+        <div style={{ display: "flex", marginTop: 24, overflow: "hidden", border: "1px solid rgba(255,255,255,.16)", borderRadius: 13, background: "rgba(255,255,255,.035)" }}>
+          {stat("ENTRY", formatPrice(record.entry))}
+          {stat("STOP", formatPrice(record.stop), "#ff665f")}
+          {stat("PLANNED R", formatR(record.plannedR), "#c8ff2e")}
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", marginTop: 18, padding: "16px 18px", border: "1px solid rgba(59,231,170,.28)", borderRadius: 13, background: "rgba(59,231,170,.05)" }}>
+          <span style={{ color: "#aeb5c2", fontSize: 15, fontWeight: 800, letterSpacing: ".1em" }}>PUBLISHED TARGETS</span>
+          <b style={{ marginTop: 7, color: "#3be7aa", fontSize: 22 }}>{targetList}</b>
+        </div>
+      </div>
+      {record.thesisImageUrl
+        ? <div style={{ display: "flex", flexDirection: "column", flex: 1, minWidth: 0, overflow: "hidden", border: "1px solid rgba(200,255,46,.3)", borderRadius: 18, background: "#05070a" }}>
+          <div style={{ display: "flex", padding: "14px 18px", color: "#c8ff2e", fontSize: 15, fontWeight: 900, letterSpacing: ".12em", borderBottom: "1px solid rgba(255,255,255,.1)" }}>ORIGINAL THESIS CHART</div>
+          <img src={record.thesisImageUrl} alt="Original thesis chart" width="570" height="350" style={{ width: "100%", height: "350px", objectFit: "contain" }} />
+        </div>
+        : setupExecutionMap(record)}
+    </div>
+  </div>;
+}
+
 function outcomeImage(record: CardRecord) {
   const victory = record.kind === "victory";
   const accent = victory ? "#c8ff2e" : "#ff665f";
@@ -274,7 +458,8 @@ function outcomeImage(record: CardRecord) {
 }
 
 function imageResponse(record: CardRecord) {
-  return new ImageResponse(record.kind === "operator" ? operatorImage(record) : outcomeImage(record), {
+  const image = record.kind === "operator" ? operatorImage(record) : record.kind === "setup" ? setupImage(record) : outcomeImage(record);
+  return new ImageResponse(image, {
     width: 1200,
     height: 630,
     headers: { "Cache-Control": CACHE_CONTROL },
@@ -305,10 +490,12 @@ async function handler(request: Request) {
   try {
     const url = new URL(request.url);
     const type = String(url.searchParams.get("type") || "operator").toLowerCase() as CardKind;
-    if (!(["operator", "victory", "loss"] as string[]).includes(type)) return new Response("Unknown social card type.", { status: 400 });
+    if (!(["operator", "setup", "victory", "loss"] as string[]).includes(type)) return new Response("Unknown social card type.", { status: 400 });
     const record = type === "operator"
       ? await loadOperator(url.searchParams.get("handle") || "")
-      : await loadOutcome(url.searchParams.get("id") || "", type);
+      : type === "setup"
+        ? await loadSetup(url.searchParams.get("id") || "")
+        : await loadOutcome(url.searchParams.get("id") || "", type);
 
     const userAgent = request.headers.get("user-agent") || "";
     if (url.searchParams.get("format") === "image" || needsDirectImage(userAgent)) return imageResponse(record);
