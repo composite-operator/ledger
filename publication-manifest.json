@@ -14,7 +14,7 @@
     },
     {
       "path": "assets/app.js",
-      "sha256": "604a7c962c9549c774f49fc8c9ba816842e135ee3f61c5a6270144c930b2e500"
+      "sha256": "56a8c0aa58ddd91eac4bfa6f0507bbd3bccf6944a17d28104397cffd7dbad860"
     },
     {
       "path": "assets/brand-mark.svg",
@@ -70,7 +70,7 @@
     },
     {
       "path": "assets/styles.css",
-      "sha256": "f005751e67a12777b46e89ac005508628791116c0f20965605131aabd2d58124"
+      "sha256": "86c4c68efc1e2ac34679f225d9849150e720b7e37500c842c9b79464a511d120"
     },
     {
       "path": "assets/victory/chud-terminal.webp",

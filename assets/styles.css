@@ -563,11 +563,15 @@ img.operator-avatar { object-fit: cover; }
 .setup-card.is-long::before { background: var(--green); }
 .setup-card.is-short::before { background: var(--red); }
 .setup-card-top { display: flex; justify-content: space-between; align-items: flex-start; }
-.ticker-lockup { display: flex; align-items: center; gap: 10px; }
-.ticker-icon { display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid var(--line-strong); border-radius: 9px; background: linear-gradient(140deg, rgba(88,230,255,.09), rgba(255,255,255,.02)); font-family: var(--mono); font-size: 8px; }
+.ticker-lockup { display: flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; }
+.ticker-icon { display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid var(--line-strong); border-radius: 9px; background: linear-gradient(140deg, rgba(88,230,255,.09), rgba(255,255,255,.02)); font-family: var(--mono); font-size: 8px; transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease; }
 .ticker-copy { display: grid; }
-.ticker-copy b { font-size: 12px; }
+.ticker-copy b { color: var(--text); font-size: 12px; transition: color .16s ease; }
 .ticker-copy span { color: var(--faint); font-family: var(--mono); font-size: 7px; }
+.ticker-copy small { margin-top: 2px; color: var(--cyan); font-family: var(--mono); font-size: 5px; font-weight: 700; letter-spacing: .06em; }
+.ticker-lockup:hover .ticker-icon { border-color: rgba(88,230,255,.55); box-shadow: 0 0 18px rgba(88,230,255,.1); transform: translateY(-1px); }
+.ticker-lockup:hover .ticker-copy b { color: var(--cyan); }
+.ticker-lockup:focus-visible { border-radius: 9px; outline: 2px solid var(--cyan); outline-offset: 4px; }
 .status-chip { padding: 5px 7px; border: 1px solid var(--line); border-radius: 5px; color: var(--muted); font-family: var(--mono); font-size: 6px; }
 .status-chip.hot { border-color: rgba(255,102,95,.2); background: rgba(255,102,95,.06); color: var(--red); }
 .status-chip.active { border-color: rgba(64,237,160,.2); background: rgba(64,237,160,.06); color: var(--green); }
@@ -657,6 +661,7 @@ img.operator-avatar { object-fit: cover; }
 .layout-compact .ticker-icon { width: 29px; height: 29px; border-radius: 7px; }
 .layout-compact .ticker-copy b { font-size: 10px; }
 .layout-compact .ticker-copy span { font-size: 6px; }
+.layout-compact .ticker-copy small { display: none; }
 .layout-compact .setup-position-map { gap: 5px; margin-top: 7px; padding: 7px 10px 8px; }
 .layout-compact .setup-position-map > header { display: flex; min-height: 15px; }
 .layout-compact .setup-position-map > header > span, .layout-compact .map-distance-full { display: none; }
@@ -1308,6 +1313,7 @@ dialog::backdrop { background: rgba(1,2,4,.78); backdrop-filter: blur(12px); }
 .ticker-icon { font-size: 10px; }
 .ticker-copy b { font-size: 14px; }
 .ticker-copy span { font-size: 10px; }
+.ticker-copy small { font-size: 8px; }
 .status-chip { font-size: 9px; }
 .setup-position-map > header > span,
 .setup-position-map > header > span small { font-size: 8px; }

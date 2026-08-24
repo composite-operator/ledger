@@ -29,6 +29,30 @@
     discussed: { field: "discussed", reverse: "discussed-low", arrow: "↓", order: "most discussed first" },
     "discussed-low": { field: "discussed", reverse: "discussed", arrow: "↑", order: "least discussed first" }
   };
+  const tradingViewSymbolAliases = Object.freeze({
+    "^GSPC": "SP:SPX",
+    "^IXIC": "NASDAQ:IXIC",
+    "GC=F": "COMEX:GC1!",
+    "SI=F": "COMEX:SI1!",
+    "HG=F": "COMEX:HG1!",
+    "PL=F": "NYMEX:PL1!",
+    "PA=F": "NYMEX:PA1!",
+    "CL=F": "NYMEX:CL1!",
+    "BZ=F": "NYMEX:BZ1!",
+    "NG=F": "NYMEX:NG1!",
+    "RB=F": "NYMEX:RB1!",
+    "HO=F": "NYMEX:HO1!",
+    "ZC=F": "CBOT:ZC1!",
+    "ZW=F": "CBOT:ZW1!",
+    "ZS=F": "CBOT:ZS1!",
+    "KC=F": "ICEUS:KC1!",
+    "SB=F": "ICEUS:SB1!",
+    "CC=F": "ICEUS:CC1!",
+    "CT=F": "ICEUS:CT1!",
+    "LE=F": "CME:LE1!",
+    "HE=F": "CME:HE1!",
+    "LBR=F": "CME:LBR1!"
+  });
   const attachmentMarkerPattern = /(?:\r?\n)?\[ledger-image:([0-9a-f-]{36}\/ledger-media\/(?:setups|comments)\/[0-9a-f-]{36}\.(?:jpg|png|webp))\]$/i;
   const defaultNotificationPreferences = {
     notifications_muted: false,
@@ -1688,9 +1712,10 @@
     const loss = isLosingSetup(setup);
     const victoryVariant = victory ? victoryVariantFor(setup) : null;
     const lossVariant = loss ? lossVariantFor(setup) : null;
+    const tradingViewUrl = tradingViewChartUrl(setup);
     return `<article class="setup-card is-${setup.direction.toLowerCase()}${commentsOpen ? " has-open-comments" : ""}${isFollowed ? " is-followed" : ""}" id="setup-${escapeAttr(setupId)}">
       <div class="setup-card-top">
-        <div class="ticker-lockup"><div class="ticker-icon">${escapeHtml(setup.ticker.slice(0, 4))}</div><div class="ticker-copy"><b>${escapeHtml(setup.ticker)}</b><span>${escapeHtml(setup.direction)} · ${escapeHtml(horizonLabel(setup.horizon))}</span></div></div>
+        <a class="ticker-lockup" href="${escapeAttr(tradingViewUrl)}" target="_blank" rel="noopener noreferrer" aria-label="Open ${escapeAttr(setup.ticker)} live chart on TradingView" title="Open ${escapeAttr(setup.ticker)} live chart on TradingView"><div class="ticker-icon">${escapeHtml(setup.ticker.slice(0, 4))}</div><div class="ticker-copy"><b>${escapeHtml(setup.ticker)}</b><span>${escapeHtml(setup.direction)} · ${escapeHtml(horizonLabel(setup.horizon))}</span><small>TRADINGVIEW LIVE ↗</small></div></a>
         <span class="status-chip ${normalized}">${escapeHtml(normalized.toUpperCase())}</span>
       </div>
       ${setupLifecyclePanel(setup)}
@@ -1722,6 +1747,21 @@
 
   function horizonLabel(horizon) {
     return window.LedgerLifecycle?.horizonPreset(horizon).label || labelize(horizon || "SWING");
+  }
+
+  function tradingViewChartUrl(setup) {
+    const rawSymbol = String(setup.quote_symbol || setup.ticker || "").trim().toUpperCase();
+    let chartSymbol = tradingViewSymbolAliases[rawSymbol] || rawSymbol;
+    if (!tradingViewSymbolAliases[rawSymbol] && /^[A-Z0-9]+-USD$/.test(rawSymbol)) {
+      chartSymbol = rawSymbol.replace("-", "");
+    } else if (!tradingViewSymbolAliases[rawSymbol] && /^[A-Z]{6}=X$/.test(rawSymbol)) {
+      chartSymbol = `FX:${rawSymbol.slice(0, -2)}`;
+    } else if (!tradingViewSymbolAliases[rawSymbol] && rawSymbol === "JPY=X") {
+      chartSymbol = "FX:USDJPY";
+    }
+    const url = new URL("https://www.tradingview.com/chart/");
+    if (chartSymbol) url.searchParams.set("symbol", chartSymbol);
+    return url.toString();
   }
 
   function setupLifecyclePanel(setup) {
