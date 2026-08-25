@@ -170,6 +170,7 @@
     notificationChannel: null,
     outcomeSetupId: null,
     outcomeCardKind: null,
+    reviewSetupId: null,
     pendingSocialShare: null,
     quoteRefreshActive: false,
     quoteRefreshTimer: null,
@@ -278,6 +279,7 @@
     const outcomeDialog = $("#outcome-dialog");
     const socialShareDialog = $("#social-share-dialog");
     const profileDialog = $("#profile-dialog");
+    const setupReviewDialog = $("#setup-review-dialog");
 
     $("#account-button").addEventListener("click", async () => {
       if (state.session?.user) {
@@ -301,6 +303,13 @@
     $$('[data-close-symbol-guide]').forEach((button) => button.addEventListener("click", () => symbolGuideDialog.close()));
     $("[data-close-outcome]").addEventListener("click", () => outcomeDialog.close());
     $("[data-close-social-share]").addEventListener("click", () => socialShareDialog.close());
+    $("[data-close-setup-review]").addEventListener("click", () => setupReviewDialog.close());
+    $("#setup-review-form").addEventListener("submit", saveSetupReview);
+    setupReviewDialog.addEventListener("close", () => {
+      state.reviewSetupId = null;
+      $("#setup-review-form").reset();
+      $("#setup-review-error").hidden = true;
+    });
     $("[data-share-x]").addEventListener("click", async () => {
       const pending = state.pendingSocialShare;
       if (!pending) return;
@@ -364,7 +373,7 @@
     });
     $("#credential-sign-up").addEventListener("click", () => authenticateWithPassword("signup"));
 
-    const dialogs = [authDialog, submitDialog, methodDialog, symbolGuideDialog, outcomeDialog, $("#command-dialog"), profileDialog];
+    const dialogs = [authDialog, submitDialog, methodDialog, symbolGuideDialog, outcomeDialog, socialShareDialog, setupReviewDialog, $("#command-dialog"), profileDialog];
     let overlayScrollY = 0;
     let overlayScrollLocked = false;
     const syncOverlayScrollLock = () => {
@@ -741,6 +750,12 @@
       t1: nullableNumber(row.t1),
       t2: nullableNumber(row.t2),
       t3: nullableNumber(row.t3),
+      ledger_t1: nullableNumber(row.ledger_t1 ?? row.t1),
+      ledger_t2: nullableNumber(row.ledger_t2 ?? row.t2),
+      ledger_t3: nullableNumber(row.ledger_t3 ?? row.t3),
+      t1_allocation: nullableNumber(row.t1_allocation),
+      t2_allocation: nullableNumber(row.t2_allocation),
+      t3_allocation: nullableNumber(row.t3_allocation),
       current_price: nullableNumber(row.current_price),
       score: nullableNumber(row.score),
       r_result: nullableNumber(row.r_result),
@@ -1696,7 +1711,7 @@
       if (setup) void toggleSetupFollow(setup);
     }));
     $$("[data-lifecycle-stop]", grid).forEach((button) => button.addEventListener("click", () => void reviseLedgerStop(button.dataset.lifecycleStop)));
-    $$("[data-lifecycle-review]", grid).forEach((button) => button.addEventListener("click", () => void recordSetupReview(button.dataset.lifecycleReview)));
+    $$("[data-lifecycle-review]", grid).forEach((button) => button.addEventListener("click", () => openSetupReview(button.dataset.lifecycleReview)));
     renderSetupCounts();
     renderNetworkIntel();
   }
@@ -1713,10 +1728,11 @@
     const victoryVariant = victory ? victoryVariantFor(setup) : null;
     const lossVariant = loss ? lossVariantFor(setup) : null;
     const tradingViewUrl = tradingViewChartUrl(setup);
+    const canManage = state.session?.user?.id && String(state.session.user.id) === String(setup.user_id) && ["ACTIVE", "T1_HIT", "T2_HIT"].includes(String(setup.status || "").toUpperCase());
     return `<article class="setup-card is-${setup.direction.toLowerCase()}${commentsOpen ? " has-open-comments" : ""}${isFollowed ? " is-followed" : ""}" id="setup-${escapeAttr(setupId)}">
       <div class="setup-card-top">
         <a class="ticker-lockup" href="${escapeAttr(tradingViewUrl)}" target="_blank" rel="noopener noreferrer" aria-label="Open ${escapeAttr(setup.ticker)} live chart on TradingView" title="Open ${escapeAttr(setup.ticker)} live chart on TradingView"><div class="ticker-icon">${escapeHtml(setup.ticker.slice(0, 4))}</div><div class="ticker-copy"><b>${escapeHtml(setup.ticker)}</b><span>${escapeHtml(setup.direction)} · ${escapeHtml(horizonLabel(setup.horizon))}</span><small>TRADINGVIEW LIVE ↗</small></div></a>
-        <span class="status-chip ${normalized}">${escapeHtml(normalized.toUpperCase())}</span>
+        <div class="setup-status-stack"><span class="status-chip ${normalized}">${escapeHtml(normalized.toUpperCase())}</span>${canManage ? `<button class="compact-setup-manage" type="button" data-lifecycle-review="${escapeAttr(setupId)}">MANAGE</button>` : ""}</div>
       </div>
       ${setupLifecyclePanel(setup)}
       ${setupPositionMap(setup)}
@@ -1770,17 +1786,25 @@
     const coach = window.LedgerLifecycle.coachingSuggestion(setup);
     const score = window.LedgerLifecycle.scoreSetup(setup);
     const isOwner = state.session?.user?.id && String(state.session.user.id) === String(setup.user_id);
+    const isManageable = ["ACTIVE", "T1_HIT", "T2_HIT"].includes(String(setup.status || "").toUpperCase());
     const activeClock = setup.triggered_at ? setup.review_due_at : setup.entry_expires_at;
-    const clockLabel = setup.triggered_at ? "NEXT REVIEW" : "ENTRY EXPIRES";
+    const clockLabel = setup.triggered_at ? "REVIEW REMINDER" : "ENTRY EXPIRES";
     const ledgerStop = setup.ledger_stop ?? setup.stop;
     const scoreText = score.kind === "trade" ? `${formatNumber(score.tradeR, 2)}R` : score.kind === "expiry" || score.kind === "cancel" ? `${formatNumber(score.score, 2)}` : score.kind === "void" ? "EXCLUDED" : "OPEN";
+    const reviewAction = isOwner && isManageable ? `<button type="button" data-lifecycle-review="${escapeAttr(setup.id)}">REVIEW / UPDATE PLAN</button>` : "";
+    const coachAction = coach?.kind === "PROTECT" && isOwner ? `<button type="button" data-lifecycle-stop="${escapeAttr(setup.id)}">${escapeHtml(coach.action)}</button>` : "";
+    const managementPrompt = coach
+      ? `<aside class="coach-prompt"><div><span>${escapeHtml(coach.title)}</span><p>${escapeHtml(coach.message)}</p></div><div class="coach-actions">${coachAction}${reviewAction || (!isOwner ? "<small>AUTHOR ACTION</small>" : "")}</div></aside>`
+      : reviewAction
+        ? `<aside class="coach-prompt is-available"><div><span>Review whenever conditions change</span><p>The cadence is a reminder, not a lockout. Current stop and unreached targets can be revised prospectively.</p></div><div class="coach-actions">${reviewAction}</div></aside>`
+        : "";
     return `<section class="lifecycle-strip is-${escapeAttr(lifecycle.tone)}">
       <div class="lifecycle-scenario"><span>LIFECYCLE</span><b>${escapeHtml(lifecycle.label)}</b></div>
       <div><span>${clockLabel}</span><b>${activeClock ? escapeHtml(formatRelative(activeClock)) : "NOT SET"}</b></div>
       <div><span>LEDGER STOP</span><b>${formatPrice(ledgerStop)} <small>ORIG ${formatPrice(setup.stop)}</small></b></div>
       <div><span>GOAT STATE</span><b>${escapeHtml(scoreText)}</b></div>
       <strong>${escapeHtml(setup.scoring_version === "GOAT_V2" ? "GOAT" : "LEGACY")}</strong>
-      ${coach ? `<aside class="coach-prompt"><div><span>${escapeHtml(coach.title)}</span><p>${escapeHtml(coach.message)}</p></div>${isOwner ? `<button type="button" ${coach.kind === "PROTECT" ? `data-lifecycle-stop="${escapeAttr(setup.id)}"` : `data-lifecycle-review="${escapeAttr(setup.id)}"`}>${escapeHtml(coach.action)}</button>` : "<small>AUTHOR ACTION</small>"}</aside>` : ""}
+      ${managementPrompt}
     </section>`;
   }
 
@@ -1835,30 +1859,125 @@
     showToast("Public Ledger stop revised", `${setup.ticker}: ${formatPrice(previous)} to ${formatPrice(coach.suggestedStop)}. No broker action is claimed.`);
   }
 
-  async function recordSetupReview(setupId) {
+  function openSetupReview(setupId) {
     const setup = state.setups.find((item) => String(item.id) === String(setupId));
+    if (!setup || !state.session?.user || String(setup.user_id) !== String(state.session.user.id)) return;
+    state.reviewSetupId = String(setup.id);
+    $("#setup-review-ticker").textContent = setup.ticker;
+    $("#setup-review-context").innerHTML = `<span>${escapeHtml(setup.direction)}</span><span>${escapeHtml(horizonLabel(setup.horizon))}</span><span>ENTRY ${formatPrice(setup.entry)}</span><span>CURRENT ${formatPrice(setup.current_price)}</span>`;
+    setReviewField("#review-ledger-stop", setup.ledger_stop ?? setup.stop, setup.stop, "#review-original-stop", "ORIGINAL STOP");
+    setReviewField("#review-ledger-t1", setup.ledger_t1 ?? setup.t1, setup.t1, "#review-original-t1", "ORIGINAL TP1", Boolean(setup.t1_hit_at));
+    setReviewField("#review-ledger-t2", setup.ledger_t2 ?? setup.t2, setup.t2, "#review-original-t2", "ORIGINAL TP2", Boolean(setup.t2_hit_at));
+    setReviewField("#review-ledger-t3", setup.ledger_t3 ?? setup.t3, setup.t3, "#review-original-t3", "ORIGINAL TP3", Boolean(setup.t3_hit_at));
+    $("#setup-review-note").value = "";
+    $("#setup-review-error").hidden = true;
+    $("#setup-review-dialog").showModal();
+  }
+
+  function setReviewField(inputSelector, value, originalValue, noteSelector, label, locked = false) {
+    const input = $(inputSelector);
+    input.value = value == null ? "" : String(value);
+    input.readOnly = locked;
+    input.closest(".field")?.classList.toggle("is-locked", locked);
+    syncPriceInputStep(input);
+    $(noteSelector).textContent = `${label}: ${formatPrice(originalValue)}${locked ? " / REACHED + LOCKED" : ""}`;
+  }
+
+  async function saveSetupReview(event) {
+    event.preventDefault();
+    const setup = state.setups.find((item) => String(item.id) === String(state.reviewSetupId));
+    const errorNode = $("#setup-review-error");
     if (!setup || !state.supabase || !state.session?.user) return;
-    const cadence = Number(setup.review_cadence_days || window.LedgerLifecycle.horizonPreset(setup.horizon).reviewCadenceDays);
-    const { data, error } = await state.supabase.rpc("record_setup_review", { p_setup_public_id: setup.id, p_note: null });
-    if (error) {
-      showToast("Review not recorded", error.message, true);
+    const payload = {
+      ledger_stop: toNumber($("#review-ledger-stop").value),
+      ledger_t1: toNumber($("#review-ledger-t1").value),
+      ledger_t2: toNumber($("#review-ledger-t2").value),
+      ledger_t3: toNumber($("#review-ledger-t3").value),
+      note: $("#setup-review-note").value.trim()
+    };
+    const validationError = validateSetupReview(setup, payload);
+    if (validationError) {
+      errorNode.textContent = validationError;
+      errorNode.hidden = false;
       return;
     }
-    setup.review_due_at = data || new Date(Date.now() + cadence * 86400000).toISOString();
+    errorNode.hidden = true;
+    const button = $("#save-setup-review");
+    button.disabled = true;
+    const { data, error } = await state.supabase.rpc("revise_setup_management", {
+      p_setup_public_id: setup.id,
+      p_ledger_stop: payload.ledger_stop,
+      p_ledger_t1: payload.ledger_t1,
+      p_ledger_t2: payload.ledger_t2,
+      p_ledger_t3: payload.ledger_t3,
+      p_note: payload.note || null
+    });
+    button.disabled = false;
+    if (error) {
+      errorNode.textContent = error.message;
+      errorNode.hidden = false;
+      return;
+    }
+    const saved = Array.isArray(data) ? data[0] : data;
+    setup.ledger_stop = nullableNumber(saved?.ledger_stop ?? payload.ledger_stop);
+    setup.ledger_t1 = nullableNumber(saved?.ledger_t1 ?? payload.ledger_t1);
+    setup.ledger_t2 = nullableNumber(saved?.ledger_t2 ?? payload.ledger_t2);
+    setup.ledger_t3 = nullableNumber(saved?.ledger_t3 ?? payload.ledger_t3);
+    setup.review_due_at = saved?.next_review || new Date(Date.now() + Number(setup.review_cadence_days || 7) * 86400000).toISOString();
+    $("#setup-review-dialog").close();
     renderSetups();
-    showToast("Review recorded", `${setup.ticker} remains active. The next review is due in ${cadence} day${cadence === 1 ? "" : "s"}.`);
+    showToast("Public review saved", `${setup.ticker} live management levels were updated. The original plan remains locked.`);
+  }
+
+  function validateSetupReview(setup, values) {
+    if (![values.ledger_stop, values.ledger_t1].every((value) => Number.isFinite(value) && value > 0)) return "A valid Ledger stop and TP1 are required.";
+    const targets = [values.ledger_t1, values.ledger_t2, values.ledger_t3];
+    if (targets.slice(1).some((value) => value != null && (!Number.isFinite(value) || value <= 0))) return "Optional targets must be positive numbers.";
+    if (values.ledger_t3 != null && values.ledger_t2 == null) return "TP3 requires a TP2 level.";
+    if (Number(setup.t2_allocation || 0) > 0 && values.ledger_t2 == null) return "TP2 cannot be removed because part of the published position is allocated to it.";
+    if (Number(setup.t3_allocation || 0) > 0 && values.ledger_t3 == null) return "TP3 cannot be removed because part of the published position is allocated to it.";
+    const currentStop = Number(setup.ledger_stop ?? setup.stop);
+    const stopChanged = Number.isFinite(currentStop) && Math.abs(values.ledger_stop - currentStop) > Math.max(1e-8, Math.abs(currentStop) * 1e-10);
+    if (setup.direction === "LONG" && values.ledger_stop < currentStop) return "A LONG Ledger stop cannot move down and add risk.";
+    if (setup.direction === "SHORT" && values.ledger_stop > currentStop) return "A SHORT Ledger stop cannot move up and add risk.";
+    if (stopChanged && !Number.isFinite(setup.current_price)) return "Wait for a live price before revising the Ledger stop.";
+    if (stopChanged && setup.direction === "LONG" && values.ledger_stop >= setup.current_price) return "A revised LONG Ledger stop must remain below the latest tracked price.";
+    if (stopChanged && setup.direction === "SHORT" && values.ledger_stop <= setup.current_price) return "A revised SHORT Ledger stop must remain above the latest tracked price.";
+    if (setup.direction === "LONG" && values.ledger_t1 <= setup.entry) return "LONG targets must remain above entry.";
+    if (setup.direction === "SHORT" && values.ledger_t1 >= setup.entry) return "SHORT targets must remain below entry.";
+    const definedTargets = targets.filter((value) => value != null);
+    if (setup.direction === "LONG" && definedTargets.some((value, index) => index > 0 && value <= definedTargets[index - 1])) return "LONG targets must increase from TP1 to TP3.";
+    if (setup.direction === "SHORT" && definedTargets.some((value, index) => index > 0 && value >= definedTargets[index - 1])) return "SHORT targets must decrease from TP1 to TP3.";
+    const hitTimes = [setup.t1_hit_at, setup.t2_hit_at, setup.t3_hit_at];
+    const currentTargets = [setup.ledger_t1 ?? setup.t1, setup.ledger_t2 ?? setup.t2, setup.ledger_t3 ?? setup.t3];
+    for (let index = 0; index < targets.length; index += 1) {
+      const previousTarget = currentTargets[index];
+      const nextTarget = targets[index];
+      const targetChanged = previousTarget == null || nextTarget == null
+        ? previousTarget !== nextTarget
+        : Math.abs(nextTarget - previousTarget) > Math.max(1e-8, Math.abs(previousTarget) * 1e-10);
+      if (hitTimes[index] && targetChanged) return `TP${index + 1} has already been reached and cannot be rewritten.`;
+      if (!hitTimes[index] && targetChanged && nextTarget != null && Number.isFinite(setup.current_price)) {
+        if (setup.direction === "LONG" && nextTarget <= setup.current_price) return `Revised TP${index + 1} must remain above the latest tracked price. Use the outcome controls for an exit that already occurred.`;
+        if (setup.direction === "SHORT" && nextTarget >= setup.current_price) return `Revised TP${index + 1} must remain below the latest tracked price. Use the outcome controls for an exit that already occurred.`;
+      }
+    }
+    return "";
   }
 
   function setupPositionMap(setup) {
     const entry = Number(setup.entry);
-    const stop = Number(setup.stop);
+    const originalStop = Number(setup.stop);
+    const stop = Number(setup.ledger_stop ?? setup.stop);
     const current = setup.current_price == null ? Number.NaN : Number(setup.current_price);
     const hasCurrent = Number.isFinite(current);
     const hasScale = Number.isFinite(entry) && Number.isFinite(stop) && entry !== stop;
-    const targets = [setup.t1, setup.t2, setup.t3].map((value, index) => ({
+    const originalTargets = [setup.t1, setup.t2, setup.t3];
+    const targets = [setup.ledger_t1 ?? setup.t1, setup.ledger_t2 ?? setup.t2, setup.ledger_t3 ?? setup.t3].map((value, index) => ({
       key: `tp${index + 1}`,
       label: `TP${index + 1}`,
       value: value == null ? Number.NaN : Number(value),
+      originalValue: originalTargets[index] == null ? Number.NaN : Number(originalTargets[index]),
       index: index + 1
     }));
     const publishedTargets = targets.filter((target) => Number.isFinite(target.value));
@@ -1886,7 +2005,7 @@
     let currentPosition = 50;
     let position = () => 50;
     if (hasScale) {
-      const scaleValues = [stop, entry, ...publishedTargets.map((target) => target.value), ...(hasCurrent ? [current] : [])];
+      const scaleValues = [stop, originalStop, entry, ...publishedTargets.flatMap((target) => [target.value, target.originalValue]), ...(hasCurrent ? [current] : [])].filter(Number.isFinite);
       const floor = Math.min(...scaleValues);
       const ceiling = Math.max(...scaleValues);
       const span = Math.max(ceiling - floor, Math.abs(entry - stop));
@@ -1916,7 +2035,10 @@
     const entryExplanation = queued
       ? "Published trigger. The setup becomes active when the market reaches this price."
       : "Original published trigger or fill. It remains locked for outcome scoring.";
-    const stopExplanation = `Published invalidation. This ${setup.direction.toLowerCase()} setup stops when price reaches this level.`;
+    const stopChanged = Number.isFinite(originalStop) && Math.abs(stop - originalStop) > Math.max(1e-8, Math.abs(originalStop) * 1e-10);
+    const stopExplanation = stopChanged
+      ? `Current public Ledger stop. The original published invalidation remains ${formatPrice(originalStop)}.`
+      : `Original published invalidation. This ${setup.direction.toLowerCase()} setup stops when price reaches this level.`;
     const nowExplanation = hasCurrent
       ? `Latest tracked ${quoteSymbol} price from ${quoteSource}, quoted ${quoteAge}.`
       : "A live quote is pending. The published entry, stop, and targets remain plotted.";
@@ -1924,27 +2046,33 @@
     const marker = (className, label, value, markerPosition, explanation, markerText = "") => `<button class="position-marker ${className}" type="button" style="--marker-position:${markerPosition.toFixed(2)}%" data-tooltip-align="${tooltipAlignment(markerPosition)}" data-map-tooltip="${escapeAttr(`${label} ${formatPrice(value)} — ${explanation}`)}" aria-label="${escapeAttr(`${label} ${formatPrice(value)}. ${explanation}`)}">${markerText}</button>`;
     const valueCell = (className, label, value, explanation, note = "") => `<button class="position-value ${className}" type="button" data-map-tooltip="${escapeAttr(`${label} ${formatPrice(value)} — ${explanation}`)}" aria-label="${escapeAttr(`${label} ${formatPrice(value)}. ${explanation}`)}"><span>${label}${note ? `<small>${escapeHtml(note)}</small>` : ""}</span><b>${formatPrice(value)}</b></button>`;
     const targetMarkers = publishedTargets.map((target) => {
-      const targetR = computePlannedR(setup.direction, entry, stop, target.value);
-      const explanation = `${target.index === 1 ? "First" : target.index === 2 ? "Second" : "Final"} published take-profit${targetR == null ? "" : `, equal to ${formatNumber(targetR, 2)}R from entry`}.`;
+      const targetR = computePlannedR(setup.direction, entry, originalStop, target.value);
+      const targetChanged = Number.isFinite(target.originalValue) && Math.abs(target.value - target.originalValue) > Math.max(1e-8, Math.abs(target.originalValue) * 1e-10);
+      const explanation = targetChanged
+        ? `Current public ${target.label}, equal to ${formatNumber(targetR, 2)}R against original risk. Original ${target.label} remains ${formatPrice(target.originalValue)}.`
+        : `${target.index === 1 ? "First" : target.index === 2 ? "Second" : "Final"} published take-profit${targetR == null ? "" : `, equal to ${formatNumber(targetR, 2)}R from entry`}.`;
       return marker(`is-target is-${target.key}`, target.label, target.value, position(target.value), explanation, String(target.index));
     }).join("");
     const targetValueItems = targets.map((target) => {
       const published = Number.isFinite(target.value);
-      const targetR = published ? computePlannedR(setup.direction, entry, stop, target.value) : null;
+      const targetR = published ? computePlannedR(setup.direction, entry, originalStop, target.value) : null;
+      const targetChanged = published && Number.isFinite(target.originalValue) && Math.abs(target.value - target.originalValue) > Math.max(1e-8, Math.abs(target.originalValue) * 1e-10);
       const explanation = published
-        ? `${target.index === 1 ? "First" : target.index === 2 ? "Second" : "Final"} published take-profit${targetR == null ? "" : `, equal to ${formatNumber(targetR, 2)}R from entry`}.`
+        ? targetChanged
+          ? `Current public ${target.label}, equal to ${formatNumber(targetR, 2)}R against original risk. Original ${target.label} remains ${formatPrice(target.originalValue)}.`
+          : `${target.index === 1 ? "First" : target.index === 2 ? "Second" : "Final"} published take-profit${targetR == null ? "" : `, equal to ${formatNumber(targetR, 2)}R from entry`}.`
         : `No ${target.label} was published for this setup.`;
       return {
         value: published ? target.value : (setup.direction === "SHORT" ? -Number.MAX_VALUE + (4 - target.index) : Number.MAX_VALUE - (4 - target.index)),
         tieOrder: setup.direction === "SHORT" ? 3 - target.index : target.index + 2,
-        html: valueCell(`is-target is-${target.key}${published ? "" : " is-unset"}`, target.label, published ? target.value : null, explanation, targetR == null ? "" : `${formatNumber(targetR, 2)}R`)
+        html: valueCell(`is-target is-${target.key}${published ? "" : " is-unset"}`, target.label, published ? target.value : null, explanation, targetChanged ? `ORIG ${formatPrice(target.originalValue)}` : targetR == null ? "" : `${formatNumber(targetR, 2)}R`)
       };
     });
     const valueItems = [
       {
         value: stop,
         tieOrder: setup.direction === "SHORT" ? 5 : 0,
-        html: valueCell("is-stop", "SL", stop, stopExplanation)
+        html: valueCell("is-stop", "SL", stop, stopExplanation, stopChanged ? `ORIG ${formatPrice(originalStop)}` : "")
       },
       {
         value: entry,
@@ -1961,7 +2089,7 @@
     const orderedValues = valueItems.map((item) => item.html).join("");
     const ariaTargets = targets.map((target) => `${target.label} ${formatPrice(Number.isFinite(target.value) ? target.value : null)}`).join(", ");
 
-    return `<section class="setup-position-map is-${tone}${hasCurrent ? "" : " is-pending"}" aria-label="${escapeAttr(`${setup.ticker} ${setup.direction} execution map. Stop ${formatPrice(setup.stop)}, entry ${formatPrice(setup.entry)}, ${ariaTargets}, current ${formatPrice(setup.current_price)}.`)}">
+    return `<section class="setup-position-map is-${tone}${hasCurrent ? "" : " is-pending"}" aria-label="${escapeAttr(`${setup.ticker} ${setup.direction} execution map. Current Ledger stop ${formatPrice(stop)}, original stop ${formatPrice(originalStop)}, entry ${formatPrice(setup.entry)}, ${ariaTargets}, current ${formatPrice(setup.current_price)}.`)}">
       <header><span>${heading}<small>${escapeHtml(setup.direction)} / ${escapeHtml(quoteSymbol)}</small></span><b><span class="map-distance-full">${distanceLabel}</span><span class="map-distance-glance">${glanceDistanceLabel}</span></b></header>
       <div class="setup-position-track" style="--risk-left:${riskLeft.toFixed(2)}%;--risk-width:${riskWidth.toFixed(2)}%;--reward-left:${rewardLeft.toFixed(2)}%;--reward-width:${rewardWidth.toFixed(2)}%;--fill-left:${fillLeft.toFixed(2)}%;--fill-width:${fillWidth.toFixed(2)}%">
         <i class="position-zone is-risk" aria-hidden="true"></i><i class="position-zone is-reward" aria-hidden="true"></i>${hasCurrent ? '<i class="position-fill" aria-hidden="true"></i>' : ""}

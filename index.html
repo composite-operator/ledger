@@ -592,6 +592,56 @@
     </form>
   </dialog>
 
+  <dialog class="setup-review-dialog modal-shell" id="setup-review-dialog" aria-label="Review and update active setup">
+    <form class="modal-card setup-review-card" id="setup-review-form" novalidate>
+      <button class="modal-close" type="button" data-close-setup-review aria-label="Close setup review">×</button>
+      <span class="eyebrow">ACTIVE MANAGEMENT / PUBLIC RECORD</span>
+      <h2>Review <span id="setup-review-ticker">setup</span></h2>
+      <p class="setup-review-intro">Update the live Ledger stop and take-profit map whenever conditions change. These current levels drive future hit tracking and realized R. The original published plan remains locked and visible as context.</p>
+
+      <div class="setup-review-context" id="setup-review-context"></div>
+
+      <div class="setup-review-grid">
+        <label class="field risk-field">
+          <span>Current Ledger stop <b>*</b></span>
+          <div class="field-control field-control-prefix"><i>$</i><input name="ledger_stop" id="review-ledger-stop" type="number" min="0" step="0.01" inputmode="decimal" required></div>
+          <small id="review-original-stop"></small>
+        </label>
+        <label class="field target-field">
+          <span>Current TP1 <b>*</b></span>
+          <div class="field-control field-control-prefix"><i>$</i><input name="ledger_t1" id="review-ledger-t1" type="number" min="0" step="0.01" inputmode="decimal" required></div>
+          <small id="review-original-t1"></small>
+        </label>
+        <label class="field target-field">
+          <span>Current TP2</span>
+          <div class="field-control field-control-prefix"><i>$</i><input name="ledger_t2" id="review-ledger-t2" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Optional"></div>
+          <small id="review-original-t2"></small>
+        </label>
+        <label class="field target-field">
+          <span>Current TP3</span>
+          <div class="field-control field-control-prefix"><i>$</i><input name="ledger_t3" id="review-ledger-t3" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Optional"></div>
+          <small id="review-original-t3"></small>
+        </label>
+      </div>
+
+      <label class="field setup-review-note">
+        <span>Public review note</span>
+        <textarea name="note" id="setup-review-note" rows="3" maxlength="500" placeholder="What changed in the thesis or management plan?"></textarea>
+      </label>
+
+      <div class="setup-review-rules">
+        <b>LIVE PLAN + ORIGINAL RECEIPT</b>
+        <span>The graph and future scoring use the current management levels. Original levels remain visible as ORIG. Reached targets cannot be rewritten, and no broker action is claimed.</span>
+      </div>
+      <div class="form-error" id="setup-review-error" role="alert" hidden></div>
+
+      <footer class="setup-review-footer">
+        <div><b>Review at any time</b><small>The cadence is a reminder, not a lockout.</small></div>
+        <button class="button button-primary publish-button" id="save-setup-review" type="submit">Save public review <span>→</span></button>
+      </footer>
+    </form>
+  </dialog>
+
   <dialog class="command-dialog modal-shell" id="command-dialog">
     <div class="command-card">
       <div class="command-input-wrap">
@@ -653,7 +703,7 @@
         <div><span>03</span><h3>Tranche-weighted outcomes</h3><p>T1, T2, and T3 score by their declared allocations and exit R. Full exit at T1 and scale-out plans remain directly comparable.</p></div>
         <div><span>04</span><h3>Evidence qualification</h3><p>GOAT stays NQ until three triggered setups resolve. Evidence weight grows with the sample and reaches full weight at twenty.</p></div>
         <div><span>05</span><h3>Outlier control</h3><p>Each resolved trade contributes between -1R and +5R to GOAT. Full uncapped Trade R remains visible in total score.</p></div>
-        <div><span>06</span><h3>Coaching, not execution</h3><p>Review prompts can suggest a prospective Ledger stop. Only the author can revise it; the original stop stays visible and no broker action is claimed.</p></div>
+        <div><span>06</span><h3>Adaptive management, public record</h3><p>Authors can review at any time and revise the current Ledger stop or unreached targets. Future hits use the managed plan; original levels remain visible for comparison and no broker action is claimed.</p></div>
       </div>
       <div class="method-formulas" aria-label="GOAT formulas">
         <code>Trade R = Σ (allocation × exit R)</code>
