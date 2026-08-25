@@ -305,6 +305,7 @@
     $("[data-close-social-share]").addEventListener("click", () => socialShareDialog.close());
     $("[data-close-setup-review]").addEventListener("click", () => setupReviewDialog.close());
     $("#setup-review-form").addEventListener("submit", saveSetupReview);
+    $("#close-setup-market").addEventListener("click", closeSetupAtMarket);
     ["#review-ledger-stop", "#review-ledger-t1", "#review-ledger-t2", "#review-ledger-t3"].forEach((selector) => {
       $(selector).addEventListener("input", updateSetupReviewRPreview);
     });
@@ -1882,6 +1883,7 @@
     $("#setup-review-note").value = "";
     $("#setup-review-error").hidden = true;
     updateSetupReviewRPreview();
+    updateMarketClosePreview(setup);
     $("#setup-review-dialog").showModal();
   }
 
@@ -1903,6 +1905,126 @@
       const rValue = setup && target != null ? computePlannedR(setup.direction, setup.entry, setup.stop, target) : null;
       $(`#review-t${index + 1}-r`).textContent = Number.isFinite(rValue) ? `${formatNumber(rValue, 2)}R` : "—";
     });
+  }
+
+  function estimateMarketCloseR(setup, closePrice) {
+    const originalRisk = Math.abs(Number(setup.entry) - Number(setup.stop));
+    if (!Number.isFinite(originalRisk) || originalRisk <= 0 || !Number.isFinite(Number(closePrice)) || Number(closePrice) <= 0) return null;
+    const allocations = [setup.t1_allocation, setup.t2_allocation, setup.t3_allocation].map((value) => Number(value) || 0);
+    const targets = [setup.ledger_t1 ?? setup.t1, setup.ledger_t2 ?? setup.t2, setup.ledger_t3 ?? setup.t3];
+    const hitTimes = [setup.t1_hit_at, setup.t2_hit_at, setup.t3_hit_at];
+    return allocations.reduce((total, allocation, index) => {
+      if (allocation <= 0) return total;
+      const exitPrice = hitTimes[index] && Number.isFinite(Number(targets[index])) ? Number(targets[index]) : Number(closePrice);
+      const trancheR = setup.direction === "SHORT"
+        ? (Number(setup.entry) - exitPrice) / originalRisk
+        : (exitPrice - Number(setup.entry)) / originalRisk;
+      return total + allocation * trancheR;
+    }, 0);
+  }
+
+  function updateMarketClosePreview(setup) {
+    const currentPrice = setup?.current_price == null ? Number.NaN : Number(setup.current_price);
+    const estimatedR = estimateMarketCloseR(setup, currentPrice);
+    $("#review-market-close-preview").textContent = Number.isFinite(currentPrice)
+      ? `CURRENT ${formatPrice(currentPrice)} · EST. FINAL ${Number.isFinite(estimatedR) ? formatR(estimatedR) : "—"}`
+      : "CURRENT — · EST. FINAL R —";
+  }
+
+  async function fetchFreshSetupQuote(setup) {
+    const response = await fetch(`${config.supabaseUrl}/functions/v1/setup-book-quotes`, {
+      method: "POST",
+      headers: {
+        apikey: config.supabasePublishableKey,
+        Authorization: `Bearer ${config.supabasePublishableKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ tickers: [setup.ticker] })
+    });
+    const payload = await response.json().catch(() => ({}));
+    const quote = payload.quotes?.[setup.ticker];
+    if (!response.ok || !quote || !Number.isFinite(Number(quote.price)) || Number(quote.price) <= 0) {
+      throw new Error(payload.message || "A fresh tracked quote is unavailable. The trade remains open.");
+    }
+    const entryRatio = Number.isFinite(Number(setup.entry)) && Number(setup.entry) > 0
+      ? Math.abs(Number(quote.price) - Number(setup.entry)) / Number(setup.entry)
+      : 0;
+    const unambiguousAsset = ["CRYPTO", "FUTURE", "INDEX", "FOREX"].includes(String(quote.assetClass || ""));
+    if (entryRatio > 0.5 && !unambiguousAsset) throw new Error("The fresh quote failed the Ledger symbol sanity check. The trade remains open.");
+    return quote;
+  }
+
+  async function closeSetupAtMarket() {
+    const setup = state.setups.find((item) => String(item.id) === String(state.reviewSetupId));
+    const errorNode = $("#setup-review-error");
+    if (!setup || !state.supabase || !state.session?.user) return;
+    if (!window.confirm(`Close the remaining ${setup.ticker} position at a fresh tracked market quote? This permanently resolves the public record.`)) return;
+
+    const closeButton = $("#close-setup-market");
+    const saveButton = $("#save-setup-review");
+    const reviewChartInput = $("#review-chart-image");
+    const reviewChartFile = selectedAttachmentFile(reviewChartInput);
+    const imageError = validateImageFile(reviewChartFile);
+    if (imageError) {
+      errorNode.textContent = imageError;
+      errorNode.hidden = false;
+      return;
+    }
+
+    errorNode.hidden = true;
+    closeButton.disabled = true;
+    saveButton.disabled = true;
+    const originalLabel = closeButton.textContent;
+    closeButton.textContent = "Fetching live quote…";
+    let uploadedChartPath = null;
+    try {
+      const quote = await fetchFreshSetupQuote(setup);
+      setup.current_price = Number(quote.price);
+      setup.live_quote_source = quote.source;
+      setup.live_quote_at = quote.quotedAt;
+      setup.quote_symbol = quote.resolvedSymbol || setup.ticker;
+      setup.quote_asset_class = quote.assetClass || null;
+      $("#setup-review-context").innerHTML = `<span>${escapeHtml(setup.direction)}</span><span>${escapeHtml(horizonLabel(setup.horizon))}</span><span>ENTRY ${formatPrice(setup.entry)}</span><span>CLOSE QUOTE ${formatPrice(setup.current_price)}</span>`;
+      updateMarketClosePreview(setup);
+
+      closeButton.textContent = "Closing public record…";
+      if (reviewChartFile) uploadedChartPath = await uploadLedgerImage(reviewChartFile, "setups");
+      const { data, error } = await state.supabase.rpc("close_setup_at_market", {
+        p_setup_public_id: setup.id,
+        p_expected_price: setup.current_price,
+        p_note: $("#setup-review-note").value.trim() || null,
+        p_chart_path: uploadedChartPath
+      });
+      if (error) throw error;
+
+      const closed = Array.isArray(data) ? data[0] : data;
+      setup.status = closed?.status || "CLOSED";
+      setup.current_price = nullableNumber(closed?.close_price ?? setup.current_price);
+      setup.r_result = nullableNumber(closed?.r_result);
+      setup.score = setup.r_result;
+      setup.resolved_at = closed?.resolved_at || new Date().toISOString();
+      setup.resolution_kind = "TRADE";
+      setup.ledger_chart_path = closed?.ledger_chart_path || uploadedChartPath || setup.ledger_chart_path || null;
+      $("#setup-review-dialog").close();
+      renderAll();
+      showToast("Trade closed at market", `${setup.ticker} closed at ${formatPrice(setup.current_price)} for ${formatR(setup.r_result)}.`);
+    } catch (error) {
+      if (uploadedChartPath) await removeLedgerImage(uploadedChartPath);
+      await syncQuoteDrivenSetups([setup.ticker]);
+      const refreshed = state.setups.find((item) => String(item.id) === String(setup.id));
+      if (refreshed && normalizeState(refreshed.status) === "resolved") {
+        $("#setup-review-dialog").close();
+        renderAll();
+        showToast("Trade already resolved", `${refreshed.ticker} reached a tracked stop or target while the close quote was being refreshed.`);
+        return;
+      }
+      errorNode.textContent = error.message || "The market close could not be recorded. The trade remains open.";
+      errorNode.hidden = false;
+    } finally {
+      closeButton.disabled = false;
+      saveButton.disabled = false;
+      closeButton.textContent = originalLabel;
+    }
   }
 
   async function saveSetupReview(event) {
@@ -2629,6 +2751,7 @@
   }
 
   function victoryTargetPrice(setup) {
+    if (String(setup.status || "").toUpperCase() === "CLOSED") return setup.current_price;
     const finalStatus = String(setup.final_status || "").toUpperCase();
     if (finalStatus === "T3") return setup.t3 ?? setup.t2 ?? setup.t1;
     if (finalStatus === "T2") return setup.t2 ?? setup.t1;
@@ -2761,7 +2884,7 @@
       <section class="victory-trade-stats" aria-label="Winning trade statistics">
         <div><span>OUTCOME</span><b>${escapeHtml(finalStatus)}</b></div>
         <div><span>ENTRY</span><b>${formatPrice(setup.entry)}</b></div>
-        <div><span>WINNING TARGET</span><b>${formatPrice(victoryTargetPrice(setup))}</b></div>
+        <div><span>${String(setup.status || "").toUpperCase() === "CLOSED" ? "MARKET EXIT" : "WINNING TARGET"}</span><b>${formatPrice(victoryTargetPrice(setup))}</b></div>
         <div><span>TIME IN PLAY</span><b>${escapeHtml(victoryElapsed(setup))}</b></div>
       </section>
       <section class="victory-operator-stats" aria-label="Operator history at close">
@@ -2806,7 +2929,7 @@
       <section class="victory-trade-stats" aria-label="Losing trade statistics">
         <div><span>OUTCOME</span><b>${escapeHtml(finalStatus)}</b></div>
         <div><span>ENTRY</span><b>${formatPrice(setup.entry)}</b></div>
-        <div><span>PUBLISHED STOP</span><b>${formatPrice(setup.stop)}</b></div>
+        <div><span>${String(setup.status || "").toUpperCase() === "CLOSED" ? "MARKET EXIT" : "PUBLISHED STOP"}</span><b>${formatPrice(String(setup.status || "").toUpperCase() === "CLOSED" ? setup.current_price : setup.stop)}</b></div>
         <div><span>TIME IN PLAY</span><b>${escapeHtml(victoryElapsed(setup))}</b></div>
       </section>
       <section class="victory-operator-stats" aria-label="Operator history at close">

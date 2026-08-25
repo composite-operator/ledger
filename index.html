@@ -654,6 +654,18 @@
         <b>LIVE PLAN + ORIGINAL RECEIPT</b>
         <span>The graph and future scoring use the current management levels. Original levels remain visible as ORIG. Reached targets cannot be rewritten, and no broker action is claimed.</span>
       </div>
+
+      <section class="setup-review-market-close" aria-labelledby="review-market-close-title">
+        <div>
+          <span>MARKET EXIT</span>
+          <b id="review-market-close-title">Close the remaining position now</b>
+          <p>Fetches a fresh tracked quote, closes every unresolved tranche at that price, and permanently resolves the public record. Prior target fills remain intact. Unsaved level edits are not applied.</p>
+        </div>
+        <div class="setup-review-market-close-action">
+          <small id="review-market-close-preview">CURRENT — · EST. FINAL R —</small>
+          <button class="button setup-market-close-button" id="close-setup-market" type="button">Close at market now</button>
+        </div>
+      </section>
       <div class="form-error" id="setup-review-error" role="alert" hidden></div>
 
       <footer class="setup-review-footer">

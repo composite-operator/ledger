@@ -14,7 +14,7 @@
     },
     {
       "path": "assets/app.js",
-      "sha256": "cdb935076514a31e116a60d2d24eed08a151c484ee3eb98c3352aa8976f25d74"
+      "sha256": "a5c2c3bfc23fc973539340cacdfadb032dceb276bd337af381ff3c93dc66db32"
     },
     {
       "path": "assets/brand-mark.svg",
@@ -70,7 +70,7 @@
     },
     {
       "path": "assets/styles.css",
-      "sha256": "ab8abcc600ee66df005609c0a53015122572e0fc897e05a7d2c1381d1b7dbcc8"
+      "sha256": "579f6f0304832f216d1d08aaec2b4eb6e1a2876e3debce98bd0a21b6ac51508d"
     },
     {
       "path": "assets/victory/chud-terminal.webp",
@@ -90,7 +90,7 @@
     },
     {
       "path": "index.html",
-      "sha256": "0c67d90e33ba04c74e87cd45e4a623ef486d901d88f0e1695b48b0638bd573af"
+      "sha256": "64f038e8d22c0e20d389ac99abc36a4a8c8889f83ca55ed641e2ea94a452a034"
     },
     {
       "path": "legal.html",
@@ -110,7 +110,7 @@
     },
     {
       "path": "supabase/functions/social-card/index.tsx",
-      "sha256": "bf7e930a123113c41d1eebe10ada48cf6f48a833dfd7952b20e63f3999927e1d"
+      "sha256": "94c99fa61a84e9a2ff71af094722311c6b07e8438456467144c933fbab97be74"
     }
   ],
   "profile": "ledger",

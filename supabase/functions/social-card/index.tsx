@@ -222,9 +222,11 @@ async function loadOutcome(id: string, kind: "victory" | "loss"): Promise<CardRe
   const ticker = String(setup.ticker || "MARKET").toUpperCase();
   const direction = labelize(setup.direction || "LONG");
   const horizon = labelize(setup.horizon || "SWING");
-  const terminalPrice = kind === "victory"
-    ? numberOrNull(finalStatus === "T3" ? setup.t3 : finalStatus === "T2" ? setup.t2 : setup.t1)
-    : numberOrNull(setup.stop);
+  const terminalPrice = finalStatus === "CLOSED"
+    ? numberOrNull(setup.current_price)
+    : kind === "victory"
+      ? numberOrNull(finalStatus === "T3" ? setup.t3 : finalStatus === "T2" ? setup.t2 : setup.t1)
+      : numberOrNull(setup.stop);
   return {
     kind,
     title: `${ticker} ${formatR(resultR)} · @${handle} · Ledger`,
@@ -449,7 +451,7 @@ function outcomeImage(record: CardRecord) {
       <div style={{ display: "flex", overflow: "hidden", border: "1px solid rgba(255,255,255,.16)", borderRadius: 15, background: "rgba(0,0,0,.35)" }}>
         {stat("OUTCOME", record.finalStatus || (victory ? "WIN" : "LOSS"), accent)}
         {stat("ENTRY", record.entry == null ? "—" : `$${formatNumber(record.entry, 2, "—")}`)}
-        {stat(victory ? "WINNING TARGET" : "PUBLISHED STOP", record.terminalPrice == null ? "—" : `$${formatNumber(record.terminalPrice, 2, "—")}`)}
+        {stat(record.finalStatus === "CLOSED" ? "MARKET EXIT" : victory ? "WINNING TARGET" : "PUBLISHED STOP", record.terminalPrice == null ? "—" : `$${formatNumber(record.terminalPrice, 2, "—")}`)}
         {stat("OP WIN RATE", formatPercent(record.winRate))}
         {stat("OP AVG R", formatR(record.avgR), secondary)}
       </div>
