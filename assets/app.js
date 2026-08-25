@@ -305,8 +305,15 @@
     $("[data-close-social-share]").addEventListener("click", () => socialShareDialog.close());
     $("[data-close-setup-review]").addEventListener("click", () => setupReviewDialog.close());
     $("#setup-review-form").addEventListener("submit", saveSetupReview);
+    ["#review-ledger-stop", "#review-ledger-t1", "#review-ledger-t2", "#review-ledger-t3"].forEach((selector) => {
+      $(selector).addEventListener("input", updateSetupReviewRPreview);
+    });
+    $("#review-chart-image").addEventListener("change", () => updateAttachmentPreview($("#review-chart-image"), $("#review-chart-image-preview")));
+    $("[data-remove-review-chart]").addEventListener("click", () => clearAttachmentPreview($("#review-chart-image"), $("#review-chart-image-preview")));
+    $("#setup-review-form").addEventListener("paste", (event) => handleAttachmentPaste(event, $("#review-chart-image"), $("#review-chart-image-preview"), "public review"));
     setupReviewDialog.addEventListener("close", () => {
       state.reviewSetupId = null;
+      clearAttachmentPreview($("#review-chart-image"), $("#review-chart-image-preview"));
       $("#setup-review-form").reset();
       $("#setup-review-error").hidden = true;
     });
@@ -753,6 +760,7 @@
       ledger_t1: nullableNumber(row.ledger_t1 ?? row.t1),
       ledger_t2: nullableNumber(row.ledger_t2 ?? row.t2),
       ledger_t3: nullableNumber(row.ledger_t3 ?? row.t3),
+      ledger_chart_path: row.ledger_chart_path || null,
       t1_allocation: nullableNumber(row.t1_allocation),
       t2_allocation: nullableNumber(row.t2_allocation),
       t3_allocation: nullableNumber(row.t3_allocation),
@@ -1749,6 +1757,7 @@
         <strong>${formatR(setup.r_result ?? setup.score)}</strong><em>OPEN LOSS CARD ↗</em>
       </button>` : ""}
       <p class="setup-thesis">${escapeHtml(setup.thesis || "No public thesis was added to this setup.")}</p>
+      ${setup.ledger_chart_path ? `<a class="setup-thesis-image is-management-chart" href="${escapeAttr(publicMediaUrl(setup.ledger_chart_path))}" target="_blank" rel="noopener noreferrer"><img src="${escapeAttr(publicMediaUrl(setup.ledger_chart_path))}" loading="lazy" alt="Latest ${escapeAttr(setup.ticker)} management chart"><span>LATEST REVIEW CHART ↗</span></a>` : ""}
       ${setup.thesis_image_path ? `<a class="setup-thesis-image" href="${escapeAttr(publicMediaUrl(setup.thesis_image_path))}" target="_blank" rel="noopener noreferrer"><img src="${escapeAttr(publicMediaUrl(setup.thesis_image_path))}" loading="lazy" alt="Original ${escapeAttr(setup.ticker)} thesis chart"><span>ORIGINAL THESIS IMAGE ↗</span></a>` : ""}
       <div class="setup-card-foot">
         <div class="setup-card-byline">
@@ -1796,7 +1805,7 @@
     const managementPrompt = coach
       ? `<aside class="coach-prompt"><div><span>${escapeHtml(coach.title)}</span><p>${escapeHtml(coach.message)}</p></div><div class="coach-actions">${coachAction}${reviewAction || (!isOwner ? "<small>AUTHOR ACTION</small>" : "")}</div></aside>`
       : reviewAction
-        ? `<aside class="coach-prompt is-available"><div><span>Review whenever conditions change</span><p>The cadence is a reminder, not a lockout. Current stop and unreached targets can be revised prospectively.</p></div><div class="coach-actions">${reviewAction}</div></aside>`
+        ? `<aside class="coach-prompt is-available"><div><span>Review whenever conditions change</span><p>Update the current stop or any unreached target.</p></div><div class="coach-actions">${reviewAction}</div></aside>`
         : "";
     return `<section class="lifecycle-strip is-${escapeAttr(lifecycle.tone)}">
       <div class="lifecycle-scenario"><span>LIFECYCLE</span><b>${escapeHtml(lifecycle.label)}</b></div>
@@ -1869,8 +1878,10 @@
     setReviewField("#review-ledger-t1", setup.ledger_t1 ?? setup.t1, setup.t1, "#review-original-t1", "ORIGINAL TP1", Boolean(setup.t1_hit_at));
     setReviewField("#review-ledger-t2", setup.ledger_t2 ?? setup.t2, setup.t2, "#review-original-t2", "ORIGINAL TP2", Boolean(setup.t2_hit_at));
     setReviewField("#review-ledger-t3", setup.ledger_t3 ?? setup.t3, setup.t3, "#review-original-t3", "ORIGINAL TP3", Boolean(setup.t3_hit_at));
+    clearAttachmentPreview($("#review-chart-image"), $("#review-chart-image-preview"));
     $("#setup-review-note").value = "";
     $("#setup-review-error").hidden = true;
+    updateSetupReviewRPreview();
     $("#setup-review-dialog").showModal();
   }
 
@@ -1881,6 +1892,17 @@
     input.closest(".field")?.classList.toggle("is-locked", locked);
     syncPriceInputStep(input);
     $(noteSelector).textContent = `${label}: ${formatPrice(originalValue)}${locked ? " / REACHED + LOCKED" : ""}`;
+  }
+
+  function updateSetupReviewRPreview() {
+    const setup = state.setups.find((item) => String(item.id) === String(state.reviewSetupId));
+    const targets = ["#review-ledger-t1", "#review-ledger-t2", "#review-ledger-t3"].map((selector) => toNumber($(selector).value));
+    const originalRisk = setup ? Math.abs(Number(setup.entry) - Number(setup.stop)) : Number.NaN;
+    $("#review-risk-basis").textContent = Number.isFinite(originalRisk) && originalRisk > 0 ? `ORIGINAL RISK ${formatPrice(originalRisk)}` : "ORIGINAL RISK —";
+    targets.forEach((target, index) => {
+      const rValue = setup && target != null ? computePlannedR(setup.direction, setup.entry, setup.stop, target) : null;
+      $(`#review-t${index + 1}-r`).textContent = Number.isFinite(rValue) ? `${formatNumber(rValue, 2)}R` : "—";
+    });
   }
 
   async function saveSetupReview(event) {
@@ -1895,25 +1917,46 @@
       ledger_t3: toNumber($("#review-ledger-t3").value),
       note: $("#setup-review-note").value.trim()
     };
+    const reviewChartInput = $("#review-chart-image");
+    const reviewChartFile = selectedAttachmentFile(reviewChartInput);
     const validationError = validateSetupReview(setup, payload);
     if (validationError) {
       errorNode.textContent = validationError;
       errorNode.hidden = false;
       return;
     }
+    const imageError = validateImageFile(reviewChartFile);
+    if (imageError) {
+      errorNode.textContent = imageError;
+      errorNode.hidden = false;
+      return;
+    }
     errorNode.hidden = true;
     const button = $("#save-setup-review");
     button.disabled = true;
+    let uploadedChartPath = null;
+    if (reviewChartFile) {
+      try {
+        uploadedChartPath = await uploadLedgerImage(reviewChartFile, "setups");
+      } catch (error) {
+        button.disabled = false;
+        errorNode.textContent = error.message || "The review chart could not be uploaded.";
+        errorNode.hidden = false;
+        return;
+      }
+    }
     const { data, error } = await state.supabase.rpc("revise_setup_management", {
       p_setup_public_id: setup.id,
       p_ledger_stop: payload.ledger_stop,
       p_ledger_t1: payload.ledger_t1,
       p_ledger_t2: payload.ledger_t2,
       p_ledger_t3: payload.ledger_t3,
-      p_note: payload.note || null
+      p_note: payload.note || null,
+      p_chart_path: uploadedChartPath
     });
     button.disabled = false;
     if (error) {
+      if (uploadedChartPath) await removeLedgerImage(uploadedChartPath);
       errorNode.textContent = error.message;
       errorNode.hidden = false;
       return;
@@ -1923,6 +1966,7 @@
     setup.ledger_t1 = nullableNumber(saved?.ledger_t1 ?? payload.ledger_t1);
     setup.ledger_t2 = nullableNumber(saved?.ledger_t2 ?? payload.ledger_t2);
     setup.ledger_t3 = nullableNumber(saved?.ledger_t3 ?? payload.ledger_t3);
+    setup.ledger_chart_path = saved?.ledger_chart_path || uploadedChartPath || setup.ledger_chart_path || null;
     setup.review_due_at = saved?.next_review || new Date(Date.now() + Number(setup.review_cadence_days || 7) * 86400000).toISOString();
     $("#setup-review-dialog").close();
     renderSetups();

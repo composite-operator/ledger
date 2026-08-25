@@ -624,6 +624,27 @@
         </label>
       </div>
 
+      <section class="setup-review-r-preview" aria-live="polite">
+        <header><span>NEW SCORED R</span><small id="review-risk-basis">ORIGINAL RISK —</small></header>
+        <div>
+          <span>TP1 <b id="review-t1-r">—</b></span>
+          <span>TP2 <b id="review-t2-r">—</b></span>
+          <span>TP3 <b id="review-t3-r">—</b></span>
+        </div>
+      </section>
+
+      <div class="attachment-upload setup-review-attachment">
+        <label class="attachment-picker" for="review-chart-image" tabindex="0">
+          <span>＋</span><b>ATTACH OR CTRL+V UPDATED CHART</b><small>Click to browse or paste · JPG, PNG, or WEBP · 2 MB maximum</small>
+        </label>
+        <input class="attachment-input" name="review_chart_image" id="review-chart-image" type="file" accept="image/jpeg,image/png,image/webp">
+        <div class="attachment-preview" id="review-chart-image-preview" hidden>
+          <img alt="Selected setup review chart preview">
+          <div><b data-attachment-name></b><small data-attachment-size></small></div>
+          <button type="button" data-remove-review-chart aria-label="Remove selected review chart">REMOVE</button>
+        </div>
+      </div>
+
       <label class="field setup-review-note">
         <span>Public review note</span>
         <textarea name="note" id="setup-review-note" rows="3" maxlength="500" placeholder="What changed in the thesis or management plan?"></textarea>
@@ -636,7 +657,6 @@
       <div class="form-error" id="setup-review-error" role="alert" hidden></div>
 
       <footer class="setup-review-footer">
-        <div><b>Review at any time</b><small>The cadence is a reminder, not a lockout.</small></div>
         <button class="button button-primary publish-button" id="save-setup-review" type="submit">Save public review <span>→</span></button>
       </footer>
     </form>

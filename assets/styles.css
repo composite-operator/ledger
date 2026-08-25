@@ -1622,15 +1622,20 @@ textarea::placeholder { color: var(--muted); opacity: 1; }
 .setup-review-grid .field > small { color: #cbd5e1; font-family: var(--mono); font-size: 9px; }
 .setup-review-grid .field.is-locked { opacity: .78; }
 .setup-review-grid .field.is-locked input { cursor: not-allowed; color: var(--acid); }
+.setup-review-r-preview { display: grid; gap: 10px; margin-top: 14px; padding: 13px 14px; border: 1px solid rgba(200,255,46,.28); border-radius: 9px; background: rgba(200,255,46,.045); }
+.setup-review-r-preview header { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-family: var(--mono); }
+.setup-review-r-preview header span { color: var(--acid); font-size: 10px; font-weight: 800; letter-spacing: .08em; }
+.setup-review-r-preview header small { color: #fff; font-size: 9px; }
+.setup-review-r-preview > div { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; }
+.setup-review-r-preview > div span { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px; border: 1px solid var(--line-strong); border-radius: 7px; color: #dce3ec; font-family: var(--mono); font-size: 9px; }
+.setup-review-r-preview > div b { color: #fff; font-size: 13px; }
+.setup-review-attachment { margin-top: 14px; }
 .setup-review-note { margin-top: 20px; }
 .setup-review-note textarea { min-height: 96px; font-size: 14px; }
 .setup-review-rules { display: grid; gap: 5px; margin-top: 18px; padding: 13px 14px; border: 1px solid rgba(255,189,74,.26); border-radius: 9px; background: rgba(255,189,74,.055); }
 .setup-review-rules b { color: var(--amber); font-family: var(--mono); font-size: 10px; }
 .setup-review-rules span { color: #e8edf5; font-size: 11px; line-height: 1.5; }
-.setup-review-footer { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin: 22px -36px -36px; padding: 18px 36px; border-top: 1px solid var(--line); background: rgba(3,4,7,.55); }
-.setup-review-footer > div { display: grid; gap: 4px; }
-.setup-review-footer b { color: #fff; font-size: 12px; }
-.setup-review-footer small { color: #cbd5e1; font-size: 10px; }
+.setup-review-footer { display: flex; align-items: center; justify-content: flex-end; gap: 18px; margin: 22px -36px -36px; padding: 18px 36px; border-top: 1px solid var(--line); background: rgba(3,4,7,.55); }
 .setup-review-footer button:disabled { cursor: wait; opacity: .5; }
 
 .lifecycle-form-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 10px; }
