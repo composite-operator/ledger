@@ -1645,6 +1645,24 @@ textarea::placeholder { color: var(--muted); opacity: 1; }
 .setup-market-close-button { min-height: 44px; border-color: rgba(255,91,91,.62); background: rgba(255,91,91,.12); color: #fff; }
 .setup-market-close-button:hover { border-color: #ff7777; background: rgba(255,91,91,.22); }
 .setup-market-close-button:disabled { cursor: wait; opacity: .5; }
+.setup-review-corporate-action { margin-top: 12px; border: 1px solid rgba(255,189,74,.38); border-radius: 10px; background: linear-gradient(135deg,rgba(255,189,74,.07),rgba(255,189,74,.018)); }
+.setup-review-corporate-action summary { display: grid; grid-template-columns: auto minmax(0,1fr) auto auto; align-items: center; gap: 12px; padding: 15px 16px; cursor: pointer; list-style: none; }
+.setup-review-corporate-action summary::-webkit-details-marker { display: none; }
+.setup-review-corporate-action summary::after { content: "+"; color: var(--amber); font-family: var(--mono); font-size: 18px; }
+.setup-review-corporate-action[open] summary::after { content: "−"; }
+.setup-review-corporate-action summary > span { color: var(--amber); font-family: var(--mono); font-size: 10px; font-weight: 800; letter-spacing: .1em; }
+.setup-review-corporate-action summary > b { color: #fff; font-size: 14px; }
+.setup-review-corporate-action summary > small { color: #fff; font-size: 11px; }
+.setup-review-corporate-body { display: grid; gap: 14px; padding: 0 16px 16px; border-top: 1px solid rgba(255,189,74,.18); }
+.setup-review-corporate-body > p { margin: 14px 0 0; color: #f4f7fb; font-size: 12px; line-height: 1.6; }
+.setup-review-corporate-grid { display: grid; grid-template-columns: 1.2fr .8fr 1fr; gap: 11px; }
+.setup-review-corporate-grid .field > span { color: #fff; }
+.setup-review-corporate-source { grid-column: 1 / -1; }
+.setup-review-corporate-action-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.setup-review-corporate-action-row small { color: #fff; font-family: var(--mono); font-size: 10px; }
+.setup-corporate-close-button { min-height: 44px; border-color: rgba(255,189,74,.6); background: rgba(255,189,74,.12); color: #fff; }
+.setup-corporate-close-button:hover { border-color: var(--amber); background: rgba(255,189,74,.2); }
+.setup-corporate-close-button:disabled { cursor: wait; opacity: .5; }
 .setup-review-footer { display: flex; align-items: center; justify-content: flex-end; gap: 18px; margin: 22px -36px -36px; padding: 18px 36px; border-top: 1px solid var(--line); background: rgba(3,4,7,.55); }
 .setup-review-footer button:disabled { cursor: wait; opacity: .5; }
 
@@ -1764,6 +1782,14 @@ textarea::placeholder { color: var(--muted); opacity: 1; }
   .setup-review-grid { grid-template-columns: 1fr 1fr; }
   .setup-review-market-close { grid-template-columns: 1fr; }
   .setup-review-market-close-action { justify-items: stretch; min-width: 0; }
+  .setup-review-corporate-action summary { grid-template-columns: 1fr auto; }
+  .setup-review-corporate-action summary > span { grid-column: 1; }
+  .setup-review-corporate-action summary > b { grid-column: 1; }
+  .setup-review-corporate-action summary > small { grid-column: 1; }
+  .setup-review-corporate-action summary::after { grid-column: 2; grid-row: 1 / 4; }
+  .setup-review-corporate-grid { grid-template-columns: 1fr; }
+  .setup-review-corporate-source { grid-column: auto; }
+  .setup-review-corporate-action-row { align-items: stretch; flex-direction: column; }
   .setup-review-footer { align-items: stretch; flex-direction: column; margin: 20px -20px 0; padding: 18px 20px; }
   .setup-review-footer button { width: 100%; }
   .setup-position-map > header > span { align-items: flex-start; flex-direction: column; gap: 2px; }

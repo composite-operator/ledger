@@ -14,7 +14,7 @@
     },
     {
       "path": "assets/app.js",
-      "sha256": "3e7937e994dff3a58042176e86f9621946a332ebbf688acf7a3620b38ed9c96f"
+      "sha256": "473a518f08eb628f9a57f670e0239a51f2c8b0d15e180794537cfb23c2a097bc"
     },
     {
       "path": "assets/brand-mark.svg",
@@ -70,7 +70,7 @@
     },
     {
       "path": "assets/styles.css",
-      "sha256": "579f6f0304832f216d1d08aaec2b4eb6e1a2876e3debce98bd0a21b6ac51508d"
+      "sha256": "c21add43c9520c2c9442a740b44887ca6ab64d52ca40e5ab62b10e056e3ff25a"
     },
     {
       "path": "assets/victory/chud-terminal.webp",
@@ -90,7 +90,7 @@
     },
     {
       "path": "index.html",
-      "sha256": "64f038e8d22c0e20d389ac99abc36a4a8c8889f83ca55ed641e2ea94a452a034"
+      "sha256": "8f605e550b35140db1d4071d9758e2a58185723e055e7cc0283d0807a37a040a"
     },
     {
       "path": "legal.html",
@@ -111,6 +111,10 @@
     {
       "path": "supabase/config.toml",
       "sha256": "220e266f022424595f7cbdbd28acd2bb6a46c8a0ccedf5d4960f63ada6eacac8"
+    },
+    {
+      "path": "supabase/migrations/20260827133000_corporate_action_closes.sql",
+      "sha256": "f2caed311795ee50e566e85a257e895866849d76057e6fe08d68eedcd1d0000c"
     },
     {
       "path": "supabase/functions/social-card/index.tsx",

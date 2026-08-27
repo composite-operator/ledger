@@ -306,9 +306,12 @@
     $("[data-close-setup-review]").addEventListener("click", () => setupReviewDialog.close());
     $("#setup-review-form").addEventListener("submit", saveSetupReview);
     $("#close-setup-market").addEventListener("click", closeSetupAtMarket);
+    $("#close-setup-corporate").addEventListener("click", closeSetupForCorporateAction);
     ["#review-ledger-stop", "#review-ledger-t1", "#review-ledger-t2", "#review-ledger-t3"].forEach((selector) => {
       $(selector).addEventListener("input", updateSetupReviewRPreview);
     });
+    $("#corporate-action-price").addEventListener("input", updateCorporateActionPreview);
+    $("#corporate-action-method").addEventListener("change", updateCorporateActionPreview);
     $("#review-chart-image").addEventListener("change", () => updateAttachmentPreview($("#review-chart-image"), $("#review-chart-image-preview")));
     $("[data-remove-review-chart]").addEventListener("click", () => clearAttachmentPreview($("#review-chart-image"), $("#review-chart-image-preview")));
     $("#setup-review-form").addEventListener("paste", (event) => handleAttachmentPaste(event, $("#review-chart-image"), $("#review-chart-image-preview"), "public review"));
@@ -1881,10 +1884,22 @@
     setReviewField("#review-ledger-t3", setup.ledger_t3 ?? setup.t3, setup.t3, "#review-original-t3", "ORIGINAL TP3", Boolean(setup.t3_hit_at));
     clearAttachmentPreview($("#review-chart-image"), $("#review-chart-image-preview"));
     $("#setup-review-note").value = "";
+    $("#setup-review-corporate-action").open = false;
+    $("#corporate-action-method").value = "FINAL_EXCHANGE_CLOSE";
+    $("#corporate-action-price").value = setup.current_price == null ? "" : String(setup.current_price);
+    syncPriceInputStep($("#corporate-action-price"));
+    $("#corporate-action-effective-at").value = localDateTimeInputValue(new Date());
+    $("#corporate-action-source").value = "";
     $("#setup-review-error").hidden = true;
     updateSetupReviewRPreview();
     updateMarketClosePreview(setup);
+    updateCorporateActionPreview();
     $("#setup-review-dialog").showModal();
+  }
+
+  function localDateTimeInputValue(date) {
+    const localTime = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+    return localTime.toISOString().slice(0, 16);
   }
 
   function setReviewField(inputSelector, value, originalValue, noteSelector, label, locked = false) {
@@ -1929,6 +1944,16 @@
     $("#review-market-close-preview").textContent = Number.isFinite(currentPrice)
       ? `CURRENT ${formatPrice(currentPrice)} · EST. FINAL ${Number.isFinite(estimatedR) ? formatR(estimatedR) : "—"}`
       : "CURRENT — · EST. FINAL R —";
+  }
+
+  function updateCorporateActionPreview() {
+    const setup = state.setups.find((item) => String(item.id) === String(state.reviewSetupId));
+    const exitPrice = toNumber($("#corporate-action-price").value);
+    const estimatedR = setup ? estimateMarketCloseR(setup, exitPrice) : null;
+    const methodLabel = $("#corporate-action-method").selectedOptions[0]?.textContent?.trim() || "DOCUMENTED EXIT";
+    $("#corporate-action-preview").textContent = exitPrice != null
+      ? `${methodLabel.toUpperCase()} ${formatPrice(exitPrice)} · EST. FINAL ${Number.isFinite(estimatedR) ? formatR(estimatedR) : "—"}`
+      : `${methodLabel.toUpperCase()} — · EST. FINAL R —`;
   }
 
   async function fetchFreshSetupQuote(setup) {
@@ -2024,6 +2049,97 @@
       closeButton.disabled = false;
       saveButton.disabled = false;
       closeButton.textContent = originalLabel;
+    }
+  }
+
+  async function closeSetupForCorporateAction() {
+    const setup = state.setups.find((item) => String(item.id) === String(state.reviewSetupId));
+    const errorNode = $("#setup-review-error");
+    if (!setup || !state.supabase || !state.session?.user) return;
+
+    const exitPrice = toNumber($("#corporate-action-price").value);
+    const priceMethod = $("#corporate-action-method").value;
+    const sourceValue = $("#corporate-action-source").value.trim();
+    const effectiveValue = $("#corporate-action-effective-at").value;
+    let sourceUrl;
+    let effectiveAt;
+    try {
+      sourceUrl = new URL(sourceValue);
+      if (sourceUrl.protocol !== "https:") throw new Error("HTTPS required");
+    } catch (_error) {
+      errorNode.textContent = "Enter the public HTTPS source that documents the corporate action or terminal price.";
+      errorNode.hidden = false;
+      $("#corporate-action-source").focus();
+      return;
+    }
+    if (exitPrice == null || exitPrice <= 0) {
+      errorNode.textContent = "Enter a positive documented exit value.";
+      errorNode.hidden = false;
+      $("#corporate-action-price").focus();
+      return;
+    }
+    if (!effectiveValue || !Number.isFinite(new Date(effectiveValue).getTime())) {
+      errorNode.textContent = "Enter the corporate action effective time.";
+      errorNode.hidden = false;
+      $("#corporate-action-effective-at").focus();
+      return;
+    }
+    effectiveAt = new Date(effectiveValue).toISOString();
+    if (!window.confirm(`Resolve ${setup.ticker} at ${formatPrice(exitPrice)} for a documented corporate action? This permanently closes every unresolved tranche.`)) return;
+
+    const corporateButton = $("#close-setup-corporate");
+    const marketButton = $("#close-setup-market");
+    const saveButton = $("#save-setup-review");
+    const reviewChartInput = $("#review-chart-image");
+    const reviewChartFile = selectedAttachmentFile(reviewChartInput);
+    const imageError = validateImageFile(reviewChartFile);
+    if (imageError) {
+      errorNode.textContent = imageError;
+      errorNode.hidden = false;
+      return;
+    }
+
+    errorNode.hidden = true;
+    corporateButton.disabled = true;
+    marketButton.disabled = true;
+    saveButton.disabled = true;
+    const originalLabel = corporateButton.textContent;
+    corporateButton.textContent = "Resolving public record…";
+    let uploadedChartPath = null;
+    try {
+      if (reviewChartFile) uploadedChartPath = await uploadLedgerImage(reviewChartFile, "setups");
+      const { data, error } = await state.supabase.rpc("close_setup_for_corporate_action", {
+        p_setup_public_id: setup.id,
+        p_exit_price: exitPrice,
+        p_price_method: priceMethod,
+        p_source_url: sourceUrl.href,
+        p_effective_at: effectiveAt,
+        p_note: $("#setup-review-note").value.trim() || null,
+        p_chart_path: uploadedChartPath
+      });
+      if (error) throw error;
+
+      const closed = Array.isArray(data) ? data[0] : data;
+      setup.status = closed?.status || "CLOSED";
+      setup.current_price = nullableNumber(closed?.close_price ?? exitPrice);
+      setup.r_result = nullableNumber(closed?.r_result);
+      setup.score = setup.r_result;
+      setup.resolved_at = closed?.resolved_at || effectiveAt;
+      setup.resolution_kind = "CORPORATE_ACTION";
+      setup.price_source = `CORPORATE_ACTION:${priceMethod}`;
+      setup.ledger_chart_path = closed?.ledger_chart_path || uploadedChartPath || setup.ledger_chart_path || null;
+      $("#setup-review-dialog").close();
+      renderAll();
+      showToast("Corporate action resolved", `${setup.ticker} closed at ${formatPrice(setup.current_price)} for ${formatR(setup.r_result)}. Original terms remain visible.`);
+    } catch (error) {
+      if (uploadedChartPath) await removeLedgerImage(uploadedChartPath);
+      errorNode.textContent = error.message || "The corporate-action close could not be recorded. The trade remains open.";
+      errorNode.hidden = false;
+    } finally {
+      corporateButton.disabled = false;
+      marketButton.disabled = false;
+      saveButton.disabled = false;
+      corporateButton.textContent = originalLabel;
     }
   }
 

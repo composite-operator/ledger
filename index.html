@@ -666,6 +666,46 @@
           <button class="button setup-market-close-button" id="close-setup-market" type="button">Close at market now</button>
         </div>
       </section>
+
+      <details class="setup-review-corporate-action" id="setup-review-corporate-action">
+        <summary>
+          <span>CORPORATE ACTION</span>
+          <b>Symbol acquired, delisted, or cash-settled?</b>
+          <small>Resolve with a documented terminal value</small>
+        </summary>
+        <div class="setup-review-corporate-body">
+          <p>A triggered setup is never cancelled because its symbol disappears. Use the final official exchange close when it traded through the last session; otherwise use documented cash consideration, stock-conversion value, or a clearly labeled last verified quote.</p>
+          <div class="setup-review-corporate-grid">
+            <label class="field">
+              <span>Pricing method <b>*</b></span>
+              <div class="field-control">
+                <select id="corporate-action-method" required>
+                  <option value="FINAL_EXCHANGE_CLOSE">Final official exchange close</option>
+                  <option value="CASH_CONSIDERATION">Cash consideration</option>
+                  <option value="STOCK_CONVERSION_VALUE">Stock-conversion value</option>
+                  <option value="LAST_VERIFIED_QUOTE">Last verified quote — fallback</option>
+                </select>
+              </div>
+            </label>
+            <label class="field">
+              <span>Exit value <b>*</b></span>
+              <div class="field-control field-control-prefix"><i>$</i><input id="corporate-action-price" type="number" min="0" step="0.01" inputmode="decimal" required></div>
+            </label>
+            <label class="field">
+              <span>Effective time <b>*</b></span>
+              <div class="field-control"><input id="corporate-action-effective-at" type="datetime-local" required></div>
+            </label>
+            <label class="field setup-review-corporate-source">
+              <span>Public source URL <b>*</b></span>
+              <div class="field-control"><input id="corporate-action-source" type="url" inputmode="url" placeholder="https://…" required></div>
+            </label>
+          </div>
+          <div class="setup-review-corporate-action-row">
+            <small id="corporate-action-preview">DOCUMENTED EXIT — · EST. FINAL R —</small>
+            <button class="button setup-corporate-close-button" id="close-setup-corporate" type="button">Resolve corporate action</button>
+          </div>
+        </div>
+      </details>
       <div class="form-error" id="setup-review-error" role="alert" hidden></div>
 
       <footer class="setup-review-footer">
