@@ -39,15 +39,18 @@ function setupTarget(id, kind) {
 }
 
 function sharePageUrl(kind, id) {
-  return new URL(`share/${kind}/${id}/`, siteUrl).toString();
+  const url = new URL(`share/${kind}/${id}/`, siteUrl);
+  if (["victory", "loss"].includes(kind)) url.searchParams.set("v", "outcome-poster-5");
+  return url.toString();
 }
 
-function socialImageUrl(kind, value) {
+function socialImageUrl(kind, value, layout = "landscape") {
   const url = new URL(socialCardEndpoint);
   url.searchParams.set("type", kind);
   url.searchParams.set(kind === "operator" ? "handle" : "id", value);
   url.searchParams.set("format", "image");
-  url.searchParams.set("v", "setup-1");
+  if (layout === "poster") url.searchParams.set("layout", "poster");
+  url.searchParams.set("v", layout === "poster" ? "outcome-poster-5" : "setup-1");
   return url.toString();
 }
 
@@ -66,7 +69,7 @@ function setupDescription(setup) {
   return `${trigger} ${horizon} · Entry ${formatPrice(setup.entry)} · Stop ${formatPrice(setup.stop)} · Targets ${targets}. Inspect the original public plan and discussion.`;
 }
 
-function pageHtml({ title, description, shareUrl, targetUrl, imageUrl }) {
+function pageHtml({ title, description, shareUrl, targetUrl, imageUrl, imageWidth = 1200, imageHeight = 630 }) {
   const safeTitle = escapeHtml(title);
   const safeDescription = escapeHtml(description);
   const safeShareUrl = escapeHtml(shareUrl);
@@ -88,8 +91,8 @@ function pageHtml({ title, description, shareUrl, targetUrl, imageUrl }) {
   <meta property="og:image" content="${safeImageUrl}">
   <meta property="og:image:secure_url" content="${safeImageUrl}">
   <meta property="og:image:type" content="image/png">
-  <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">
+  <meta property="og:image:width" content="${imageWidth}">
+  <meta property="og:image:height" content="${imageHeight}">
   <meta property="og:image:alt" content="${safeTitle}">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="${safeTitle}">
@@ -153,10 +156,12 @@ for (const setup of setups) {
   const targetUrl = setupTarget(id, kind);
   await writeSharePage(kind, id, {
     title: `${ticker} ${result > 0 ? "+" : ""}${result.toFixed(2)}R · @${handle}`,
-    description: `Inspect the verified ${kind}, original entry, stop, targets, and complete public discussion.`,
+    description: `Verified public ${kind}. Open the preserved Ledger receipt.`,
     shareUrl: sharePageUrl(kind, id),
     targetUrl,
-    imageUrl: socialImageUrl(kind, id),
+    imageUrl: socialImageUrl(kind, id, "poster"),
+    imageWidth: 960,
+    imageHeight: 1200,
   });
 }
 

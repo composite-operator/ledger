@@ -2785,6 +2785,7 @@
         const root = url.pathname.endsWith("/") ? url.pathname : `${url.pathname}/`;
         url.pathname = `${root}share/${encodeURIComponent(type)}/${encodeURIComponent(String(value).trim().toLowerCase())}/`;
         url.search = "";
+        if (["victory", "loss"].includes(type)) url.searchParams.set("v", "outcome-poster-5");
         url.hash = "";
         return url.toString();
       }

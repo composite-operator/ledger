@@ -2,16 +2,19 @@ import React from "npm:react@19.0.0";
 import { ImageResponse } from "npm:@vercel/og@0.8.5";
 import { withSupabase } from "npm:@supabase/server@^1";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { POSTER_ART_DATA } from "./poster-art.generated.ts";
 
 const SITE_URL = "https://composite-operator.github.io/ledger/";
 const CACHE_CONTROL = "public, max-age=300, s-maxage=900, stale-while-revalidate=86400";
 const SOCIAL_CARD_VERSION = "setup-1";
+const DISCORD_POSTER_VERSION = "outcome-poster-5";
 const HANDLE_PATTERN = /^[a-z0-9][a-z0-9_-]{1,29}$/;
 const ID_PATTERN = /^[a-zA-Z0-9_-]{6,80}$/;
 
 type CardKind = "operator" | "setup" | "victory" | "loss";
 type CardRecord = {
   kind: CardKind;
+  id?: string | null;
   title: string;
   description: string;
   targetUrl: string;
@@ -229,6 +232,7 @@ async function loadOutcome(id: string, kind: "victory" | "loss"): Promise<CardRe
       : numberOrNull(setup.stop);
   return {
     kind,
+    id,
     title: `${ticker} ${formatR(resultR)} · @${handle} · Ledger`,
     description: `${kind === "victory" ? "Verified public victory" : "Verified public loss"}: ${ticker} ${direction}, ${formatR(resultR)} by @${handle}. Inspect the original entry, stop, targets, and discussion.`,
     targetUrl: setupTargetUrl(id, kind),
@@ -304,6 +308,38 @@ function brand() {
     <div style={{ display: "flex", flexDirection: "column" }}>
       <b style={{ color: "#ffffff", fontSize: 25, letterSpacing: ".08em" }}>COMPOSITE OPERATOR</b>
       <span style={{ color: "#c8ff2e", fontSize: 19, fontWeight: 800, letterSpacing: ".24em" }}>LEDGER</span>
+    </div>
+  </div>;
+}
+
+const outcomePosterVariants = {
+  victory: [
+    { art: POSTER_ART_DATA.victory, eyebrow: "LILYPAD ALPHA CONFIRMED", headline: "BAGS SECURED." },
+    { art: POSTER_ART_DATA.victory, eyebrow: "PATERNAL DUE DILIGENCE", headline: "ARE YA WINNING, SON?" },
+    { art: POSTER_ART_DATA.victory, eyebrow: "RISK-ADJUSTED CHARACTER ARC", headline: "THE CHART CHANGED HIM." },
+    { art: POSTER_ART_DATA.victory, eyebrow: "BASEMENT DESK / PRIME EXECUTION", headline: "HE CANNOT KEEP GETTING AWAY WITH THIS." },
+  ],
+  loss: [
+    { art: POSTER_ART_DATA.loss, eyebrow: "MARKET FEEDBACK RECEIVED", headline: "THE MARKET HAS REVIEWED YOUR THESIS." },
+    { art: POSTER_ART_DATA.loss, eyebrow: "BAGHOLDER RELIEF PROGRAM", headline: "CONGRATS ON THE PREMIUM BAG." },
+    { art: POSTER_ART_DATA.loss, eyebrow: "PARENTAL RISK COMMITTEE", headline: "ARE YA RISK-MANAGING, SON?" },
+    { art: POSTER_ART_DATA.loss, eyebrow: "CAPITAL PRESERVATION ADJACENT", headline: "CONFIDENCE: UNCHANGED." },
+  ],
+} as const;
+
+function posterVariant(record: CardRecord) {
+  const variants = record.kind === "victory" ? outcomePosterVariants.victory : outcomePosterVariants.loss;
+  const seed = String(record.id || record.ticker || record.kind);
+  const hash = seed.split("").reduce((total, character) => ((total * 31) + character.charCodeAt(0)) >>> 0, 0);
+  return variants[hash % variants.length];
+}
+
+function posterBrand() {
+  return <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
+    <div style={{ display: "flex", width: 48, height: 48, alignItems: "center", justifyContent: "center", border: "2px solid #c8ff2e", borderRadius: 13, background: "rgba(8,11,14,.88)", color: "#c8ff2e", fontSize: 18, fontWeight: 900, letterSpacing: "-.08em" }}>CO</div>
+    <div style={{ display: "flex", flexDirection: "column" }}>
+      <b style={{ color: "#ffffff", fontSize: 19, letterSpacing: ".08em" }}>COMPOSITE OPERATOR</b>
+      <span style={{ color: "#c8ff2e", fontSize: 14, fontWeight: 900, letterSpacing: ".24em" }}>LEDGER</span>
     </div>
   </div>;
 }
@@ -459,11 +495,62 @@ function outcomeImage(record: CardRecord) {
   </div>;
 }
 
-function imageResponse(record: CardRecord) {
-  const image = record.kind === "operator" ? operatorImage(record) : record.kind === "setup" ? setupImage(record) : outcomeImage(record);
+function outcomePosterImage(record: CardRecord) {
+  const victory = record.kind === "victory";
+  const accent = victory ? "#c8ff2e" : "#ff665f";
+  const secondary = victory ? "#3be7aa" : "#ffb64a";
+  const variant = posterVariant(record);
+  const terminalLabel = record.finalStatus === "CLOSED" ? "MARKET EXIT" : victory ? "WINNING TARGET" : "PUBLISHED STOP";
+  const outcomeLabel = record.finalStatus || (victory ? "WIN" : "LOSS");
+  return <div style={{ display: "flex", position: "relative", flexDirection: "column", width: "100%", height: "100%", overflow: "hidden", background: victory ? "#06100b" : "#100709", color: "#ffffff" }}>
+    <img src={variant.art} alt="" width="960" height="1200" style={{ position: "absolute", inset: 0, width: "960px", height: "1200px", objectFit: "cover" }} />
+    <div style={{ display: "flex", position: "absolute", inset: 0, backgroundImage: "linear-gradient(180deg, rgba(4,6,8,.20) 0%, rgba(4,6,8,.02) 42%, rgba(4,6,8,.76) 64%, rgba(4,6,8,.98) 82%, rgba(4,6,8,1) 100%)" }} />
+    <div style={{ display: "flex", position: "relative", flexDirection: "column", flex: 1, padding: "34px 40px 32px" }}>
+      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        {posterBrand()}
+        <div style={{ display: "flex", padding: "8px 12px", border: `1px solid ${accent}`, borderRadius: 999, background: "rgba(7,9,12,.78)", color: accent, fontSize: 13, fontWeight: 900, letterSpacing: ".08em" }}>VERIFIED PUBLIC {victory ? "VICTORY" : "LOSS"}</div>
+      </header>
+      <main style={{ display: "flex", flexDirection: "column", marginTop: "auto" }}>
+        <span style={{ color: secondary, fontSize: 16, fontWeight: 900, letterSpacing: ".16em" }}>{variant.eyebrow}</span>
+        <b style={{ width: 760, marginTop: 10, fontSize: 48, lineHeight: .96, letterSpacing: "-.045em" }}>{variant.headline}</b>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: 25 }}>
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <span style={{ color: "#aeb5c2", fontSize: 13, fontWeight: 800, letterSpacing: ".1em" }}>MARKET / DIRECTION</span>
+            <b style={{ marginTop: 5, fontSize: 48, lineHeight: 1 }}>{record.ticker}</b>
+            <span style={{ marginTop: 6, color: "#ffffff", fontSize: 19 }}>@{record.handle} · {record.direction} · {record.horizon}</span>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+            <span style={{ color: "#aeb5c2", fontSize: 13, fontWeight: 800, letterSpacing: ".1em" }}>{victory ? "REALIZED RESULT" : "REALIZED DAMAGE"}</span>
+            <b style={{ marginTop: 5, color: accent, fontSize: 66, lineHeight: .9, letterSpacing: "-.045em" }}>{formatR(record.resultR)}</b>
+          </div>
+        </div>
+        <div style={{ display: "flex", marginTop: 25, overflow: "hidden", border: "1px solid rgba(255,255,255,.18)", borderRadius: 12, background: "rgba(3,5,8,.78)" }}>
+          {stat("OUTCOME", outcomeLabel, accent)}
+          {stat("ENTRY", formatPrice(record.entry))}
+          {stat(terminalLabel, formatPrice(record.terminalPrice))}
+          {stat("OP AVG R", formatR(record.avgR), secondary)}
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 17, color: "#c8ced9", fontSize: 13, fontWeight: 800, letterSpacing: ".08em" }}>
+          <span>OPEN THE PUBLIC RECEIPT</span>
+          <span>ORIGINAL PLAN · RESULT · DISCUSSION</span>
+        </div>
+      </main>
+    </div>
+  </div>;
+}
+
+function imageResponse(record: CardRecord, poster = false) {
+  const usePoster = poster && (record.kind === "victory" || record.kind === "loss");
+  const image = usePoster
+    ? outcomePosterImage(record)
+    : record.kind === "operator"
+      ? operatorImage(record)
+      : record.kind === "setup"
+        ? setupImage(record)
+        : outcomeImage(record);
   return new ImageResponse(image, {
-    width: 1200,
-    height: 630,
+    width: usePoster ? 960 : 1200,
+    height: usePoster ? 1200 : 630,
     headers: { "Cache-Control": CACHE_CONTROL },
   });
 }
@@ -500,14 +587,16 @@ async function handler(request: Request) {
         : await loadOutcome(url.searchParams.get("id") || "", type);
 
     const userAgent = request.headers.get("user-agent") || "";
-    if (url.searchParams.get("format") === "image" || needsDirectImage(userAgent)) return imageResponse(record);
+    const poster = url.searchParams.get("layout") === "poster";
+    if (url.searchParams.get("format") === "image" || needsDirectImage(userAgent)) return imageResponse(record, poster);
 
     const imageUrl = new URL(PUBLIC_FUNCTION_URL);
     imageUrl.searchParams.set("type", record.kind);
     if (record.kind === "operator") imageUrl.searchParams.set("handle", record.handle);
     else imageUrl.searchParams.set("id", url.searchParams.get("id") || "");
     imageUrl.searchParams.set("format", "image");
-    imageUrl.searchParams.set("v", SOCIAL_CARD_VERSION);
+    if (poster && (record.kind === "victory" || record.kind === "loss")) imageUrl.searchParams.set("layout", "poster");
+    imageUrl.searchParams.set("v", poster ? DISCORD_POSTER_VERSION : SOCIAL_CARD_VERSION);
     if (!isCrawler(userAgent) && url.searchParams.get("inspect") !== "1") {
       return Response.redirect(record.targetUrl, 302);
     }

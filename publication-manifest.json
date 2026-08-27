@@ -14,7 +14,7 @@
     },
     {
       "path": "assets/app.js",
-      "sha256": "a5c2c3bfc23fc973539340cacdfadb032dceb276bd337af381ff3c93dc66db32"
+      "sha256": "3e7937e994dff3a58042176e86f9621946a332ebbf688acf7a3620b38ed9c96f"
     },
     {
       "path": "assets/brand-mark.svg",
@@ -97,8 +97,12 @@
       "sha256": "285e0ad66855ee5f5cd8400a256f257a90d3ee1954f8e8937f26a311fd2f8312"
     },
     {
+      "path": "scripts/generate-poster-art-module.py",
+      "sha256": "07027d0ffb2b54b5d2c70ea270d9d9959139c1df45494d8f81302177c8303481"
+    },
+    {
       "path": "scripts/generate-social-pages.mjs",
-      "sha256": "f898868462e668e146d810127576fd5a6e2ce2625d277ec644174881914e2e60"
+      "sha256": "489d94deebf528b5d001211667942e8d83781a73a1fd0e543a2dc39f715159b1"
     },
     {
       "path": "site.webmanifest",
@@ -110,7 +114,11 @@
     },
     {
       "path": "supabase/functions/social-card/index.tsx",
-      "sha256": "94c99fa61a84e9a2ff71af094722311c6b07e8438456467144c933fbab97be74"
+      "sha256": "a592f1bf44d52e62ad3476742f1873f031c9e9aa40dea8db023be914bb32f927"
+    },
+    {
+      "path": "supabase/functions/social-card/poster-art.generated.ts",
+      "sha256": "fc8ecea77e2732fd6b232390b5439c05b8d795e3820f5ae40d3c6eb3107c7f53"
     }
   ],
   "profile": "ledger",
