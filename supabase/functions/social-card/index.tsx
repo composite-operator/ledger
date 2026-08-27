@@ -8,6 +8,7 @@ const SITE_URL = "https://composite-operator.github.io/ledger/";
 const CACHE_CONTROL = "public, max-age=300, s-maxage=900, stale-while-revalidate=86400";
 const SOCIAL_CARD_VERSION = "setup-1";
 const DISCORD_POSTER_VERSION = "outcome-poster-5";
+const X_POSTER_VERSION = "outcome-x-poster-1";
 const HANDLE_PATTERN = /^[a-z0-9][a-z0-9_-]{1,29}$/;
 const ID_PATTERN = /^[a-zA-Z0-9_-]{6,80}$/;
 
@@ -539,10 +540,50 @@ function outcomePosterImage(record: CardRecord) {
   </div>;
 }
 
-function imageResponse(record: CardRecord, poster = false) {
-  const usePoster = poster && (record.kind === "victory" || record.kind === "loss");
+function outcomeXImage(record: CardRecord) {
+  const victory = record.kind === "victory";
+  const accent = victory ? "#c8ff2e" : "#ff665f";
+  const secondary = victory ? "#3be7aa" : "#ffb64a";
+  const variant = posterVariant(record);
+  const terminalLabel = record.finalStatus === "CLOSED" ? "MARKET EXIT" : victory ? "WINNING TARGET" : "PUBLISHED STOP";
+  const outcomeLabel = record.finalStatus || (victory ? "WIN" : "LOSS");
+  return <div style={{ display: "flex", position: "relative", flexDirection: "column", width: "100%", height: "100%", overflow: "hidden", background: victory ? "#06100b" : "#100709", color: "#ffffff" }}>
+    <img src={variant.art} alt="" width="620" height="630" style={{ position: "absolute", right: 0, top: 0, width: "620px", height: "630px", objectFit: "cover", objectPosition: "center" }} />
+    <div style={{ display: "flex", position: "absolute", inset: 0, backgroundImage: victory
+      ? "linear-gradient(90deg, rgba(4,10,7,1) 0%, rgba(4,10,7,.98) 46%, rgba(4,10,7,.74) 64%, rgba(4,10,7,.16) 100%)"
+      : "linear-gradient(90deg, rgba(12,5,7,1) 0%, rgba(12,5,7,.98) 46%, rgba(12,5,7,.74) 64%, rgba(12,5,7,.16) 100%)" }} />
+    <div style={{ display: "flex", position: "relative", flexDirection: "column", flex: 1, padding: "32px 40px 28px" }}>
+      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        {posterBrand()}
+        <div style={{ display: "flex", padding: "8px 12px", border: `1px solid ${accent}`, borderRadius: 999, background: "rgba(7,9,12,.82)", color: accent, fontSize: 13, fontWeight: 900, letterSpacing: ".08em" }}>VERIFIED PUBLIC {victory ? "VICTORY" : "LOSS"}</div>
+      </header>
+      <main style={{ display: "flex", flexDirection: "column", flex: 1, justifyContent: "center", width: 650, paddingBottom: 14 }}>
+        <span style={{ color: secondary, fontSize: 16, fontWeight: 900, letterSpacing: ".16em" }}>{variant.eyebrow}</span>
+        <b style={{ width: 630, marginTop: 10, fontSize: 46, lineHeight: .96, letterSpacing: "-.04em" }}>{variant.headline}</b>
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 20, marginTop: 22 }}>
+          <b style={{ fontSize: 58, lineHeight: .9, letterSpacing: "-.05em" }}>{record.ticker}</b>
+          <b style={{ color: accent, fontSize: 50, lineHeight: .9, letterSpacing: "-.04em" }}>{formatR(record.resultR)}</b>
+        </div>
+        <span style={{ marginTop: 14, color: "#ffffff", fontSize: 20 }}>@{record.handle} · {record.direction} · {record.horizon}</span>
+      </main>
+      <div style={{ display: "flex", overflow: "hidden", border: "1px solid rgba(255,255,255,.2)", borderRadius: 12, background: "rgba(3,5,8,.88)" }}>
+        {stat("OUTCOME", outcomeLabel, accent)}
+        {stat("ENTRY", formatPrice(record.entry))}
+        {stat(terminalLabel, formatPrice(record.terminalPrice))}
+        {stat("OP AVG R", formatR(record.avgR), secondary)}
+      </div>
+    </div>
+  </div>;
+}
+
+function imageResponse(record: CardRecord, layout = "landscape") {
+  const isOutcome = record.kind === "victory" || record.kind === "loss";
+  const usePoster = layout === "poster" && isOutcome;
+  const useXPoster = layout === "x" && isOutcome;
   const image = usePoster
     ? outcomePosterImage(record)
+    : useXPoster
+      ? outcomeXImage(record)
     : record.kind === "operator"
       ? operatorImage(record)
       : record.kind === "setup"
@@ -555,12 +596,12 @@ function imageResponse(record: CardRecord, poster = false) {
   });
 }
 
-function socialHtml(record: CardRecord, imageUrl: string) {
+function socialHtml(record: CardRecord, imageUrl: string, imageWidth = 1200, imageHeight = 630) {
   const title = escapeHtml(record.title);
   const description = escapeHtml(record.description);
   const targetUrl = escapeHtml(record.targetUrl);
   const escapedImage = escapeHtml(imageUrl);
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><meta name="description" content="${description}"><link rel="canonical" href="${targetUrl}"><meta property="og:type" content="website"><meta property="og:site_name" content="Composite Operator Ledger"><meta property="og:title" content="${title}"><meta property="og:description" content="${description}"><meta property="og:url" content="${targetUrl}"><meta property="og:image" content="${escapedImage}"><meta property="og:image:secure_url" content="${escapedImage}"><meta property="og:image:type" content="image/png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="${title}"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${title}"><meta name="twitter:description" content="${description}"><meta name="twitter:image" content="${escapedImage}"><meta name="twitter:image:alt" content="${title}"><style>body{margin:0;display:grid;min-height:100vh;place-items:center;background:#090b11;color:#fff;font:18px Arial,sans-serif}.card{max-width:680px;padding:36px;border:1px solid #384214;border-radius:18px;background:#0e1118}.card b{display:block;color:#c8ff2e;font-size:30px}.card p{line-height:1.6;color:#d9dde5}.card a{display:inline-block;margin-top:12px;padding:14px 18px;border-radius:9px;background:#c8ff2e;color:#090b11;font-weight:800;text-decoration:none}</style></head><body><main class="card"><b>${title}</b><p>${description}</p><a href="${targetUrl}">Open the public Ledger record →</a></main></body></html>`;
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><meta name="description" content="${description}"><link rel="canonical" href="${targetUrl}"><meta property="og:type" content="website"><meta property="og:site_name" content="Composite Operator Ledger"><meta property="og:title" content="${title}"><meta property="og:description" content="${description}"><meta property="og:url" content="${targetUrl}"><meta property="og:image" content="${escapedImage}"><meta property="og:image:secure_url" content="${escapedImage}"><meta property="og:image:type" content="image/png"><meta property="og:image:width" content="${imageWidth}"><meta property="og:image:height" content="${imageHeight}"><meta property="og:image:alt" content="${title}"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${title}"><meta name="twitter:description" content="${description}"><meta name="twitter:image" content="${escapedImage}"><meta name="twitter:image:alt" content="${title}"><style>body{margin:0;display:grid;min-height:100vh;place-items:center;background:#090b11;color:#fff;font:18px Arial,sans-serif}.card{max-width:680px;padding:36px;border:1px solid #384214;border-radius:18px;background:#0e1118}.card b{display:block;color:#c8ff2e;font-size:30px}.card p{line-height:1.6;color:#d9dde5}.card a{display:inline-block;margin-top:12px;padding:14px 18px;border-radius:9px;background:#c8ff2e;color:#090b11;font-weight:800;text-decoration:none}</style></head><body><main class="card"><b>${title}</b><p>${description}</p><a href="${targetUrl}">Open the public Ledger record →</a></main></body></html>`;
 }
 
 function isCrawler(userAgent: string) {
@@ -587,20 +628,21 @@ async function handler(request: Request) {
         : await loadOutcome(url.searchParams.get("id") || "", type);
 
     const userAgent = request.headers.get("user-agent") || "";
-    const poster = url.searchParams.get("layout") === "poster";
-    if (url.searchParams.get("format") === "image" || needsDirectImage(userAgent)) return imageResponse(record, poster);
+    const requestedLayout = url.searchParams.get("layout");
+    const layout = requestedLayout === "poster" || requestedLayout === "x" ? requestedLayout : "landscape";
+    if (url.searchParams.get("format") === "image" || needsDirectImage(userAgent)) return imageResponse(record, layout);
 
     const imageUrl = new URL(PUBLIC_FUNCTION_URL);
     imageUrl.searchParams.set("type", record.kind);
     if (record.kind === "operator") imageUrl.searchParams.set("handle", record.handle);
     else imageUrl.searchParams.set("id", url.searchParams.get("id") || "");
     imageUrl.searchParams.set("format", "image");
-    if (poster && (record.kind === "victory" || record.kind === "loss")) imageUrl.searchParams.set("layout", "poster");
-    imageUrl.searchParams.set("v", poster ? DISCORD_POSTER_VERSION : SOCIAL_CARD_VERSION);
+    if (layout !== "landscape" && (record.kind === "victory" || record.kind === "loss")) imageUrl.searchParams.set("layout", layout);
+    imageUrl.searchParams.set("v", layout === "poster" ? DISCORD_POSTER_VERSION : layout === "x" ? X_POSTER_VERSION : SOCIAL_CARD_VERSION);
     if (!isCrawler(userAgent) && url.searchParams.get("inspect") !== "1") {
       return Response.redirect(record.targetUrl, 302);
     }
-    return new Response(socialHtml(record, imageUrl.toString()), {
+    return new Response(socialHtml(record, imageUrl.toString(), layout === "poster" ? 960 : 1200, layout === "poster" ? 1200 : 630), {
       headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": CACHE_CONTROL },
     });
   } catch (error) {

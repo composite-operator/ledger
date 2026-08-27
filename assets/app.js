@@ -2882,11 +2882,12 @@
     return url.toString();
   }
 
-  function socialCardUrl(type, values) {
+  function socialCardUrl(type, values, options = {}) {
     if (!config.socialCardEndpoint) return null;
     const url = new URL(config.socialCardEndpoint);
     url.searchParams.set("type", type);
-    url.searchParams.set("v", "x-3");
+    url.searchParams.set("v", options.version || "x-3");
+    if (options.layout) url.searchParams.set("layout", options.layout);
     Object.entries(values).forEach(([key, value]) => {
       if (value != null && String(value).trim()) url.searchParams.set(key, String(value));
     });
@@ -2934,7 +2935,7 @@
   }
 
   function victoryShareUrl(setup) {
-    const socialUrl = socialCardUrl("victory", { id: setup.id });
+    const socialUrl = socialCardUrl("victory", { id: setup.id }, { layout: "x", version: "outcome-x-poster-1" });
     if (socialUrl) return socialUrl;
     const url = new URL(config.siteUrl || location.href);
     url.search = "";
@@ -2948,7 +2949,7 @@
   }
 
   function lossShareUrl(setup) {
-    const socialUrl = socialCardUrl("loss", { id: setup.id });
+    const socialUrl = socialCardUrl("loss", { id: setup.id }, { layout: "x", version: "outcome-x-poster-1" });
     if (socialUrl) return socialUrl;
     const url = new URL(config.siteUrl || location.href);
     url.search = "";

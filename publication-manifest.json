@@ -14,7 +14,7 @@
     },
     {
       "path": "assets/app.js",
-      "sha256": "473a518f08eb628f9a57f670e0239a51f2c8b0d15e180794537cfb23c2a097bc"
+      "sha256": "9ff686a7eb8553df6e061da797cd9cf9328a67d5553b691936db16a55e70f8ee"
     },
     {
       "path": "assets/brand-mark.svg",
@@ -118,7 +118,7 @@
     },
     {
       "path": "supabase/functions/social-card/index.tsx",
-      "sha256": "a592f1bf44d52e62ad3476742f1873f031c9e9aa40dea8db023be914bb32f927"
+      "sha256": "6c1c552e78611d19dbb295acb68dc5d09a5bb374ad308b77b4d6972bae35a6bc"
     },
     {
       "path": "supabase/functions/social-card/poster-art.generated.ts",
